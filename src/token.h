@@ -6,7 +6,7 @@ namespace compiler {
 
     enum class TokenType {
         // Single-character tokens.
-        LeftParen, RightParen, LeftBrace, RightBrace,
+        LeftParen/*(*/, RightParen, LeftBracket/*[]*/, RightBracket, LeftBrace/*{}*/, RightBrace,
         Comma, Dot, Minus, Plus, Semicolon, Slash, Star,
         // One or two character tokens.
         Bang, BangEqual,
