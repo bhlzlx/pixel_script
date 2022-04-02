@@ -29,35 +29,39 @@ int main() {
                 break;
             }
             case compiler::TokenType::Identifier: {
-                printf("Identifier: %s\n", token->stringLiteral().text();
+                printf("%s\n", token->stringLiteral().text());
                 break;
             }
             case compiler::TokenType::Float: {
-                printf("Number: %s\n", token->value().c_str());
+                printf("%F\n", token->floatLiteral());
                 break;
             }
             case compiler::TokenType::String: {
-                printf("String: %s\n", token->value().c_str());
+                printf("\"%s\"", token->stringLiteral().text());
                 break;
             }
-            case compiler::TokenType::Keyword: {
-                printf("Keyword: %s\n", token->value().c_str());
+            case compiler::TokenType::LeftBrace: {
+                printf("{");
                 break;
             }
-            case compiler::TokenType::Operator: {
-                printf("Operator: %s\n", token->value().c_str());
+            case compiler::TokenType::RightBrace: {
+                printf("}");
                 break;
             }
-            case compiler::TokenType::Bracket: {
-                printf("Bracket: %s\n", token->value().c_str());
+            case compiler::TokenType::LeftParen: {
+                printf("(");
                 break;
             }
-            case compiler::TokenType::Comment: {
-                printf("Comment: %s\n", token->value().c_str());
+            case compiler::TokenType::RightParen: {
+                printf(")");
                 break;
             }
-            case compiler::TokenType::Error: {
-                printf("Error: %s\n", token->value().c_str());
+            case compiler::TokenType::LeftBracket: {
+                printf("[");
+                break;
+            }
+            case compiler::TokenType::RightBracket: {
+                printf("]");
                 break;
             }
         }

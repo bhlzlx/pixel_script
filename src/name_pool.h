@@ -11,6 +11,7 @@ namespace ksgw {
             uint16_t    length;
             char        text[0];
         };
+        static_assert(sizeof(name_prototype) == 2, "name_prototype is not 2 bytes");
 
         class AllocRst {
         private:
@@ -42,7 +43,7 @@ namespace ksgw {
             size_t   _pos;
         public:
             NameMemoryPoolPage()
-                : _mem(malloc(PageSize))
+                : _mem((uint8_t*)malloc(PageSize))
                 , _pos(0) {
             }
             bool valid() const {

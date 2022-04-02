@@ -75,6 +75,7 @@ namespace compiler {
         } else {
             return false;
         }
+        return false;
     }
 
     bool TokenParser::dealIdentifier(char ch) {

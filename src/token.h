@@ -56,6 +56,12 @@ namespace compiler {
         ksgw::Name stringLiteral() const {
             return _string;
         }
+        int64_t integerLiteral() const {
+            return _integer;
+        }
+        double floatLiteral() const {
+            return _number;
+        }
     };
 
 }
