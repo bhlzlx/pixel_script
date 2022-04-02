@@ -14,7 +14,7 @@ namespace compiler {
         Greater, GreaterEqual,
         Less, LessEqual,
         // Literals.
-        Identifier, String, Number, Integer,
+        Identifier, String, Float, Integer,
         // Keywords
         And, Class, Else, False, Fun, For, If, Nil, Or,
         Print, Return, Super, This, True, Var, While,
@@ -29,6 +29,7 @@ namespace compiler {
         union { // literal value
             ksgw::Name          _string; // identifier, string
             double              _number;
+            int64_t             _integer;
         };
     public:
         Token( TokenType type, ksgw::Name name, int lineNumber )
@@ -42,7 +43,7 @@ namespace compiler {
             , _lineNumber(lineNumber)
         {}
         Token(double val, int lineNumber)
-            : _type(TokenType::Number)
+            : _type(TokenType::Float)
             , _number(val)
             , _lineNumber(lineNumber)
         {}

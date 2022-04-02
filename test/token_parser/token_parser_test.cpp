@@ -19,6 +19,48 @@ char const* code = R"(
 int main() {
     compiler::TokenParser parser;
     parser.init(code);
-    while(parser.nextToken())
+    compiler::Token const* token = nullptr;
+    do {
+        token = parser.nextToken();
+        // print token
+        switch(token->type()) {
+            case compiler::TokenType::None: {
+                printf("None\n");
+                break;
+            }
+            case compiler::TokenType::Identifier: {
+                printf("Identifier: %s\n", token->stringLiteral().text();
+                break;
+            }
+            case compiler::TokenType::Float: {
+                printf("Number: %s\n", token->value().c_str());
+                break;
+            }
+            case compiler::TokenType::String: {
+                printf("String: %s\n", token->value().c_str());
+                break;
+            }
+            case compiler::TokenType::Keyword: {
+                printf("Keyword: %s\n", token->value().c_str());
+                break;
+            }
+            case compiler::TokenType::Operator: {
+                printf("Operator: %s\n", token->value().c_str());
+                break;
+            }
+            case compiler::TokenType::Bracket: {
+                printf("Bracket: %s\n", token->value().c_str());
+                break;
+            }
+            case compiler::TokenType::Comment: {
+                printf("Comment: %s\n", token->value().c_str());
+                break;
+            }
+            case compiler::TokenType::Error: {
+                printf("Error: %s\n", token->value().c_str());
+                break;
+            }
+        }
+    } while(token);
     return 0;
 }
