@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cstdint>
 #include <set>
+#include <vector>
 
 namespace ksgw {
 

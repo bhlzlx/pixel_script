@@ -4,26 +4,168 @@
 
 namespace compiler {
 
-    std::regex identifier_reg(R"(^[_a-zA-Z]\w*)");
-    std::regex number_reg(R"(^)");
+    bool TokenParser::matchBrackets(char ch) {
+        switch(ch) {
+            case '(': _token = Token(TokenType::LeftParen, _keywords._none, _lineNumber); break;
+            case ')': _token = Token(TokenType::RightParen, _keywords._none, _lineNumber); break;
+            case '[': _token = Token(TokenType::LeftBracket, _keywords._none, _lineNumber); break;
+            case ']': _token = Token(TokenType::RightBracket, _keywords._none, _lineNumber); break;
+            case '{': _token = Token(TokenType::LeftParen, _keywords._none, _lineNumber); break;
+            case '}': _token = Token(TokenType::RightParen, _keywords._none, _lineNumber); break;
+            default:
+            return false;
+        }
+        return true;
+    }
 
+    bool TokenParser::matchOperator(char ch) {
+        if(_token.type() == TokenType::None) {
+            switch(ch) {
+                case '+': _token = Token(TokenType::Plus, _keywords._none, _lineNumber); break;
+                case '-': _token = Token(TokenType::Minus, _keywords._none, _lineNumber); break;
+                case '/': _token = Token(TokenType::Slash, _keywords._none, _lineNumber); break;
+                case '*': _token = Token(TokenType::Star, _keywords._none, _lineNumber); break;
+                case '%': _token = Token(TokenType::Modulus, _keywords._none, _lineNumber); break;
+                case '=': _token = Token(TokenType::Equal, _keywords._none, _lineNumber); break;
+                case '>': _token = Token(TokenType::Greater, _keywords._none, _lineNumber); break;
+                case '<': _token = Token(TokenType::Less, _keywords._none, _lineNumber); break;
+            }
+            return false;
+        } else {
+            switch(_token.type()) {
+                case TokenType::Equal: {
+                    switch(ch) {
+                        case '=': _token = Token(TokenType::EqualEqual, _keywords._none, _lineNumber); break;
+                        case '>': _token = Token(TokenType::EqualEqual, _keywords._none, _lineNumber); break;
+                    }
+                    break;
+                }
+                case TokenType::Less: {
+                    switch(ch) {
+                        case '=': _token = Token(TokenType::LessEqual, _keywords._none, _lineNumber); break;
+                    }
+                    break;
+                }
+                default: {
+                    --_pos; // fallback
+                }
+            }
+            return true;
+        }
+        return true;
+    }
 
-    void TokenParser::dealNone(char ch) {
+    bool TokenParser::dealNone(char ch) {
+        _tokenBuf.clear();
+        _token = Token(TokenType::None, _keywords._none, 0);
         if(std::isalpha(ch) || ch == '_') {
             _state = State::Identifier; _tokenBuf.push_back(ch);
-        } else if (std::isdigit(ch) || ch == '.') {
-            _state = State::Number; _tokenBuf.push_back(ch);
+            return false;
+        } else if (std::isdigit(ch)) {
+            _state = State::Integer; _tokenBuf.push_back(ch);
+            return false;
+        } else if(matchBrackets(ch)) {
+            _state = State::None;
+            return true;
+        } else if(matchOperator(ch)) {
+            assert(false);
+        } else if(';' == ch) {
+            _token = Token(TokenType::Semicolon, _keywords._none, _lineNumber);
+            return true;
+        } else {
+            return false;
         }
     }
 
-    Token* TokenParser::nextToken() {
-        while(_pos < _text.length()) {
-            char ch = _text[_pos];
-            switch(_state) {
-                case State::None: {
-                }
+    bool TokenParser::dealIdentifier(char ch) {
+        if(std::isalpha(ch) || ch == '_' || std::isdigit(ch)) {
+            _tokenBuf.push_back(ch);
+            return false;
+        } else {
+            if(!std::isblank(ch)) {
+                --_pos; // fallback
+            }
+            _state = State::None;
+            return true;
+        }
+    }
+
+    bool TokenParser::dealFloat(char ch) {
+        if(std::isdigit(ch)) {
+            _tokenBuf.push_back(ch);
+            return false;
+        } else {
+            if(!std::isblank(ch)) {
+                --_pos;
+            }
+            _state = State::None;
+            return true;
+        }
+    }
+
+    bool TokenParser::dealInteger(char ch) {
+        if(std::isdigit(ch)) {
+            _tokenBuf.push_back(ch);
+            return false;
+        } else if('.' == ch) {
+            _state = State::Float;
+            return false;
+        } else {
+            _token = Token(TokenType::Integer, _keywords._none, _lineNumber);
+            return true;
+        }
+        --_pos; // fallback
+        return true;
+    }
+
+    bool TokenParser::dealOp(char ch) {
+        auto rst = matchOperator(ch);
+        assert(rst == true);
+        return rst;
+    }
+
+    bool TokenParser::dealEOF(char ch) {
+        switch(_state) {
+            case State::Identifier: {
+                _token = Token(TokenType::Identifier, _tokenBuf.asName(), _lineNumber);
+                break;
+            }
+            case State::Integer: {
+                _token = Token((int64_t)atoi(_tokenBuf.str()), _lineNumber);
+                break;
+            }
+            case State::Float: {
+                _token = Token((double)atof(_tokenBuf.str()), _lineNumber);
+                break;
+            }
+            case State::Op: {
+                break;
+            }
+            default: {
+                _token = Token(TokenType::Eof, _keywords._none, _lineNumber);
             }
         }
+        return true;
+    }
+
+    Token const* TokenParser::nextToken() {
+        while(_pos < _textLen) {
+            char ch = _text[_pos];
+            bool rst = false;
+            switch(_state) {
+                case State::None: {
+                    rst = dealNone(ch);
+                }
+                case State::Identifier: {
+                    rst = dealIdentifier(ch);
+                }
+            }
+            ++_pos;
+            if(rst) {
+                return &_token;
+            }
+        }
+        return nullptr;
     }
 
 }

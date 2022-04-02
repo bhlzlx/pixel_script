@@ -2,10 +2,6 @@ cmake_minimum_required(VERSION 3.21)
 
 project(make_compiler)
 
-add_executable( token_parser )
+add_subdirectory(src)
 
-target_sources( token_parser 
-PRIVATE
-    src/token.cpp
-    src/token_parser.cpp
-)
+add_subdirectory(test)
