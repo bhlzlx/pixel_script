@@ -6,7 +6,7 @@
 
 namespace ksgw {
 
-    namespace {
+    // namespace {
         struct name_prototype {
             uint16_t    length;
             char        text[0];
@@ -64,7 +64,7 @@ namespace ksgw {
                 return AllocRst(nullptr, 0);
             }
         };
-    }
+    // }
 
     class Name {
     private:

@@ -6,10 +6,10 @@ namespace compiler {
 
     enum class TokenType {
         // Single-character tokens.
-        LeftParen/*(*/, RightParen, LeftBracket/*[]*/, RightBracket, LeftBrace/*{}*/, RightBrace,
+        LeftParen = 0/*(*/, RightParen, LeftBracket/*[]*/, RightBracket, LeftBrace/*{}*/, RightBrace,
         Comma, Dot, Minus, Plus, Semicolon, Slash, Star, Modulus,
         // One or two character tokens.
-        Bang, BangEqual,
+        Not, NotEqual,
         Equal, EqualEqual,
         Greater, GreaterEqual,
         Less, LessEqual,
@@ -39,7 +39,7 @@ namespace compiler {
         {}
         Token(int64_t val, int lineNumber)
             : _type(TokenType::Integer)
-            , _number(val)
+            , _integer(val)
             , _lineNumber(lineNumber)
         {}
         Token(double val, int lineNumber)

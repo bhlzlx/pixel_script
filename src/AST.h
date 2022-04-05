@@ -1,10 +1,16 @@
 #pragma once
+#include <vector>
+#include "name_pool.h"
 
 namespace compiler {
     class Token;
     class Lexer;
 
     enum class ASTNodeType {
+        Identifier,
+        Integer,
+        Float,
+        String,
         // Statements
         Block,
         Class,
@@ -23,7 +29,6 @@ namespace compiler {
         Call,
         Get,
         Grouping,
-        Literal,
         Logical,
         Set,
         Super,
@@ -34,7 +39,6 @@ namespace compiler {
         Array,
         Function,
         Literal,
-        String,
         // Misc
         Break,
         Continue,
@@ -56,29 +60,22 @@ namespace compiler {
         void setParent(ASTNode* parent) {
             _parent = parent;
         }
+        void setType( ASTNodeType type ) {
+            _type = type;
+        }
         virtual ~ASTNode() {}
     };
 
     class ASTLeaf : public ASTNode {
     protected:
-        Token* _token;
+        Token const* _token;
     public:
-        ASTLeaf(Token* token)
+        ASTLeaf(Token const* token)
             : _token(token)
         {}
         Token const* token() const {
             return _token;
         }
-    };
-
-    class NumberLiteral : public ASTLeaf {
-    private:
-        double _value;
-    public:
-        NumberLiteral( double value ) 
-            : ASTLeaf( nullptr)
-            , _value(value) 
-        {}
     };
 
     class ASTBinaryExpression : public ASTNode {
@@ -99,9 +96,22 @@ namespace compiler {
         }
     };
 
+    class ASTNagativeExpression : public ASTNode {
+    private:
+        ASTNode* _value;
+    public:
+        ASTNagativeExpression(ASTNode* value)
+            : _value(value) {
+                _value->setParent(this);
+        }
+        ASTNode const* value() const {
+            return _value;
+        }
+    };
+
     class ASTMultiExpression : public ASTNode {
     private:
-        vector<ASTNode*> _expressions;
+        std::vector<ASTNode*> _expressions;
     };
 
 

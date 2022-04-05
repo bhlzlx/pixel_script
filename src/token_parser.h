@@ -29,7 +29,7 @@ namespace compiler {
             return *(uint16_t*)_buf.data();
         }
         void clear() {
-            _buf.resize(2, '0');
+            _buf.resize(2, '\0');
         }
         void push_back( char ch ) {
             _buf.push_back(ch);
@@ -94,6 +94,7 @@ namespace compiler {
         }
 
         Token const* nextToken();
+        Token const* currToken() const;
     private:
         bool matchBrackets(char ch);
         bool matchOperator(char ch);

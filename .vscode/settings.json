@@ -1,5 +1,14 @@
 {
     "files.associations": {
-        "cctype": "cpp"
+        "cctype": "cpp",
+        "deque": "cpp",
+        "regex": "cpp",
+        "system_error": "cpp",
+        "vector": "cpp",
+        "xstring": "cpp",
+        "type_traits": "cpp",
+        "xlocmon": "cpp",
+        "xlocnum": "cpp",
+        "xtr1common": "cpp"
     }
 }

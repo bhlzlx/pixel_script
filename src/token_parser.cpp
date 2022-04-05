@@ -10,8 +10,8 @@ namespace compiler {
             case ')': _token = Token(TokenType::RightParen, _keywords._none, _lineNumber); break;
             case '[': _token = Token(TokenType::LeftBracket, _keywords._none, _lineNumber); break;
             case ']': _token = Token(TokenType::RightBracket, _keywords._none, _lineNumber); break;
-            case '{': _token = Token(TokenType::LeftParen, _keywords._none, _lineNumber); break;
-            case '}': _token = Token(TokenType::RightParen, _keywords._none, _lineNumber); break;
+            case '{': _token = Token(TokenType::LeftBrace, _keywords._none, _lineNumber); break;
+            case '}': _token = Token(TokenType::RightBrace, _keywords._none, _lineNumber); break;
             default:
             return false;
         }
@@ -65,10 +65,9 @@ namespace compiler {
             _state = State::Integer; _tokenBuf.push_back(ch);
             return false;
         } else if(matchBrackets(ch)) {
-            _state = State::None;
             return true;
-        } else if(matchOperator(ch)) {
-            assert(false);
+        } else if(matchOperator(ch) || _token.type() != TokenType::None) {
+            _state = State::Op;
         } else if(';' == ch) {
             _token = Token(TokenType::Semicolon, _keywords._none, _lineNumber);
             return true;
@@ -86,7 +85,7 @@ namespace compiler {
             if(!std::isblank(ch)) {
                 --_pos; // fallback
             }
-            _state = State::None;
+            _token = Token(TokenType::Identifier, _tokenBuf.asName(), _lineNumber);
             return true;
         }
     }
@@ -99,7 +98,6 @@ namespace compiler {
             if(!std::isblank(ch)) {
                 --_pos;
             }
-            _state = State::None;
             return true;
         }
     }
@@ -112,8 +110,7 @@ namespace compiler {
             _state = State::Float;
             return false;
         } else {
-            _token = Token(TokenType::Integer, _keywords._none, _lineNumber);
-            return true;
+            _token = Token( (int64_t)atoi(_tokenBuf.str()), _lineNumber);
         }
         --_pos; // fallback
         return true;
@@ -155,18 +152,32 @@ namespace compiler {
             bool rst = false;
             switch(_state) {
                 case State::None: {
-                    rst = dealNone(ch);
+                    rst = dealNone(ch); break;
                 }
                 case State::Identifier: {
-                    rst = dealIdentifier(ch);
+                    rst = dealIdentifier(ch); break;
+                }
+                case State::Integer: {
+                    rst = dealInteger(ch); break;
+                }
+                case State::Float: {
+                    rst = dealFloat(ch); break;
+                }
+                case State::Op: {
+                    rst = dealOp(ch); break;
                 }
             }
             ++_pos;
             if(rst) {
+                _state = State::None;
                 return &_token;
             }
         }
         return nullptr;
+    }
+
+    Token const* TokenParser::currToken() const {
+        return &_token;
     }
 
 }
