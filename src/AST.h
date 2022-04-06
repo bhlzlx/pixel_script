@@ -112,6 +112,11 @@ namespace compiler {
     class ASTMultiExpression : public ASTNode {
     private:
         std::vector<ASTNode*> _expressions;
+    public:
+        void addSubNode(ASTNode* node) {
+            _expressions.push_back(node);
+            node->setParent(this);
+        }
     };
 
 

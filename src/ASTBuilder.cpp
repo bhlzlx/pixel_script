@@ -64,4 +64,39 @@ namespace compiler {
         return exprNode; 
     }
 
+    ASTNode* matchBlock(TokenParser* tokenParser) {
+        auto token = tokenParser->nextToken();
+        if(token->type() == TokenType::LeftBrace) {
+            tokenParser->peek();
+            auto rst = new ASTMultiExpression();
+            auto statement = matchStatement(tokenParser);
+            if(!statement) {
+                delete rst;
+                delete statement;
+                return nullptr;
+            }
+            rst->addSubNode(statement);
+            while(true) {
+                token = tokenParser->nextToken();
+                if(token->type() == TokenType::Semicolon) {
+                    tokenParser->peek();
+                } else if(token->type() == TokenType::RightBrace) {
+                    tokenParser->peek();
+                    return rst;
+                } else {
+                    statement = matchStatement(tokenParser);
+                    if(statement) {
+                        rst->addSubNode(statement);
+                    } else {
+                        delete rst;
+                        delete statement;
+                        assert(false);
+                        return nullptr;
+                    }
+                }
+            }
+            return rst;
+        }
+        return nullptr;
+    }
 }
