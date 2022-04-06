@@ -97,6 +97,9 @@ namespace ksgw {
             }
             return memcmp(_proto->text, other._proto->text, _proto->length) < 0;
         }
+        bool operator == (Name const& other) const {
+            return _proto == other._proto;
+        }
     };
 
     class NamePool {

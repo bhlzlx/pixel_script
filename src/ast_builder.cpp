@@ -1,4 +1,4 @@
-#include "ASTBuilder.h"
+#include "ast_builder.h"
 #include "token.h"
 #include "token_parser.h"
 #include "AST.h"
@@ -13,7 +13,7 @@ namespace compiler {
         }
         else if (token->type() == TokenType::LeftParen) {
             tokenParser->peek();
-            ASTNode* node = matchExpression(token, tokenParser);
+            ASTNode* node = matchExpression(tokenParser);
             auto nextToken = tokenParser->nextToken();
             if(nextToken->type() == TokenType::RightParen) {
                 tokenParser->peek();
@@ -57,7 +57,7 @@ namespace compiler {
         tokenParser->peek();
         factor2 = matchFactor(tokenParser);
         if(factor2) {
-            exprNode = new ASTBinaryExpression(factor1, factor2);
+            exprNode = new ASTBinaryOpExpr(factor1, factor2);
         } else {
             delete factor1;
         }
@@ -68,14 +68,11 @@ namespace compiler {
         auto token = tokenParser->nextToken();
         if(token->type() == TokenType::LeftBrace) {
             tokenParser->peek();
-            auto rst = new ASTMultiExpression();
+            auto rst = new ASTBlock();
             auto statement = matchStatement(tokenParser);
-            if(!statement) {
-                delete rst;
-                delete statement;
-                return nullptr;
+            if(statement) {
+                rst->addSubNode(statement);
             }
-            rst->addSubNode(statement);
             while(true) {
                 token = tokenParser->nextToken();
                 if(token->type() == TokenType::Semicolon) {
@@ -96,6 +93,69 @@ namespace compiler {
                 }
             }
             return rst;
+        }
+        return nullptr;
+    }
+
+    ASTNode* matchStatement(TokenParser* tokenParser) { 
+        auto& keywords = tokenParser->keywords();
+        auto token = tokenParser->nextToken();
+        if(token->stringLiteral() == keywords._if) {
+            ASTIfStatement* if_stmt = new ASTIfStatement();
+            tokenParser->peek();
+            auto expr = matchExpression(tokenParser);
+            if(!expr) {
+                delete expr;
+                return nullptr;
+            }
+            if_stmt->setCondition(expr);
+            auto block = matchBlock(tokenParser);
+            if(!block) {
+                delete expr;
+                delete block;
+                return nullptr;
+            }
+            if_stmt->setThenBranch(block);
+            token = tokenParser->nextToken();
+            if(token->stringLiteral() == keywords._else) {
+                tokenParser->peek();
+                auto block = matchBlock(tokenParser);
+                if(!block) {
+                    delete expr;
+                    delete block;
+                    return nullptr;
+                }
+                if_stmt->setElseBranch(block);
+            }
+            return if_stmt;
+        } else if(token->stringLiteral() == keywords._while) {
+            tokenParser->peek();
+            auto expr = matchExpression(tokenParser);
+            if(!expr) {
+                delete expr;
+                return nullptr;
+            }
+            auto block = matchBlock(tokenParser);
+            if(!block) {
+                delete expr;
+                delete block;
+                return nullptr;
+            }
+            auto while_stmt = new ASTWhileStatement();
+            while_stmt->setBody(block);
+            while_stmt->setCondition(expr);
+            return while_stmt;
+        } else {
+            auto expr = matchExpression(tokenParser);
+            return expr;
+        }
+    }
+
+    ASTNode* matchProgram(TokenParser* tokenParser) {
+        auto stmt = matchStatement(tokenParser);
+        if(stmt) {
+            auto program = new ASTProgram(stmt);
+            return program;
         }
         return nullptr;
     }

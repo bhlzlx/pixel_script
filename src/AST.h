@@ -14,16 +14,13 @@ namespace compiler {
         // Statements
         Block,
         Class,
-        ExpressionStatement,
-        Function,
         If,
-        Print,
         Return,
-        Super,
-        This,
-        Variable,
         While,
         // Expressions
+        BinaryOp,
+        NagtiveOp,
+        Program,
         Array,
         Binary,
         Call,
@@ -36,7 +33,6 @@ namespace compiler {
         Unary,
         Variable,
         // Types
-        Array,
         Function,
         Literal,
         // Misc
@@ -50,12 +46,12 @@ namespace compiler {
 
     class ASTNode {
     protected:
-        ASTNode*        _parent;
         ASTNodeType     _type;
+        ASTNode*        _parent;
     public:
-        ASTNode()
-            : _parent(nullptr)
-            , _type(ASTNodeType::Eof)
+        ASTNode(ASTNodeType type = ASTNodeType::Eof, ASTNode* parent = nullptr)
+            : _type(type)
+            , _parent(parent)
         {}
         void setParent(ASTNode* parent) {
             _parent = parent;
@@ -78,13 +74,14 @@ namespace compiler {
         }
     };
 
-    class ASTBinaryExpression : public ASTNode {
+    class ASTBinaryOpExpr : public ASTNode {
     protected:
         ASTNode*        _left;
         ASTNode*        _right;
     public:
-        ASTBinaryExpression(ASTNode* left = nullptr, ASTNode* right = nullptr)
-            : _left(left)
+        ASTBinaryOpExpr(ASTNode* left = nullptr, ASTNode* right = nullptr)
+            : ASTNode(ASTNodeType::BinaryOp)
+            , _left(left)
             , _right(right)
         {
         }
@@ -100,16 +97,61 @@ namespace compiler {
     private:
         ASTNode* _value;
     public:
-        ASTNagativeExpression(ASTNode* value)
-            : _value(value) {
-                _value->setParent(this);
+        ASTNagativeExpression(ASTNode* value) : ASTNode(ASTNodeType::NagtiveOp)
+            , _value(value)
+        {
+            _value->setParent(this);
         }
         ASTNode const* value() const {
             return _value;
         }
     };
 
-    class ASTMultiExpression : public ASTNode {
+    class ASTIfStatement : public ASTNode {
+    private:
+        ASTNode* _condition;
+        ASTNode* _thenBranch;
+        ASTNode* _elseBranch;
+    public:
+        ASTIfStatement() : ASTNode(ASTNodeType::If) 
+            , _condition(nullptr)
+            , _thenBranch(nullptr)
+            , _elseBranch(nullptr)
+        {}
+        void setCondition(ASTNode* condition) {
+            _condition = condition;
+            _condition->setParent(this);
+        }
+        void setThenBranch(ASTNode* thenBranch) {
+            _thenBranch = thenBranch;
+            _thenBranch->setParent(this);
+        }
+        void setElseBranch(ASTNode* elseBranch) {
+            _elseBranch = elseBranch;
+            _elseBranch->setParent(this);
+        }
+    };
+
+    class ASTWhileStatement : public ASTNode {
+    private:
+        ASTNode* _condition;
+        ASTNode* _body;
+    public:
+        ASTWhileStatement() : ASTNode(ASTNodeType::While)
+            , _condition(nullptr)
+            , _body(nullptr)
+        {}
+        void setCondition(ASTNode* condition) {
+            _condition = condition;
+            _condition->setParent(this);
+        }
+        void setBody(ASTNode* body) {
+            _body = body;
+            _body->setParent(this);
+        }
+    };
+
+    class ASTBlock : public ASTNode {
     private:
         std::vector<ASTNode*> _expressions;
     public:
@@ -119,5 +161,14 @@ namespace compiler {
         }
     };
 
+    class ASTProgram : public ASTNode {
+    private:
+        ASTNode* _stmt;
+    public:
+        ASTProgram( ASTNode* stmt)
+            : ASTNode(ASTNodeType::Program)
+            , _stmt(stmt)
+        {}
+    };
 
 }

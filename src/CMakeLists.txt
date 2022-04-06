@@ -5,6 +5,7 @@ PRIVATE
     # astree.cpp
     token.cpp
     token_parser.cpp
+    ast_builder.cpp
     # lexer.cpp
 )
 

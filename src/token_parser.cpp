@@ -173,14 +173,13 @@ namespace compiler {
             ++_pos;
             if(rst) {
                 _state = State::None;
+                if(_token.type() == TokenType::None) {
+                    continue;
+                }
                 return &_token;
             }
         }
         return nullptr;
-    }
-
-    void TokenParser::peek() {
-        _tokenCached = false;
     }
 
 }

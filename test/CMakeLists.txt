@@ -1,1 +1,2 @@
 add_subdirectory(token_parser)
+add_subdirectory(ast_builder)

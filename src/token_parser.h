@@ -94,6 +94,10 @@ namespace compiler {
             _textLen = strlen(_text);
         }
 
+        Keywords const& keywords() const {
+            return _keywords;
+        }
+
         Token const* nextToken();
         void peek() {
             _tokenCached = false;
