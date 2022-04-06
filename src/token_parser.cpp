@@ -147,6 +147,9 @@ namespace compiler {
     }
 
     Token const* TokenParser::nextToken() {
+        if(_tokenCached) {
+            return &_token;
+        }
         while(_pos < _textLen) {
             char ch = _text[_pos];
             bool rst = false;
@@ -176,8 +179,8 @@ namespace compiler {
         return nullptr;
     }
 
-    Token const* TokenParser::currToken() const {
-        return &_token;
+    void TokenParser::peek() {
+        _tokenCached = false;
     }
 
 }

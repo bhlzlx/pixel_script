@@ -65,6 +65,7 @@ namespace compiler {
         size_t              _pos;
         TokenBuf            _tokenBuf;
         Token               _token;
+        bool                _tokenCached;
         State               _state;
         size_t              _lineNumber;
     private:
@@ -94,7 +95,9 @@ namespace compiler {
         }
 
         Token const* nextToken();
-        Token const* currToken() const;
+        void peek() {
+            _tokenCached = false;
+        }
     private:
         bool matchBrackets(char ch);
         bool matchOperator(char ch);
