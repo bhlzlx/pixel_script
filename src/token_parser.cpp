@@ -71,8 +71,10 @@ namespace compiler {
         } else if(';' == ch) {
             _token = Token(TokenType::Semicolon, _keywords._none, _lineNumber);
             return true;
-        } else {
-            return false;
+        } else if('\n' == ch) {
+            _token = Token(TokenType::Eol, _keywords._none, _lineNumber);
+            ++_lineNumber;
+            return true;
         }
         return false;
     }

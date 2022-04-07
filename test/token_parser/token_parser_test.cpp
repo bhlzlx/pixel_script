@@ -60,7 +60,8 @@ std::map<compiler::TokenType, char const*> tokenTraceMap = {
     {compiler::TokenType::True, "true"},
     {compiler::TokenType::Var, "var"},
     {compiler::TokenType::While, "while"},
-    {compiler::TokenType::Eof, "eof"},
+    {compiler::TokenType::Eof, "$eof"},
+    {compiler::TokenType::Eol, "$eol\n"},
 };
 
 void printToken(compiler::Token const* token) {
@@ -95,6 +96,7 @@ int main() {
     while(token = parser.nextToken()) {
         // print token
         printToken(token);
+        parser.peek();
     }
     system("pause");
     return 0;

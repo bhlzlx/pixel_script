@@ -77,7 +77,8 @@ namespace compiler {
             , _text()
             , _pos(0)
             , _tokenBuf()
-            , _token(TokenType::Nil, nullptr, 0)
+            , _token(TokenType::None, nullptr, 0)
+            , _tokenCached(false)
             , _state(State::None)
             , _lineNumber(0)
         {

@@ -22,10 +22,11 @@ int main() {
     compiler::TokenParser parser;
     parser.init(code);
     compiler::Token const* token = nullptr;
-    while(token = parser.nextToken()) {
-        // print token
-        // printToken(token);
-    }
+    auto prog = compiler::matchProgram(&parser);
+    // while(token = parser.nextToken()) {
+    //     // print token
+    //     // printToken(token);
+    // }
     system("pause");
     return 0;
 }
