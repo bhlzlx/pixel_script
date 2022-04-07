@@ -80,10 +80,6 @@ namespace compiler {
                 delete factor1;
             }
         }
-        // auto token = tokenParser->nextToken();
-        // if(token->type() == TokenType::Semicolon) {
-        //     tokenParser->peek();
-        // }
         return rst; 
     }
 
