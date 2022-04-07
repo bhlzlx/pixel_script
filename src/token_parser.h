@@ -30,6 +30,7 @@ namespace compiler {
         }
         void clear() {
             _buf.resize(2, '\0');
+            _buf[0] = _buf[1] = 0;
         }
         void push_back( char ch ) {
             _buf.push_back(ch);
@@ -100,8 +101,10 @@ namespace compiler {
         }
 
         Token const* nextToken();
-        void peek() {
-            _tokenCached = false;
+        void peek();
+
+        size_t pos() const {
+            return _pos;
         }
     private:
         bool matchBrackets(char ch);

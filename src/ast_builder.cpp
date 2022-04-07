@@ -2,18 +2,28 @@
 #include "token.h"
 #include "token_parser.h"
 #include "AST.h"
+#include <map>
 
 namespace compiler {
 
     ASTNode* matchPrimary(TokenParser* tokenParser) {
         auto token = tokenParser->nextToken();
-        if (token->type() == TokenType::Integer || token->type() == TokenType::Identifier) {
+        if (token->type() == TokenType::Integer) {
             tokenParser->peek();
-            return new ASTLeaf(token);
+            auto leaf = new ASTLeaf(ASTNodeType::Integer, *token);
+            return leaf;
+        } else if (token->type() == TokenType::Identifier) {
+            tokenParser->peek();
+            auto leaf = new ASTLeaf(ASTNodeType::Identifier, *token);
+            return leaf;
         }
         else if (token->type() == TokenType::LeftParen) {
             tokenParser->peek();
             ASTNode* node = matchExpression(tokenParser);
+            if(node == nullptr) {
+                assert(false && "not permitted");
+                return nullptr;
+            }
             auto nextToken = tokenParser->nextToken();
             if(nextToken->type() == TokenType::RightParen) {
                 tokenParser->peek();
@@ -22,7 +32,6 @@ namespace compiler {
                 return nullptr;
             }
         }
-        assert(false && "match primary failed!");
         return nullptr;
     }
 
@@ -42,26 +51,40 @@ namespace compiler {
 
     ASTNode* matchExpression(TokenParser* tokenParser) {
         ASTNode* factor1 = matchFactor(tokenParser);
-        ASTNode* factor2 = nullptr;
-        ASTNode* exprNode = nullptr;
-        Token const* nextToken = tokenParser->nextToken();
-        switch(nextToken->type()) {
-            case TokenType::Minus:
-            case TokenType::Plus:
-            case TokenType::Slash:
-            case TokenType::Star:
-            case TokenType::Modulus:
-            default:
-                return factor1;
+        ASTNode* rst = nullptr;
+        if(factor1) {
+            ASTNode* factor2 = nullptr;
+            // ASTNode* exprNode = nullptr;
+            Token const* nextToken = tokenParser->nextToken();
+            switch(nextToken->type()) {
+                case TokenType::Minus:
+                case TokenType::Plus:
+                case TokenType::Slash:
+                case TokenType::Star:
+                case TokenType::Equal:
+                case TokenType::Modulus:
+                case TokenType::Less:
+                case TokenType::LessEqual:
+                case TokenType::Greater:
+                case TokenType::GreaterEqual:
+                    break;
+                default:
+                    return factor1;
+            }
+            TokenType op = nextToken->type();
+            tokenParser->peek();
+            factor2 = matchFactor(tokenParser);
+            if(factor2) {
+                rst = new ASTBinaryOpExpr(factor1, factor2, op);
+            } else {
+                delete factor1;
+            }
         }
-        tokenParser->peek();
-        factor2 = matchFactor(tokenParser);
-        if(factor2) {
-            exprNode = new ASTBinaryOpExpr(factor1, factor2);
-        } else {
-            delete factor1;
-        }
-        return exprNode; 
+        // auto token = tokenParser->nextToken();
+        // if(token->type() == TokenType::Semicolon) {
+        //     tokenParser->peek();
+        // }
+        return rst; 
     }
 
     ASTNode* matchBlock(TokenParser* tokenParser) {
@@ -75,7 +98,7 @@ namespace compiler {
             }
             while(true) {
                 token = tokenParser->nextToken();
-                if(token->type() == TokenType::Semicolon) {
+                if(token->type() == TokenType::Semicolon || token->type() == TokenType::Eol) {
                     tokenParser->peek();
                 } else if(token->type() == TokenType::RightBrace) {
                     tokenParser->peek();
@@ -152,11 +175,23 @@ namespace compiler {
     }
 
     ASTNode* matchProgram(TokenParser* tokenParser) {
-        auto stmt = matchStatement(tokenParser);
-        if(stmt) {
-            auto program = new ASTProgram(stmt);
-            return program;
+        auto program = new ASTProgram();
+        while(true) {
+            ASTNode* stmt = nullptr;
+            auto pos = tokenParser->pos();
+            stmt = matchStatement(tokenParser);
+            if(stmt) {
+                program->addExpr(stmt);
+            } else {
+                tokenParser->peek();
+                tokenParser->nextToken();
+            }
+            if(pos != tokenParser->pos()) {
+                continue;
+            } else {
+                break;
+            }
         }
-        return nullptr;
+        return program;
     }
 }

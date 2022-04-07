@@ -64,23 +64,23 @@ namespace compiler {
 
     class ASTLeaf : public ASTNode {
     protected:
-        Token const* _token;
+        Token _token;
     public:
-        ASTLeaf(Token const* token)
-            : _token(token)
-        {}
-        Token const* token() const {
+        ASTLeaf(ASTNodeType type, Token token) : ASTNode(type), _token(token) {}
+        Token token() const {
             return _token;
         }
     };
 
     class ASTBinaryOpExpr : public ASTNode {
     protected:
+        TokenType       _op;
         ASTNode*        _left;
         ASTNode*        _right;
     public:
-        ASTBinaryOpExpr(ASTNode* left = nullptr, ASTNode* right = nullptr)
+        ASTBinaryOpExpr(ASTNode* left = nullptr, ASTNode* right = nullptr, TokenType op = TokenType::None)
             : ASTNode(ASTNodeType::BinaryOp)
+            , _op(op)
             , _left(left)
             , _right(right)
         {
@@ -163,12 +163,17 @@ namespace compiler {
 
     class ASTProgram : public ASTNode {
     private:
-        ASTNode* _stmt;
+        std::vector<ASTNode*> _expressions;
     public:
-        ASTProgram( ASTNode* stmt)
+        ASTProgram()
             : ASTNode(ASTNodeType::Program)
-            , _stmt(stmt)
+            , _expressions()
         {}
+
+        void addExpr(ASTNode* expr) {
+            _expressions.push_back(expr);
+            expr->setParent(this);
+        }
     };
 
 }
