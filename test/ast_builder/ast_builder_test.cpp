@@ -27,6 +27,5 @@ int main() {
     //     // print token
     //     // printToken(token);
     // }
-    system("pause");
     return 0;
 }

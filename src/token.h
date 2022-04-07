@@ -7,12 +7,16 @@ namespace compiler {
     enum class TokenType {
         // Single-character tokens.
         LeftParen = 0/*(*/, RightParen, LeftBracket/*[]*/, RightBracket, LeftBrace/*{}*/, RightBrace,
-        Comma/*,*/, Dot/*.*/, Minus, Plus, Slash/*/*/, Star/***/, Modulus, Semicolon/*;*/, Colon/*:*/,
+        Comma/*,*/, Dot/*.*/, Colon/*:*/,
+        Not,
+        Slash/*/*/, Star/***/, 
+        Minus, Plus, Modulus, Semicolon/*;*/, 
         // One or two character tokens.
-        Not, NotEqual,
-        Equal, EqualEqual,
-        Greater, GreaterEqual,
         Less, LessEqual,
+        Greater, GreaterEqual,
+        EqualEqual,
+        NotEqual,
+        Equal, 
         // Literals.
         Identifier, String, Float, Integer,
         // Keywords

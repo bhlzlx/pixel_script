@@ -155,6 +155,7 @@ namespace compiler {
     private:
         std::vector<ASTNode*> _expressions;
     public:
+        ASTBlock() : ASTNode(ASTNodeType::Block) {}
         void addSubNode(ASTNode* node) {
             _expressions.push_back(node);
             node->setParent(this);

@@ -3,6 +3,7 @@
 #include "token_parser.h"
 #include "AST.h"
 #include <map>
+#include <stack>
 
 namespace compiler {
 
@@ -50,37 +51,64 @@ namespace compiler {
     }
 
     ASTNode* matchExpression(TokenParser* tokenParser) {
-        ASTNode* factor1 = matchFactor(tokenParser);
-        ASTNode* rst = nullptr;
-        if(factor1) {
-            ASTNode* factor2 = nullptr;
-            // ASTNode* exprNode = nullptr;
-            Token const* nextToken = tokenParser->nextToken();
-            switch(nextToken->type()) {
-                case TokenType::Minus:
-                case TokenType::Plus:
-                case TokenType::Slash:
-                case TokenType::Star:
-                case TokenType::Equal:
-                case TokenType::Modulus:
-                case TokenType::Less:
-                case TokenType::LessEqual:
-                case TokenType::Greater:
-                case TokenType::GreaterEqual:
-                    break;
-                default:
-                    return factor1;
-            }
-            TokenType op = nextToken->type();
-            tokenParser->peek();
-            factor2 = matchFactor(tokenParser);
-            if(factor2) {
-                rst = new ASTBinaryOpExpr(factor1, factor2, op);
-            } else {
-                delete factor1;
+        std::stack<ASTNode*> factorStack;
+        std::stack<TokenType> opStack;
+        auto factor = matchFactor(tokenParser);
+        if(factor) {
+            factorStack.push(factor);
+            while(true) {
+                Token const* nextToken = tokenParser->nextToken();
+                switch(nextToken->type()) {
+                    case TokenType::Minus:
+                    case TokenType::Slash:
+                    case TokenType::Plus:
+                    case TokenType::Star:
+                    case TokenType::Equal:
+                    case TokenType::Modulus:
+                    case TokenType::Less:
+                    case TokenType::LessEqual:
+                    case TokenType::Greater:
+                    case TokenType::GreaterEqual:
+                    case TokenType::EqualEqual:
+                        break;
+                    default:
+                        // expr pattern end
+                        while(!opStack.empty()) {
+                            auto op = opStack.top();
+                            opStack.pop();
+                            auto right = factorStack.top();
+                            factorStack.pop();
+                            auto left = factorStack.top();
+                            factorStack.pop();
+                            auto binExpr = new ASTBinaryOpExpr(left, right, op);
+                            factorStack.push(binExpr);
+                        }
+                        auto rst = factorStack.top();
+                        assert(factorStack.size() == 1);
+                        return rst;
+                }
+                tokenParser->peek();
+                TokenType op = nextToken->type();
+                if(opStack.size()) {
+                    if(op>=opStack.top()) {
+                        auto factor1 = factorStack.top(); factorStack.pop();
+                        auto factor2 = factorStack.top(); factorStack.pop();
+                        auto binExpr = new ASTBinaryOpExpr(factor1, factor2, opStack.top());
+                        opStack.pop();
+                        factorStack.push(binExpr);
+                    }
+                }
+                opStack.push(op);
+                factor = matchFactor(tokenParser);
+                if(factor) {
+                    factorStack.push(factor);
+                } else {
+                    assert( false && "need a factor");
+                    return nullptr;
+                }
             }
         }
-        return rst; 
+        return nullptr; // not an expression
     }
 
     ASTNode* matchBlock(TokenParser* tokenParser) {
