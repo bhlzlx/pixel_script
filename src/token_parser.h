@@ -68,9 +68,23 @@ namespace compiler {
         Token               _token;
         bool                _tokenCached;
         State               _state;
-        size_t              _lineNumber;
+        int32_t             _line;
+        int32_t             _column;
+        int32_t             _tokenColumn;
     private:
         Keywords            _keywords;
+
+        void fallback() {
+            if(_column)
+                --_column;
+            if(_tokenColumn)
+                --_tokenColumn;
+            --_pos;
+        }
+        void updateTokenLocation() {
+            _token.setLocation(_line, _tokenColumn);
+            _tokenColumn = -1;
+        }
     public:
         TokenParser()
             : _namePool()
@@ -78,10 +92,12 @@ namespace compiler {
             , _text()
             , _pos(0)
             , _tokenBuf()
-            , _token(TokenType::None, nullptr, 0)
+            , _token(TokenType::None, nullptr)
             , _tokenCached(false)
             , _state(State::None)
-            , _lineNumber(0)
+            , _line(0)
+            , _column(0)
+            , _tokenColumn(0)
         {
             TokenBuf buf;
             AddKeyword(if);

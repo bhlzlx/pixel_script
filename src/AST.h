@@ -93,19 +93,32 @@ namespace compiler {
         ASTNode const* right() const {
             return _right;
         }
+        ~ASTBinaryOpExpr() {
+            if(_left) {
+                delete _left;
+            }
+            if(_right) {
+                delete _right;
+            }
+        }
     };
 
-    class ASTNagativeExpression : public ASTNode {
+    class ASTNegativeExpression : public ASTNode {
     private:
         ASTNode* _value;
     public:
-        ASTNagativeExpression(ASTNode* value) : ASTNode(ASTNodeType::NagtiveOp)
+        ASTNegativeExpression(ASTNode* value) : ASTNode(ASTNodeType::NagtiveOp)
             , _value(value)
         {
             _value->setParent(this);
         }
         ASTNode const* value() const {
             return _value;
+        }
+        ~ASTNegativeExpression() {
+            if(_value) {
+                delete _value;
+            }
         }
     };
 
@@ -132,6 +145,17 @@ namespace compiler {
             _elseBranch = elseBranch;
             _elseBranch->setParent(this);
         }
+        ~ASTIfStatement() {
+            if(_condition) {
+                delete _condition;
+            }
+            if(_thenBranch) {
+                delete _thenBranch;
+            }
+            if(_elseBranch) {
+                delete _elseBranch;
+            }
+        }
     };
 
     class ASTWhileStatement : public ASTNode {
@@ -151,6 +175,14 @@ namespace compiler {
             _body = body;
             _body->setParent(this);
         }
+        ~ASTWhileStatement() {
+            if(_condition) {
+                delete _condition;
+            }
+            if(_body) {
+                delete _body;
+            }
+        }
     };
 
     class ASTMultiExpr : public ASTNode {
@@ -161,10 +193,14 @@ namespace compiler {
             : ASTNode(type)
             , _expressions()
         {}
-
         void addExpr(ASTNode* expr) {
             _expressions.push_back(expr);
             expr->setParent(this);
+        }
+        ~ASTMultiExpr() {
+            for(auto expr : _expressions) {
+                delete expr;
+            }
         }
     };
 

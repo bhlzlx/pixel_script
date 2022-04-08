@@ -30,33 +30,44 @@ namespace compiler {
     class Token {
     private:
         TokenType               _type;
-        int                     _lineNumber;
+        int                     _line;
+        int                     _column;
         union { // literal value
             ksgw::Name          _string; // identifier, string
             double              _number;
             int64_t             _integer;
         };
     public:
-        Token( TokenType type, ksgw::Name name, int lineNumber )
+        Token( TokenType type, ksgw::Name name)
             : _type(type)
             , _string(name)
-            , _lineNumber(lineNumber)
+            , _line(0)
+            , _column(0)
         {}
-        Token(int64_t val, int lineNumber)
+        Token(int64_t val)
             : _type(TokenType::Integer)
             , _integer(val)
-            , _lineNumber(lineNumber)
+            , _line(0)
+            , _column(0)
         {}
-        Token(double val, int lineNumber)
+        Token(double val)
             : _type(TokenType::Float)
             , _number(val)
-            , _lineNumber(lineNumber)
+            , _line(0)
+            , _column(0)
         {}
         TokenType type() const {
             return _type;
         }
-        int lineNumber() const {
-            return _lineNumber;
+        void setLocation( int line, int column ) {
+            _line = line;
+            _column = column;
+        }
+        int line() const {
+            return _line;
+        }
+        int column() const {
+            return _column;
         }
         ksgw::Name stringLiteral() const {
             return _string;

@@ -9,6 +9,7 @@
         "type_traits": "cpp",
         "xlocmon": "cpp",
         "xlocnum": "cpp",
-        "xtr1common": "cpp"
+        "xtr1common": "cpp",
+        "xtree": "cpp"
     }
 }

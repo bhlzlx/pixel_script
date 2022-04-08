@@ -7,55 +7,64 @@
 
 namespace compiler {
 
-    ASTNode* matchPrimary(TokenParser* tokenParser) {
+    MatchResult matchPrimary(TokenParser* tokenParser) {
         auto token = tokenParser->nextToken();
         if (token->type() == TokenType::Integer) {
             tokenParser->peek();
             auto leaf = new ASTLeaf(ASTNodeType::Integer, *token);
-            return leaf;
+            MatchResult rst = { leaf, ASTParseError::None, token->line(), token->column() };
+            return rst;
         } else if (token->type() == TokenType::Identifier) {
             tokenParser->peek();
             auto leaf = new ASTLeaf(ASTNodeType::Identifier, *token);
-            return leaf;
+            MatchResult rst = { leaf, ASTParseError::None, token->line(), token->column() };
+            return rst;
         }
         else if (token->type() == TokenType::LeftParen) {
             tokenParser->peek();
-            ASTNode* node = matchExpression(tokenParser);
-            if(node == nullptr) {
-                assert(false && "not permitted");
-                return nullptr;
+            auto expr = matchExpression(tokenParser);
+            if(!expr) {
+                return expr; // match expression failed
             }
             auto nextToken = tokenParser->nextToken();
             if(nextToken->type() == TokenType::RightParen) {
                 tokenParser->peek();
-                return node;
+                return expr;
             } else {
-                return nullptr;
+                MatchResult rst = { nullptr, ASTParseError::RightParenExpected, nextToken->line(), nextToken->column() };
+                return rst;
             }
         }
-        return nullptr;
+        return {nullptr, ASTParseError::PrimaryMismatch, token->line(), token->column()};
     }
 
-    ASTNode* matchFactor(TokenParser* tokenParser) {
+    MatchResult matchFactor(TokenParser* tokenParser) {
         auto token = tokenParser->nextToken();
         if (token->type() == TokenType::Minus) {
             tokenParser->peek();
             auto nextToken = tokenParser->nextToken();
             auto primNode = matchPrimary(tokenParser);
             if(primNode) {
-                return new ASTNagativeExpression(primNode);
+                MatchResult rst =  { 
+                    new ASTNegativeExpression(primNode.node), 
+                    ASTParseError::None,
+                    token->line(),
+                    token->column()
+                };
+                return rst;
+            } else {
+                return primNode;
             }
-            return false;
         }
         return matchPrimary(tokenParser);
     }
 
-    ASTNode* matchExpression(TokenParser* tokenParser) {
+    MatchResult matchExpression(TokenParser* tokenParser) {
         std::stack<ASTNode*> factorStack;
         std::stack<TokenType> opStack;
         auto factor = matchFactor(tokenParser);
         if(factor) {
-            factorStack.push(factor);
+            factorStack.push(factor.node);
             while(true) {
                 Token const* nextToken = tokenParser->nextToken();
                 switch(nextToken->type()) {
@@ -85,7 +94,7 @@ namespace compiler {
                         }
                         auto rst = factorStack.top();
                         assert(factorStack.size() == 1);
-                        return rst;
+                        return { rst, ASTParseError::None, nextToken->line(), nextToken->column() };
                 }
                 tokenParser->peek();
                 TokenType op = nextToken->type();
@@ -101,24 +110,31 @@ namespace compiler {
                 opStack.push(op);
                 factor = matchFactor(tokenParser);
                 if(factor) {
-                    factorStack.push(factor);
-                } else {
-                    assert( false && "need a factor");
-                    return nullptr;
+                    factorStack.push(factor.node);
+                } else { 
+                    // clean up status & throw the exception
+                    while(!factorStack.empty()) {
+                        auto factor = factorStack.top();
+                        delete factor;
+                        factorStack.pop();
+                    }
+                    auto lastToken = tokenParser->nextToken();
+                    MatchResult rst = { nullptr, ASTParseError::NeedRightFactor, lastToken->line(), lastToken->column() };
+                    return rst;
                 }
             }
         }
-        return nullptr; // not an expression
+        return factor;
     }
 
-    ASTNode* matchBlock(TokenParser* tokenParser) {
+    MatchResult matchBlock(TokenParser* tokenParser) {
         auto token = tokenParser->nextToken();
         if(token->type() == TokenType::LeftBrace) {
             tokenParser->peek();
             auto rst = new ASTMultiExpr(ASTNodeType::Block);
             auto statement = matchStatement(tokenParser);
             if(statement) {
-                rst->addExpr(statement);
+                rst->addExpr(statement.node);
             }
             while(true) {
                 token = tokenParser->nextToken();
@@ -126,86 +142,80 @@ namespace compiler {
                     tokenParser->peek();
                 } else if(token->type() == TokenType::RightBrace) {
                     tokenParser->peek();
-                    return rst;
+                    return { rst, ASTParseError::None, token->line(), token->column() };
                 } else {
                     statement = matchStatement(tokenParser);
                     if(statement) {
-                        rst->addExpr(statement);
+                        rst->addExpr(statement.node);
                     } else {
                         delete rst;
-                        delete statement;
-                        assert(false);
-                        return nullptr;
+                        return statement;
                     }
                 }
             }
-            return rst;
+            return { rst, ASTParseError::None, token->line(), token->column() };
         }
-        return nullptr;
+        return { nullptr, ASTParseError::BlockMismatch, token->line(), token->column() };
     }
 
-    ASTNode* matchStatement(TokenParser* tokenParser) { 
+    MatchResult matchStatement(TokenParser* tokenParser) { 
         auto& keywords = tokenParser->keywords();
         auto token = tokenParser->nextToken();
         if(token->stringLiteral() == keywords._if) {
+            auto IfToken = *token;
             ASTIfStatement* if_stmt = new ASTIfStatement();
             tokenParser->peek();
             auto expr = matchExpression(tokenParser);
             if(!expr) {
-                delete expr;
-                return nullptr;
+                return expr;
             }
-            if_stmt->setCondition(expr);
+            if_stmt->setCondition(expr.node);
             auto block = matchBlock(tokenParser);
             if(!block) {
-                delete expr;
-                delete block;
-                return nullptr;
+                delete if_stmt;
+                return block;
             }
-            if_stmt->setThenBranch(block);
+            if_stmt->setThenBranch(block.node);
             token = tokenParser->nextToken();
             if(token->stringLiteral() == keywords._else) {
                 tokenParser->peek();
                 auto block = matchBlock(tokenParser);
                 if(!block) {
-                    delete expr;
-                    delete block;
-                    return nullptr;
+                    delete if_stmt;
+                    return block;
                 }
-                if_stmt->setElseBranch(block);
+                if_stmt->setElseBranch(block.node);
             }
-            return if_stmt;
+            return { if_stmt, ASTParseError::None, IfToken.line(), IfToken.column() };
         } else if(token->stringLiteral() == keywords._while) {
+            auto WhileToken = *token;
             tokenParser->peek();
             auto expr = matchExpression(tokenParser);
             if(!expr) {
-                delete expr;
-                return nullptr;
+                return expr;
             }
             auto block = matchBlock(tokenParser);
             if(!block) {
-                delete expr;
-                delete block;
-                return nullptr;
+                delete expr.node;
+                return block;
             }
             auto while_stmt = new ASTWhileStatement();
-            while_stmt->setBody(block);
-            while_stmt->setCondition(expr);
-            return while_stmt;
+            while_stmt->setBody(block.node);
+            while_stmt->setCondition(expr.node);
+            return { while_stmt, ASTParseError::None, WhileToken.line(), WhileToken.column() };
         } else {
             auto expr = matchExpression(tokenParser);
             return expr;
         }
     }
 
-    ASTNode* matchProgram(TokenParser* tokenParser) {
+    MatchResult matchProgram(TokenParser* tokenParser) {
         auto program = new ASTMultiExpr(ASTNodeType::Program);
         while(true) {
-            ASTNode* stmt = nullptr;
             auto pos = tokenParser->pos();
-            stmt = matchStatement(tokenParser);
+            auto stmt = matchStatement(tokenParser);
             if(stmt) {
-                program->addExpr(stmt);
+                program->addExpr(stmt.node);
             } else {
                 tokenParser->peek();
                 tokenParser->nextToken();
@@ -216,10 +226,10 @@ namespace compiler {
                 break;
             }
         }
-        return program;
+        return { program, ASTParseError::None, 0, 0 };
     }
 
-    ASTNode* matchParamsDef(TokenParser* tokenParser) {
+    MatchResult matchParamsDef(TokenParser* tokenParser) {
         auto params = new ASTMultiExpr(ASTNodeType::Params);
         auto token = tokenParser->nextToken();
         if(token->type() == TokenType::LeftParen) {
@@ -229,7 +239,7 @@ namespace compiler {
                 switch(token->type()) {
                     case TokenType::RightParen: {
                         tokenParser->peek();
-                        return params;
+                        return { params, ASTParseError::None, token->line(), token->column() };
                     }
                     case TokenType::Identifier: {
                         auto param = new ASTLeaf(ASTNodeType::Param, *token);
@@ -246,8 +256,8 @@ namespace compiler {
                                     params->addExpr(param);
                                     break;
                                 } else {
-                                    delete param;
-                                    return nullptr;
+                                    delete params;
+                                    return { nullptr, ASTParseError::ShouldFollowIdentifier, token->line(), token->column() };
                                 }
                             } else {
                                 break;
@@ -255,14 +265,14 @@ namespace compiler {
                         }
                         token = tokenParser->nextToken();
                         if(token->type() != TokenType::RightParen) {
-                            delete param;
-                            return nullptr;
+                            delete params;
+                            return { nullptr, ASTParseError::RightParenExpected, token->line(), token->column() };
                         }
-                        return params;
+                        return { params, ASTParseError::None, token->line(), token->column() };
                     }
                 }
             }
         }
-        return nullptr;
+        return {nullptr, ASTParseError::ParamsDefMismatch, token->line(), token->column()};
     }
 }

@@ -66,6 +66,7 @@ std::map<compiler::TokenType, char const*> tokenTraceMap = {
 
 void printToken(compiler::Token const* token) {
     auto iter = tokenTraceMap.find(token->type());
+    printf("<%d,%d>", token->line(), token->column());
     if(iter != tokenTraceMap.end()) {
         printf("%s", iter->second);
     } else {
