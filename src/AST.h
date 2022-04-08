@@ -13,6 +13,9 @@ namespace compiler {
         String,
         // Statements
         Block,
+        Program,
+        Param,
+        Params,
         Class,
         If,
         Return,
@@ -20,7 +23,6 @@ namespace compiler {
         // Expressions
         BinaryOp,
         NagtiveOp,
-        Program,
         Array,
         Binary,
         Call,
@@ -151,23 +153,12 @@ namespace compiler {
         }
     };
 
-    class ASTBlock : public ASTNode {
+    class ASTMultiExpr : public ASTNode {
     private:
         std::vector<ASTNode*> _expressions;
     public:
-        ASTBlock() : ASTNode(ASTNodeType::Block) {}
-        void addSubNode(ASTNode* node) {
-            _expressions.push_back(node);
-            node->setParent(this);
-        }
-    };
-
-    class ASTProgram : public ASTNode {
-    private:
-        std::vector<ASTNode*> _expressions;
-    public:
-        ASTProgram()
-            : ASTNode(ASTNodeType::Program)
+        ASTMultiExpr(ASTNodeType type)
+            : ASTNode(type)
             , _expressions()
         {}
 

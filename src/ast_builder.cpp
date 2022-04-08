@@ -115,10 +115,10 @@ namespace compiler {
         auto token = tokenParser->nextToken();
         if(token->type() == TokenType::LeftBrace) {
             tokenParser->peek();
-            auto rst = new ASTBlock();
+            auto rst = new ASTMultiExpr(ASTNodeType::Block);
             auto statement = matchStatement(tokenParser);
             if(statement) {
-                rst->addSubNode(statement);
+                rst->addExpr(statement);
             }
             while(true) {
                 token = tokenParser->nextToken();
@@ -130,7 +130,7 @@ namespace compiler {
                 } else {
                     statement = matchStatement(tokenParser);
                     if(statement) {
-                        rst->addSubNode(statement);
+                        rst->addExpr(statement);
                     } else {
                         delete rst;
                         delete statement;
@@ -199,7 +199,7 @@ namespace compiler {
     }
 
     ASTNode* matchProgram(TokenParser* tokenParser) {
-        auto program = new ASTProgram();
+        auto program = new ASTMultiExpr(ASTNodeType::Program);
         while(true) {
             ASTNode* stmt = nullptr;
             auto pos = tokenParser->pos();
@@ -217,5 +217,52 @@ namespace compiler {
             }
         }
         return program;
+    }
+
+    ASTNode* matchParamsDef(TokenParser* tokenParser) {
+        auto params = new ASTMultiExpr(ASTNodeType::Params);
+        auto token = tokenParser->nextToken();
+        if(token->type() == TokenType::LeftParen) {
+            tokenParser->peek();
+            while(true) {
+                token = tokenParser->nextToken();
+                switch(token->type()) {
+                    case TokenType::RightParen: {
+                        tokenParser->peek();
+                        return params;
+                    }
+                    case TokenType::Identifier: {
+                        auto param = new ASTLeaf(ASTNodeType::Param, *token);
+                        tokenParser->peek();
+                        params->addExpr(param);
+                        while(true) {
+                            token = tokenParser->nextToken();
+                            if(token->type() == TokenType::Comma) {
+                                tokenParser->peek();
+                                token = tokenParser->nextToken();
+                                if(token->type() == TokenType::Identifier) {
+                                    auto param = new ASTLeaf(ASTNodeType::Param, *token);
+                                    tokenParser->peek();
+                                    params->addExpr(param);
+                                    break;
+                                } else {
+                                    delete param;
+                                    return nullptr;
+                                }
+                            } else {
+                                break;
+                            }
+                        }
+                        token = tokenParser->nextToken();
+                        if(token->type() != TokenType::RightParen) {
+                            delete param;
+                            return nullptr;
+                        }
+                        return params;
+                    }
+                }
+            }
+        }
+        return nullptr;
     }
 }

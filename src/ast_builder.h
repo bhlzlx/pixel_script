@@ -13,6 +13,9 @@ namespace compiler {
     ASTNode* matchStatement(TokenParser* tokenParser);
     ASTNode* matchProgram(TokenParser* tokenParser);
 
+    ASTNode* matchParamsDef(TokenParser* tokenParser);
+    ASTNode* matchFunction(TokenParser* tokenParser);
+
     class ASTBuilder {
     private:
     };
