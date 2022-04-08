@@ -20,7 +20,8 @@ namespace compiler {
         // Literals.
         Identifier, String, Float, Integer,
         // Keywords
-        And, Class, Else, False, Fun, For, If, Nil, Or,
+        Keyword,
+        And, Class, Else, False, Func, For, If, Nil, Or,
         Print, Return, Super, This, True, Var, While,
         Eol,
         Eof,
@@ -56,6 +57,9 @@ namespace compiler {
             , _line(0)
             , _column(0)
         {}
+        void setType(TokenType type) {
+            _type = type;
+        }
         TokenType type() const {
             return _type;
         }

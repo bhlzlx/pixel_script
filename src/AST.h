@@ -11,11 +11,14 @@ namespace compiler {
         Integer,
         Float,
         String,
+        Primary,
+        Keyword,
         // Statements
         Block,
         Program,
         Param,
         Params,
+        Args,
         Class,
         If,
         Return,
@@ -71,6 +74,24 @@ namespace compiler {
         ASTLeaf(ASTNodeType type, Token token) : ASTNode(type), _token(token) {}
         Token token() const {
             return _token;
+        }
+    };
+
+    class ASTPrimary : public ASTNode {
+    private:
+        ASTNode* _operand;
+        ASTNode* _postfix;
+    public:
+        ASTPrimary(ASTNode* operand, ASTNode* postfix)
+            : ASTNode(ASTNodeType::Primary)
+            , _operand(operand)
+            , _postfix(postfix)
+        {}
+        ASTNode* operand() const {
+            return _operand;
+        } 
+        ASTNode* postfix() const {
+            return _postfix;
         }
     };
 
@@ -178,6 +199,37 @@ namespace compiler {
         ~ASTWhileStatement() {
             if(_condition) {
                 delete _condition;
+            }
+            if(_body) {
+                delete _body;
+            }
+        }
+    };
+
+    class ASTFunction : public ASTNode {
+    private:
+        ksgw::Name  _name;
+        ASTNode*    _params;
+        ASTNode*    _body;
+    public:
+        ASTFunction() : ASTNode(ASTNodeType::Function)
+            , _params(nullptr)
+            , _body(nullptr)
+        {}
+        void setName(ksgw::Name name) {
+            _name = name;
+        }
+        void setParams(ASTNode* params) {
+            _params = params;
+            _params->setParent(this);
+        }
+        void setBody(ASTNode* body) {
+            _body = body;
+            _body->setParent(this);
+        }
+        ~ASTFunction() {
+            if(_params) {
+                delete _params;
             }
             if(_body) {
                 delete _body;

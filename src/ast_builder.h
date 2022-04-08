@@ -11,13 +11,16 @@ namespace compiler {
     enum class ASTParseError {
         None,
         ExprExpected,
+        LeftParenExpected,
         RightParenExpected,
         NeedRightFactor,
         PrimaryMismatch,
         ExprMismatch,
         BlockMismatch,
         ShouldFollowIdentifier,
-        ParamsDefMismatch,
+        ParamsListMismatch,
+        FunctionMismatch,
+        MissFunctionName,
     };
     struct MatchResult {
         ASTNode*        node;
@@ -36,8 +39,12 @@ namespace compiler {
     MatchResult matchStatement(TokenParser* tokenParser);
     MatchResult matchProgram(TokenParser* tokenParser);
 
-    MatchResult matchParamsDef(TokenParser* tokenParser);
-    MatchResult matchFunction(TokenParser* tokenParser);
+    MatchResult matchParams(TokenParser* tokenParser);
+    MatchResult matchParamList(TokenParser* tokenParser);
+    MatchResult matchFunctionDef(TokenParser* tokenParser);
+
+    MatchResult matchArgs(TokenParser* tokenParser);
+    MatchResult matchPostfix(TokenParser* tokenParser);
 
     class ASTBuilder {
     private:

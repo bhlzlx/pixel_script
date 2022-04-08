@@ -100,6 +100,9 @@ namespace ksgw {
         bool operator == (Name const& other) const {
             return _proto == other._proto;
         }
+        bool operator != (Name const& other) const {
+            return _proto != other._proto;
+        }
     };
 
     class NamePool {

@@ -11,6 +11,8 @@ namespace compiler {
         ksgw::Name          _if;
         ksgw::Name          _while;
         ksgw::Name          _else;
+        ksgw::Name          _func;
+        std::set<ksgw::Name> _all;
     };
 
     class TokenBuf {
@@ -47,7 +49,7 @@ namespace compiler {
         }
     };
 
-    #define AddKeyword( keyword ) buf.assign(#keyword); _keywords._##keyword = _namePool.getName(buf.asName());
+    #define AddKeyword( keyword ) buf.assign(#keyword); _keywords._##keyword = _namePool.getName(buf.asName()); _keywords._all.insert(_keywords._##keyword);
     class TokenParser {
         enum class State {
             None, // no state
@@ -104,6 +106,7 @@ namespace compiler {
             AddKeyword(else);
             AddKeyword(while);
             AddKeyword(for);
+            AddKeyword(func);
             AddKeyword(none);
         }
 

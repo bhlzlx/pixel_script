@@ -4,6 +4,13 @@
 #include <map>
 
 char const* code = R"(
+    func fact(n) {
+        f = 1
+        while n > 0 {
+            f = f * n
+            n = n - 1
+        }
+    }
     even = 0
     odd = 0
     i = 1

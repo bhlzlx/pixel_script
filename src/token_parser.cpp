@@ -36,7 +36,7 @@ namespace compiler {
         {compiler::TokenType::Class, "class"},
         {compiler::TokenType::Else, "else"},
         {compiler::TokenType::False, "false"},
-        {compiler::TokenType::Fun, "fun"},
+        {compiler::TokenType::Func, "func"},
         {compiler::TokenType::For, "for"},
         {compiler::TokenType::If, "if"},
         {compiler::TokenType::Nil, "nil"},
@@ -173,6 +173,9 @@ namespace compiler {
                 fallback();
             }
             _token = Token(TokenType::Identifier, _namePool.getName(_tokenBuf.asName()));
+            if(_keywords._all.find(_token.stringLiteral()) != _keywords._all.end()) {
+                _token.setType(TokenType::Keyword);
+            }
             updateTokenLocation();
             return true;
         }
