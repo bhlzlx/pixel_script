@@ -279,11 +279,21 @@ namespace compiler {
                 _tokenColumn = -1;
             }
         }
-        return nullptr;
+        _token.setType(TokenType::Eof);
+        updateTokenLocation();
+        return &_token;
     }
 
     void TokenParser::peek() {
         // printToken(&_token);
         _tokenCached = false;
+    }
+
+    void TokenParser::peekCommaEol() {
+        Token const* t = nextToken();
+        while(t->type() == TokenType::Comma || t->type() == TokenType::Eol) {
+            peek();
+            t = nextToken();
+        }
     }
 }

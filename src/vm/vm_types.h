@@ -10,8 +10,8 @@ namespace compiler {
         String,
     };
 
-    class TypeInfo {
-            
+    class TypeInfo {      
+        
     };
     
 

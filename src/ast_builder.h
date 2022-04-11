@@ -21,6 +21,7 @@ namespace compiler {
         ParamsListMismatch,
         FunctionMismatch,
         MissFunctionName,
+        ClosureMismatch,
     };
     struct MatchResult {
         ASTNode*        node;
@@ -42,6 +43,7 @@ namespace compiler {
     MatchResult matchParams(TokenParser* tokenParser);
     MatchResult matchParamList(TokenParser* tokenParser);
     MatchResult matchFunctionDef(TokenParser* tokenParser);
+    MatchResult matchClosure(TokenParser* tokenParser);
 
     MatchResult matchArgs(TokenParser* tokenParser);
     MatchResult matchPostfix(TokenParser* tokenParser);

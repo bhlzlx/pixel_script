@@ -11,6 +11,14 @@ char const* code = R"(
             n = n - 1
         }
     }
+    the_func = closure(value) {
+        f = 1
+        while n > 0 {
+            f = f * n
+            n = n - 1
+        }
+    } 
+    fact(9)
     even = 0
     odd = 0
     i = 1
