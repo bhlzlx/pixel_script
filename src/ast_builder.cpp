@@ -10,6 +10,7 @@ namespace compiler {
     /**
      * @brief 
      * bnf : ("{"expr"}"|NUMBER|IDENTIFIER|STRING) {postfix}
+     * bnf : ("{"expr"}"|IDENTIFIER) {postfix}
      *  value
      *  1234
      * "hello"
@@ -20,29 +21,52 @@ namespace compiler {
      * @return MatchResult 
      */
     MatchResult matchPrimary(TokenParser* tokenParser) {
+        tokenParser->peekCommaEol();
         auto token = tokenParser->nextToken();
         auto startToken = *token;
         ASTNode* operand = nullptr;
-        if (token->type() == TokenType::Integer) {
-            tokenParser->peek();
-            operand = new ASTLeaf(ASTNodeType::Integer, *token);
-        } else if (token->type() == TokenType::Identifier) {
-            tokenParser->peek();
-            operand = new ASTLeaf(ASTNodeType::Identifier, *token);
-        }
-        else if (token->type() == TokenType::LeftParen) {
-            tokenParser->peek();
-            auto expr = matchExpression(tokenParser);
-            if(!expr) {
-                return expr; // match expression failed
-            }
-            auto nextToken = tokenParser->nextToken();
-            if(nextToken->type() == TokenType::RightParen) {
+        switch(token->type()) {
+            case TokenType::Integer: {
                 tokenParser->peek();
-                operand = expr.node;
-            } else {
-                delete expr.node;
-                MatchResult rst = { nullptr, ASTParseError::RightParenExpected, nextToken->line(), nextToken->column() };
+                operand = new ASTLeaf(ASTNodeType::Integer, *token);
+                return { operand, ASTParseError::None, token->line(), token->column() };
+            }
+            case TokenType::String: {
+                tokenParser->peek();
+                operand = new ASTLeaf(ASTNodeType::String, *token);
+                return { operand, ASTParseError::None, token->line(), token->column() };
+            }
+            case TokenType::Keyword: { // 目前关键字只有func
+                auto rst = matchClosure(tokenParser);
+                if(rst) {
+                    return rst;
+                }
+                return { nullptr, ASTParseError::FunctionMismatch, token->line(), token->column() };
+            }
+            case TokenType::LeftParen: {
+                tokenParser->peek();
+                auto expr = matchExpression(tokenParser);
+                if(!expr) {
+                    return expr; // match expression failed
+                }
+                auto nextToken = tokenParser->nextToken();
+                if(nextToken->type() == TokenType::RightParen) {
+                    tokenParser->peek();
+                    operand = expr.node;
+                } else {
+                    delete expr.node;
+                    MatchResult rst = { nullptr, ASTParseError::RightParenExpected, nextToken->line(), nextToken->column() };
+                    return rst;
+                }
+                break;
+            }
+            case TokenType::Identifier: {
+                tokenParser->peek();
+                operand = new ASTLeaf(ASTNodeType::Identifier, *token);
+                break;
+            }
+            default: {
+                MatchResult rst = { nullptr, ASTParseError::PrimaryMismatch, token->line(), token->column() };
                 return rst;
             }
         }
@@ -51,9 +75,14 @@ namespace compiler {
         }
         ASTNode* postfix = nullptr;
         auto expr = matchPostfix(tokenParser);
-        postfix = expr.node;
-        ASTPrimary* rst = new ASTPrimary(operand, postfix);
-        return { rst, ASTParseError::None, startToken.line(), startToken.column() };
+        // if postfix is not nullptr, it means there is only a operand avail, so we just return the operand
+        if(!expr) {
+            return { operand, ASTParseError::None, startToken.line(), startToken.column()};
+        } else {
+            postfix = expr.node;
+            ASTPrimary* rst = new ASTPrimary(operand, postfix);
+            return { rst, ASTParseError::None, startToken.line(), startToken.column() };
+        }
     }
 
     MatchResult matchFactor(TokenParser* tokenParser) {
@@ -229,8 +258,13 @@ namespace compiler {
     }
 
     MatchResult matchProgram(TokenParser* tokenParser) {
+        auto nextToken = tokenParser->nextToken();
+        while(nextToken->type() == TokenType::Eol || nextToken->type() == TokenType::Comma) {
+            tokenParser->peek();
+            nextToken = tokenParser->nextToken();
+        }
         auto program = new ASTMultiExpr(ASTNodeType::Program);
-        while(true) {
+        while(nextToken) {
             auto pos = tokenParser->pos();
             auto stmt = matchStatement(tokenParser);
             if(!stmt) {
@@ -239,14 +273,12 @@ namespace compiler {
             if(stmt) {
                 program->addExpr(stmt.node);
             } else {
-                tokenParser->peek();
-                tokenParser->nextToken();
+                if(nextToken->type() == TokenType::Eof) {
+                    break;
+                }
             }
-            if(pos != tokenParser->pos()) {
-                continue;
-            } else {
-                break;
-            }
+            tokenParser->peekCommaEol();
+            nextToken = tokenParser->nextToken();
         }
         return { program, ASTParseError::None, 0, 0 };
     }
@@ -403,5 +435,24 @@ namespace compiler {
         }
         tokenParser->peek();
         return { args.node, ASTParseError::None, startToken.line(), startToken.column() };
+    }
+
+    MatchResult matchClosure(TokenParser* tokenParser) {
+        auto token = tokenParser->nextToken();
+        Token startToken = *token;
+        ASTNode* args = nullptr;
+        ASTNode* body = nullptr;
+        if(token->type() == TokenType::Keyword) {
+            if(token->stringLiteral() == tokenParser->keywords()._closure) {
+                tokenParser->peek();
+                args = matchPostfix(tokenParser).node;
+                body = matchBlock(tokenParser).node;
+                if(!body) {
+                    delete args;
+                }
+                return { new ASTDoubleStructure(ASTNodeType::Closure, args, body), ASTParseError::None, startToken.line(), startToken.column() };
+            }
+        }
+        return MatchResult { nullptr, ASTParseError::ClosureMismatch, token->line(), token->column() };
     }
 }

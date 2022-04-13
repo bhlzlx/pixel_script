@@ -39,6 +39,7 @@ namespace compiler {
         Variable,
         // Types
         Function,
+        Closure,
         Literal,
         // Misc
         Break,
@@ -121,6 +122,23 @@ namespace compiler {
             if(_right) {
                 delete _right;
             }
+        }
+    };
+
+    class ASTDoubleStructure : public ASTNode {
+    protected:
+        ASTNode* _first;
+        ASTNode* _second;
+    public:
+        ASTDoubleStructure(ASTNodeType type, ASTNode* first, ASTNode* second) 
+            : ASTNode(type), 
+            _first(first),
+            _second(second) {}
+        ASTNode* first() const {
+            return _first;
+        }
+        ASTNode* second() const {
+            return _second;
         }
     };
 

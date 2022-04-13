@@ -12,6 +12,7 @@ namespace compiler {
         ksgw::Name          _while;
         ksgw::Name          _else;
         ksgw::Name          _func;
+        ksgw::Name          _closure;
         std::set<ksgw::Name> _all;
     };
 
@@ -107,6 +108,7 @@ namespace compiler {
             AddKeyword(while);
             AddKeyword(for);
             AddKeyword(func);
+            AddKeyword(closure);
             AddKeyword(none);
         }
 
@@ -121,6 +123,7 @@ namespace compiler {
 
         Token const* nextToken();
         void peek();
+        void peekCommaEol();
 
         size_t pos() const {
             return _pos;
