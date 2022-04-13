@@ -11,7 +11,7 @@ char const* code = R"(
             n = n - 1
         }
     }
-    the_func = closure(value) {
+    the_func = func (value) {
         f = 1
         while n > 0 {
             f = f * n
@@ -38,9 +38,6 @@ int main() {
     parser.init(code);
     compiler::Token const* token = nullptr;
     auto prog = compiler::matchProgram(&parser);
-    // while(token = parser.nextToken()) {
-    //     // print token
-    //     // printToken(token);
-    // }
+    assert(prog);
     return 0;
 }

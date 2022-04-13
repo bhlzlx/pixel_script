@@ -266,9 +266,9 @@ namespace compiler {
         auto program = new ASTMultiExpr(ASTNodeType::Program);
         while(nextToken) {
             auto pos = tokenParser->pos();
-            auto stmt = matchStatement(tokenParser);
+            auto stmt = matchFunctionDef(tokenParser);
             if(!stmt) {
-                stmt = matchFunctionDef(tokenParser);
+                stmt = matchStatement(tokenParser);
             }
             if(stmt) {
                 program->addExpr(stmt.node);
@@ -443,7 +443,7 @@ namespace compiler {
         ASTNode* args = nullptr;
         ASTNode* body = nullptr;
         if(token->type() == TokenType::Keyword) {
-            if(token->stringLiteral() == tokenParser->keywords()._closure) {
+            if(token->stringLiteral() == tokenParser->keywords()._func) {
                 tokenParser->peek();
                 args = matchPostfix(tokenParser).node;
                 body = matchBlock(tokenParser).node;
