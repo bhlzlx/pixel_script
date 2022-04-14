@@ -51,15 +51,19 @@ namespace compiler {
         MatchResult matchFunctionDef();
         MatchResult matchClosure();
 
-        MatchResult matchArgs(TokenParser* tokenParser);
-        MatchResult matchPostfix(TokenParser* tokenParser);
+        MatchResult matchArgs();
+        MatchResult matchPostfix();
     public:
         ASTBuilder()
             : _tokenParser(nullptr)
+            , _cachedTokens()
         {
         }
 
-        MatchResult buildAST( char const* code);
+
+
+        MatchResult buildAST( char const* code) {
+        }
     };
 
 }
