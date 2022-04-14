@@ -70,7 +70,7 @@ namespace compiler {
         size_t              _pos;
         TokenBuf            _tokenBuf;
         Token               _token;
-        bool                _tokenCached;
+        // bool                _tokenCached;
         std::vector<Token>  _queuedToken; 
         State               _state;
         int32_t             _line;
@@ -98,7 +98,7 @@ namespace compiler {
             , _pos(0)
             , _tokenBuf()
             , _token(TokenType::None, nullptr)
-            , _tokenCached(false)
+            // , _tokenCached(false)
             , _state(State::None)
             , _line(0)
             , _column(0)
@@ -124,8 +124,8 @@ namespace compiler {
         }
 
         Token const* nextToken();
-        void peek();
-        void peekCommaEol();
+        // void peek();
+        // void peekCommaEol();
 
         size_t pos() const {
             return _pos;

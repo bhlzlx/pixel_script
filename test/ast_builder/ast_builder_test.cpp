@@ -34,10 +34,8 @@ char const* code = R"(
 )";
 
 int main() {
-    compiler::TokenParser parser;
-    parser.init(code);
-    compiler::Token const* token = nullptr;
-    auto prog = compiler::matchProgram(&parser);
+    compiler::ASTBuilder builder;
+    auto prog = builder.buildAST(code);
     assert(prog);
     return 0;
 }

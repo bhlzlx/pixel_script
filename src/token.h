@@ -39,7 +39,7 @@ namespace compiler {
             int64_t             _integer;
         };
     public:
-        Token( TokenType type, ksgw::Name name)
+        Token( TokenType type = TokenType::None, ksgw::Name name = ksgw::Name(nullptr))
             : _type(type)
             , _string(name)
             , _line(0)

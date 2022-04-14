@@ -1,13 +1,13 @@
 #pragma once
 #include <cstdint>
 #include <vector>
+#include <deque>
+#include "token.h"
 
 namespace compiler {
 
-
     class ASTNode;
     class TokenParser;
-    class Token;
 
     enum class ASTParseError {
         None,
@@ -36,9 +36,15 @@ namespace compiler {
 
 
     class ASTBuilder {
+        // struct TokenHelper {
+        //     size_t cacheSize;
+        // };
     private:
-        TokenParser*        _tokenParser;
-        std::vector<Token>  _cachedTokens;
+        TokenParser*                    _tokenParser;
+        std::vector<Token>              _consumedTokens;
+        std::vector<uint32_t>           _consumedPositions;
+        std::deque<Token>               _cachedTokens;
+        // Token const*                    _token;
     private: // functions
         MatchResult matchPrimary();
         MatchResult matchFactor();
@@ -53,17 +59,32 @@ namespace compiler {
 
         MatchResult matchArgs();
         MatchResult matchPostfix();
+
+        Token const* nextToken();
+
+        Token const*  consumeAndGetNext();
+
+        void consumeCurrentToken();
+
+        void consumeCommaEol();
+
+        void pushConsumeState();
+        void popConsumeState();
+        void resumeConsumeState();
+        void discardConsumeState();
     public:
         ASTBuilder()
             : _tokenParser(nullptr)
+            , _consumedTokens()
+            , _consumedPositions()
             , _cachedTokens()
         {
         }
 
-
-
         MatchResult buildAST( char const* code) {
+            return matchProgram();
         }
+
     };
 
 }

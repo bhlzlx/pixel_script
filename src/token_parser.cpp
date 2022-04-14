@@ -242,9 +242,9 @@ namespace compiler {
     }
 
     Token const* TokenParser::nextToken() {
-        if(_tokenCached) {
-            return &_token;
-        }
+        // if(_tokenCached) {
+        //     return &_token;
+        // }
         while(_pos < _textLen) {
             char ch = _text[_pos];
             bool rst = false;
@@ -272,7 +272,7 @@ namespace compiler {
                 if(_token.type() == TokenType::None) {
                     continue;
                 }
-                _tokenCached =  true;
+                // _tokenCached =  true;
                 return &_token;
             }
             if(_state == State::None) {
@@ -284,16 +284,16 @@ namespace compiler {
         return &_token;
     }
 
-    void TokenParser::peek() {
-        // printToken(&_token);
-        _tokenCached = false;
-    }
+    // void TokenParser::peek() {
+    //     // printToken(&_token);
+    //     _tokenCached = false;
+    // }
 
-    void TokenParser::peekCommaEol() {
-        Token const* t = nextToken();
-        while(t->type() == TokenType::Comma || t->type() == TokenType::Eol) {
-            peek();
-            t = nextToken();
-        }
-    }
+    // void TokenParser::peekCommaEol() {
+    //     Token const* t = nextToken();
+    //     while(t->type() == TokenType::Comma || t->type() == TokenType::Eol) {
+    //         peek();
+    //         t = nextToken();
+    //     }
+    // }
 }
