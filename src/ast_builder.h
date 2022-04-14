@@ -81,9 +81,7 @@ namespace compiler {
         {
         }
 
-        MatchResult buildAST( char const* code) {
-            return matchProgram();
-        }
+        MatchResult buildAST( char const* code);
 
     };
 

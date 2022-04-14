@@ -90,6 +90,7 @@ namespace compiler {
             default:
             return false;
         }
+        updateTokenLocation();
         return true;
     }
 

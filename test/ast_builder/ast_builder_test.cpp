@@ -4,6 +4,14 @@
 #include <map>
 
 char const* code = R"(
+    while i < 10 {
+        if i % 2 == 0 {
+            even = even + 1
+        } else {
+            abc = abc + 1
+        }
+        i = i + 1
+    }
     func fact(n) {
         f = 1
         while n > 0 {
