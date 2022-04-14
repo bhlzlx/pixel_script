@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <vector>
 
 namespace compiler {
 
@@ -33,23 +34,32 @@ namespace compiler {
         }
     };
 
-    MatchResult matchPrimary(TokenParser* tokenParser);
-    MatchResult matchFactor(TokenParser* tokenParser);
-    MatchResult matchExpression(TokenParser* tokenParser);
-    MatchResult matchBlock(TokenParser* tokenParser);
-    MatchResult matchStatement(TokenParser* tokenParser);
-    MatchResult matchProgram(TokenParser* tokenParser);
-
-    MatchResult matchParams(TokenParser* tokenParser);
-    MatchResult matchParamList(TokenParser* tokenParser);
-    MatchResult matchFunctionDef(TokenParser* tokenParser);
-    MatchResult matchClosure(TokenParser* tokenParser);
-
-    MatchResult matchArgs(TokenParser* tokenParser);
-    MatchResult matchPostfix(TokenParser* tokenParser);
 
     class ASTBuilder {
     private:
+        TokenParser*        _tokenParser;
+        std::vector<Token>  _cachedTokens;
+    private: // functions
+        MatchResult matchPrimary();
+        MatchResult matchFactor();
+        MatchResult matchExpression();
+        MatchResult matchBlock();
+        MatchResult matchStatement();
+        MatchResult matchProgram();
+        MatchResult matchParams();
+        MatchResult matchParamList();
+        MatchResult matchFunctionDef();
+        MatchResult matchClosure();
+
+        MatchResult matchArgs(TokenParser* tokenParser);
+        MatchResult matchPostfix(TokenParser* tokenParser);
+    public:
+        ASTBuilder()
+            : _tokenParser(nullptr)
+        {
+        }
+
+        MatchResult buildAST( char const* code);
     };
 
 }

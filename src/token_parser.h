@@ -1,19 +1,20 @@
 #include <queue>
 #include <string>
+#include <deque>
 #include "name_pool.h"
 #include "token.h"
 
 namespace compiler {
 
     struct Keywords {
-        ksgw::Name          _none;
-        ksgw::Name          _for;
-        ksgw::Name          _if;
-        ksgw::Name          _while;
-        ksgw::Name          _else;
-        ksgw::Name          _func;
-        ksgw::Name          _closure;
-        std::set<ksgw::Name> _all;
+        ksgw::Name              _none;
+        ksgw::Name              _for;
+        ksgw::Name              _if;
+        ksgw::Name              _while;
+        ksgw::Name              _else;
+        ksgw::Name              _func;
+        ksgw::Name              _closure;
+        std::set<ksgw::Name>    _all;
     };
 
     class TokenBuf {
@@ -70,6 +71,7 @@ namespace compiler {
         TokenBuf            _tokenBuf;
         Token               _token;
         bool                _tokenCached;
+        std::vector<Token>  _queuedToken; 
         State               _state;
         int32_t             _line;
         int32_t             _column;
