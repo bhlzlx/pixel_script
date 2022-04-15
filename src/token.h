@@ -14,9 +14,9 @@ namespace compiler {
         // One or two character tokens.
         Less, LessEqual,
         Greater, GreaterEqual,
-        EqualEqual,
+        Equal,
         NotEqual,
-        Equal, 
+        Assign, 
         // Literals.
         Identifier, String, Float, Integer,
         // Keywords

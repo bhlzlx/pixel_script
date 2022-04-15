@@ -135,6 +135,7 @@ namespace compiler {
         bool matchOperator(char ch);
 
         bool dealNone(char ch);
+        bool dealString(char ch);
         bool dealIdentifier(char ch);
         bool dealFloat(char ch);
         bool dealInteger(char ch);
