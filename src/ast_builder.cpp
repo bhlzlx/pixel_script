@@ -13,7 +13,7 @@ namespace compiler {
         ASTBuilder*     _builder;
         bool            _resumable;
     public:
-        ConsumeStateHelper( ASTBuilder* builder, bool resumable)
+        ConsumeStateHelper(ASTBuilder* builder, bool resumable)
             : _builder(builder)
             , _resumable(resumable)
         {
@@ -150,13 +150,13 @@ namespace compiler {
                     case TokenType::Slash:
                     case TokenType::Plus:
                     case TokenType::Star:
-                    case TokenType::Equal:
+                    case TokenType::Assign:
                     case TokenType::Modulus:
                     case TokenType::Less:
                     case TokenType::LessEqual:
                     case TokenType::Greater:
                     case TokenType::GreaterEqual:
-                    case TokenType::EqualEqual:
+                    case TokenType::Equal:
                         break;
                     default:
                         // expr pattern end

@@ -18,8 +18,8 @@ namespace compiler {
         {compiler::TokenType::Slash, "/"},
         {compiler::TokenType::Star, "*"},
         {compiler::TokenType::Modulus, "%"},
-        {compiler::TokenType::Equal, "="},
-        {compiler::TokenType::EqualEqual, "=="},
+        {compiler::TokenType::Assign, "="},
+        {compiler::TokenType::Equal, "=="},
         {compiler::TokenType::Less, "<"},
         {compiler::TokenType::LessEqual, "<="},
         {compiler::TokenType::Greater, ">"},
@@ -28,7 +28,7 @@ namespace compiler {
         {compiler::TokenType::Not, "!"},
         {compiler::TokenType::And, "&&"},
         {compiler::TokenType::Or, "||"},
-        {compiler::TokenType::Equal, "="},
+        {compiler::TokenType::Assign, "="},
         {compiler::TokenType::Comma, ","},
         {compiler::TokenType::Semicolon, ";"},
         {compiler::TokenType::Dot, "."},
@@ -102,17 +102,17 @@ namespace compiler {
                 case '/': _token = Token(TokenType::Slash, _keywords._none); break;
                 case '*': _token = Token(TokenType::Star, _keywords._none); break;
                 case '%': _token = Token(TokenType::Modulus, _keywords._none); break;
-                case '=': _token = Token(TokenType::Equal, _keywords._none); break;
+                case '=': _token = Token(TokenType::Assign, _keywords._none); break;
                 case '>': _token = Token(TokenType::Greater, _keywords._none); break;
                 case '<': _token = Token(TokenType::Less, _keywords._none); break;
             }
             return false;
         } else {
             switch(_token.type()) {
-                case TokenType::Equal: {
+                case TokenType::Assign: {
                     switch(ch) {
-                        case '=': _token = Token(TokenType::EqualEqual, _keywords._none); break;
-                        case '>': _token = Token(TokenType::EqualEqual, _keywords._none); break;
+                        case '=': _token = Token(TokenType::Equal, _keywords._none); break;
+                        case '>': _token = Token(TokenType::Equal, _keywords._none); break;
                     }
                     break;
                 }
