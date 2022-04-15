@@ -35,10 +35,12 @@ namespace compiler {
     };
 
 
+    class ConsumeStateHelper;
     class ASTBuilder {
         // struct TokenHelper {
         //     size_t cacheSize;
         // };
+        friend class ConsumeStateHelper;
     private:
         TokenParser*                    _tokenParser;
         std::vector<Token>              _consumedTokens;
