@@ -23,6 +23,11 @@ namespace compiler {
         FunctionMismatch,
         MissFunctionName,
         ClosureMismatch,
+        AssignExpected,
+        MissVariableName,
+        VarMismatch,
+        PackageMismatch,
+        CodeChunkMismatch,
     };
     struct MatchResult {
         ASTNode*        node;
@@ -53,14 +58,17 @@ namespace compiler {
         MatchResult matchExpression();
         MatchResult matchBlock();
         MatchResult matchStatement();
-        MatchResult matchProgram();
+        MatchResult matchCodeChunk();
         MatchResult matchParams();
         MatchResult matchParamList();
         MatchResult matchFunctionDef();
         MatchResult matchClosure();
+        MatchResult matchPackage();
 
         MatchResult matchArgs();
         MatchResult matchPostfix();
+
+        MatchResult matchDefVariable();
 
         Token const* nextToken();
 

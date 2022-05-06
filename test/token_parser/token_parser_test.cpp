@@ -96,7 +96,7 @@ int main() {
     while(token = parser.nextToken()) {
         // print token
         printToken(token);
-        parser.peek();
+        // parser.peek();
     }
     system("pause");
     return 0;

@@ -4,6 +4,18 @@
 #include <map>
 
 char const* code = R"(
+    package game.test
+
+    var global_var = 1
+
+    var the_func = func (n) {
+        var f = 1
+        while n > 0 {
+            f = f * n
+            n = n - 1
+        }
+    } 
+
     func fact(n) {
         f = 1
         while n > 0 {
@@ -11,26 +23,22 @@ char const* code = R"(
             n = n - 1
         }
     }
-    the_func = func (value) {
-        f = 1
-        while n > 0 {
-            f = f * n
-            n = n - 1
+
+    func compute(n) {
+        fact(9)
+        var even = 0
+        var odd = 0
+        var i = 1
+        while i < 10 {
+            if i % 2 == 0 {
+                even = even + 1
+            } else {
+                odd = odd + i
+            }
+            i = i + 1
         }
-    } 
-    fact(9)
-    even = 0
-    odd = 0
-    i = 1
-    while i < 10 {
-        if i % 2 == 0 {
-            even = even + 1
-        } else {
-            odd = odd + i
-        }
-        i = i + 1
+        even + odd
     }
-    even + odd
 )";
 
 int main() {

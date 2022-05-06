@@ -105,6 +105,7 @@ namespace compiler {
                 case '=': _token = Token(TokenType::Assign, _keywords._none); break;
                 case '>': _token = Token(TokenType::Greater, _keywords._none); break;
                 case '<': _token = Token(TokenType::Less, _keywords._none); break;
+                case '.': _token = Token(TokenType::Dot, _keywords._none); break;
             }
             return false;
         } else {
@@ -147,6 +148,10 @@ namespace compiler {
             rst = true;
         } else if(matchOperator(ch) || _token.type() != TokenType::None) {
             _state = State::Op;
+        } else if('.' == ch) {
+            _token = Token(TokenType::Dot, _keywords._none);
+            updateTokenLocation();
+            rst = true;
         } else if(';' == ch) {
             _token = Token(TokenType::Semicolon, _keywords._none);
             updateTokenLocation();

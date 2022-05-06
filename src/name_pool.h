@@ -73,7 +73,13 @@ namespace ksgw {
             name_prototype const* _proto;
         };
     public:
-        Name(uint8_t const* addr = nullptr)
+        Name()
+            : _addr(nullptr) {
+        }
+        operator size_t() const {
+            return (size_t)_addr;
+        }
+        Name(uint8_t const* addr)
             : _addr(addr) {
         }
         char const* text() const {
@@ -131,4 +137,14 @@ namespace ksgw {
         }
     };
 
+}
+
+namespace std {
+    template<>
+    struct hash<ksgw::Name> {
+        size_t operator()(ksgw::Name const& name) const {
+            std::hash<size_t> hasher;
+            return hasher((size_t)name.data());
+        }
+    };
 }

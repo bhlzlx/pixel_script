@@ -5,10 +5,20 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(Windows) 启动",
+            "name": "build ast",
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/bin/Windows_64_Debug/ast_builder_test.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "console": "externalTerminal"
+        }, {
+            "name": "compile ast",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/Windows_64_Debug/compile_ast_test.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",

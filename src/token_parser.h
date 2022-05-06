@@ -6,15 +6,22 @@
 
 namespace compiler {
 
+#ifdef KEYWORD
+#undef KEYWORD
+#endif
+#define KEYWORD(kw) Name _##kw;
+
     struct Keywords {
-        ksgw::Name              _none;
-        ksgw::Name              _for;
-        ksgw::Name              _if;
-        ksgw::Name              _while;
-        ksgw::Name              _else;
-        ksgw::Name              _func;
-        ksgw::Name              _closure;
-        std::set<ksgw::Name>    _all;
+        #include "keywords.h"
+        // Name              _none;
+        // Name              _for;
+        // Name              _if;
+        // Name              _while;
+        // Name              _else;
+        // Name              _func;
+        // Name              _closure;
+        // Name              _var;
+        std::set<Name>    _all;
     };
 
     class TokenBuf {
@@ -51,7 +58,7 @@ namespace compiler {
         }
     };
 
-    #define AddKeyword( keyword ) buf.assign(#keyword); _keywords._##keyword = _namePool.getName(buf.asName()); _keywords._all.insert(_keywords._##keyword);
+
     class TokenParser {
         enum class State {
             None, // no state
@@ -105,13 +112,9 @@ namespace compiler {
             , _tokenColumn(0)
         {
             TokenBuf buf;
-            AddKeyword(if);
-            AddKeyword(else);
-            AddKeyword(while);
-            AddKeyword(for);
-            AddKeyword(func);
-            AddKeyword(closure);
-            AddKeyword(none);
+            #undef KEYWORD
+            #define KEYWORD( keyword ) buf.assign(#keyword); _keywords._##keyword = _namePool.getName(buf.asName()); _keywords._all.insert(_keywords._##keyword);
+            #include "keywords.h"
         }
 
         void init(char const* text) {

@@ -7,6 +7,9 @@ PRIVATE
     token_parser.cpp
     ast_builder.cpp
     # lexer.cpp
+    vm/vm_code_model.cpp
+    vm/vm_code_model.cpp
+    vm/vm_types.cpp
 )
 
 target_include_directories(stone

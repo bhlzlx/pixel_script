@@ -1,14 +1,17 @@
-#pragma once
+﻿#pragma once
 
 #include <string>
-#include "name_pool.h"
+#include "ast_common.h"
 namespace compiler {
+
+    using Name = ksgw::Name;
 
     enum class TokenType {
         // Single-character tokens.
         LeftParen = 0/*(*/, RightParen, LeftBracket/*[]*/, RightBracket, LeftBrace/*{}*/, RightBrace,
-        Comma/*,*/, Dot/*.*/, Colon/*:*/,
+        Comma/*,*/, Colon/*:*/,
         Not,
+        Dot/*.*/, 
         Slash/*/*/, Star/***/, 
         Minus, Plus, Modulus, Semicolon/*;*/, 
         // One or two character tokens.
@@ -34,8 +37,8 @@ namespace compiler {
         int                     _line;
         int                     _column;
         union { // literal value
-            ksgw::Name          _string; // identifier, string
             double              _number;
+            Name                _string; // identifier, string
             int64_t             _integer;
         };
     public:
