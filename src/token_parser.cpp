@@ -178,7 +178,7 @@ namespace compiler {
             if(!std::isblank(ch)) {
                 fallback();
             }
-            _token = Token(TokenType::Identifier, _namePool.getName(_tokenBuf.asName()));
+            _token = Token(TokenType::Identifier, _env->getName(_tokenBuf.str()));
             if(_keywords._all.find(_token.stringLiteral()) != _keywords._all.end()) {
                 _token.setType(TokenType::Keyword);
             }

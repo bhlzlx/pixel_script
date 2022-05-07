@@ -1,4 +1,4 @@
-#include "vm_code_model.h"
+#include "vm_object.h"
 #include "vm_types.h"
 #include <exception>
 

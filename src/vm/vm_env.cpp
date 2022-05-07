@@ -1,48 +1,10 @@
-#include <cassert>
-#include "vm_code_model.h"
-#include "../AST.h"
+#include "vm_env.h"
 
 namespace compiler {
 
-    bool Package::compileModule(Name name, ASTNode* ast) {
-        assert(ast->type() == ASTNodeType::CodeChunk);
-        ASTMultiExpr* multiExpr = (ASTMultiExpr*)ast;
-        for(auto expr : multiExpr->expressions()) {
-            if(expr->type() == ASTNodeType::Function) {
-                ASTFunction* func = (ASTFunction*)expr;
-                auto rst = this->_symbolLayout->regSymbol(func->name().stringLiteral(), SymbolType::Function, func, Value(), name);
-                if(!rst) {
-                    assert(false);
-                    return false;
-                }
-            } else if( expr->type() == ASTNodeType::Variable ) {
-                ASTVariable* var = (ASTVariable*)expr;
-                auto rst = _symbolLayout->regSymbol(var->name().stringLiteral(), SymbolType::Variable, var, Value(), name);
-                if(!rst) {
-                    assert(false);
-                    return false;
-                }
-            } else {
-                assert(false && "only function & variable can be defined in package");
-                return false;
-            }
-        }
-        return true;
-    }
 
-    void Package::unloadModule(Name name) {
-    }
-
-    Package* Package::prepareSubPackage(Name name) {
-        auto rst = _symbolLayout->regSymbol(name, SymbolType::Package, nullptr, Value(), Name());
-        Symbol* symbol = _symbolLayout->querySymbol(name);
-        if(rst) {
-            auto subpackLayout = new SymbolLayout();
-            symbol->value().setUd(new Package(subpackLayout));
-        }
-        auto &value = symbol->value();
-        auto pack = (Package*)(value.ud());
-        return pack;
+    Name Env::getName(char const* str) {
+        return _namePool.getName(str);
     }
 
     Package* Env::preparePackage( ASTNode* ast ) {
@@ -123,45 +85,44 @@ namespace compiler {
 
     }
 
-    bool Env::compileCodeChunk(Name module, ASTNode* ast) {
+    bool Env::compileCodeChunk(char const* mod, ASTNode* ast) {
+        auto module = getName(mod);
         if(ast->type() == ASTNodeType::CodeChunk) {
             ASTMultiExpr* exprs = (ASTMultiExpr*)ast;
-            {
-                auto iter = exprs->expressions().begin();
-                if(iter != exprs->expressions().end()) {
-                    ASTNode* expr = *iter;
-                    if(expr->type() == ASTNodeType::Package) {
-                        ASTPackage* packNode = (ASTPackage*)expr;
-                        auto package = this->preparePackage(packNode);
-                        auto symbolLayout = package->symbolLayout();
-                        //
-                        ++iter;
-                        while(iter != exprs->expressions().end()) {
-                            auto expr = *iter;
-                            if(expr->type() == ASTNodeType::Function) {
-                                ASTFunction* func = (ASTFunction*)expr;
-                                auto rst = symbolLayout->regSymbol(func->name().stringLiteral(), SymbolType::Function, func, Value(), module);
-                                if(!rst) {
-                                    assert(false);
-                                    return false;
-                                }
-                            } else if( expr->type() == ASTNodeType::Variable ) {
-                                ASTVariable* var = (ASTVariable*)expr;
-                                auto rst = symbolLayout->regSymbol(var->name().stringLiteral(), SymbolType::Variable, var, Value(), module);
-                            } else {
-                                assert(false && "only function & variable can be defined in package");
+            auto iter = exprs->expressions().begin();
+            if(iter != exprs->expressions().end()) {
+                ASTNode* expr = *iter;
+                if(expr->type() == ASTNodeType::Package) {
+                    ASTPackage* packNode = (ASTPackage*)expr;
+                    auto package = this->preparePackage(packNode);
+                    auto symbolLayout = package->symbolLayout();
+                    //
+                    ++iter;
+                    while(iter != exprs->expressions().end()) {
+                        auto expr = *iter;
+                        if(expr->type() == ASTNodeType::Function) {
+                            ASTFunction* func = (ASTFunction*)expr;
+                            auto rst = symbolLayout->regSymbol(func->name().stringLiteral(), SymbolType::Function, func, Value(), module);
+                            if(!rst) {
+                                assert(false);
                                 return false;
+                            }
+                        } else if( expr->type() == ASTNodeType::Variable ) {
+                            ASTVariable* var = (ASTVariable*)expr;
+                            auto rst = symbolLayout->regSymbol(var->name().stringLiteral(), SymbolType::Variable, var, Value(), module);
+                        } else {
+                            assert(false && "only function & variable can be defined in package");
+                            return false;
                         }
-                            ++iter;
-                        }
-                    } else {
-                        return false;
+                        ++iter;
                     }
+                    return true;
                 } else {
                     return false;
                 }
+            } else {
+                return false;
             }
-            return false;
         }
         else {
             return false;

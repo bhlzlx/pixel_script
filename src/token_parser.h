@@ -1,8 +1,8 @@
 #include <queue>
 #include <string>
 #include <deque>
-#include "name_pool.h"
 #include "token.h"
+#include "vm/vm_env.h"
 
 namespace compiler {
 
@@ -13,14 +13,6 @@ namespace compiler {
 
     struct Keywords {
         #include "keywords.h"
-        // Name              _none;
-        // Name              _for;
-        // Name              _if;
-        // Name              _while;
-        // Name              _else;
-        // Name              _func;
-        // Name              _closure;
-        // Name              _var;
         std::set<Name>    _all;
     };
 
@@ -70,8 +62,7 @@ namespace compiler {
             // Semicolon, // ;
         };
     private:
-        ksgw::NamePool      _namePool;
-        // std::queue<Token*>  _tokens;
+        Env*                _env;
         char const*         _text;
         size_t              _textLen;
         size_t              _pos;
@@ -98,8 +89,8 @@ namespace compiler {
             _tokenColumn = -1;
         }
     public:
-        TokenParser()
-            : _namePool()
+        TokenParser(Env* env)
+            : _env(env)
             // , _tokens()
             , _text()
             , _pos(0)
@@ -111,9 +102,9 @@ namespace compiler {
             , _column(0)
             , _tokenColumn(0)
         {
-            TokenBuf buf;
+            // TokenBuf buf;
             #undef KEYWORD
-            #define KEYWORD( keyword ) buf.assign(#keyword); _keywords._##keyword = _namePool.getName(buf.asName()); _keywords._all.insert(_keywords._##keyword);
+            #define KEYWORD( keyword ) _keywords._##keyword = _env->getName(#keyword); _keywords._all.insert(_keywords._##keyword);
             #include "keywords.h"
         }
 

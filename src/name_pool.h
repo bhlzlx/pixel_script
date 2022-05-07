@@ -112,26 +112,53 @@ namespace ksgw {
     };
 
     class NamePool {
+    public:
+        struct buffer_t {
+            uint8_t const*      data;
+            uint16_t            length;
+            //
+            uint16_t byteNeed() const {
+                return sizeof(length) + length;
+            }
+            bool operator < ( buffer_t const& other) const {
+                if(length<other.length) {
+                    return true;
+                } else if(length>other.length) {
+                    return false;
+                } else {
+                    return memcmp(data, other.data, length) < 0;
+                }
+            }
+            operator Name() const {
+                return Name(data-sizeof(length));
+            }
+        };
     private:
         std::vector<NameMemoryPoolPage<>*>      _pages;
-        std::set<Name>                          _names;
+        std::set<buffer_t>                      _names;
     public:
         NamePool()
             : _pages{ new NameMemoryPoolPage<>() }
             , _names{}
         {}
-        Name getName(Name name) {
-            auto rst = _names.find(name);
+        Name getName(char const* str) {
+            buffer_t buf = {
+                (uint8_t*)str,
+                (uint16_t)(strlen(str) + 1)
+            };
+            auto rst = _names.find(buf);
             if(rst == _names.end()) {
-                auto allocRst = _pages.back()->alloc(sizeof(uint16_t) + name.length() + 1);
+                auto allocRst = _pages.back()->alloc(buf.byteNeed());
                 if(!allocRst.ptr()) {
                     _pages.emplace_back(new NameMemoryPoolPage<>());
-                    allocRst = _pages.back()->alloc(sizeof(uint16_t) + name.length() + 1);
+                    allocRst = _pages.back()->alloc(buf.byteNeed());
                     assert(allocRst.ptr());
                 }
-                allocRst.write(name.data(), 0, allocRst.size());
-                auto insertIter = _names.insert(Name(allocRst.ptr()));
-                return *insertIter.first;
+                allocRst.write((uint8_t const*)&buf.length, 0, sizeof(buf.length));
+                allocRst.write((uint8_t const*)buf.data, sizeof(buf.length), buf.length);
+                buf.data = allocRst.ptr() + sizeof(buf.length);
+                auto insertIter = _names.insert(buf);
+                return buf;
             }
             return *rst;
         }

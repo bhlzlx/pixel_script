@@ -6,6 +6,7 @@
 
 namespace compiler {
 
+    class Env;
     class ASTNode;
     class TokenParser;
 
@@ -91,7 +92,7 @@ namespace compiler {
         {
         }
 
-        MatchResult buildAST( char const* code);
+        MatchResult buildAST(Env* env, char const* code);
 
     };
 

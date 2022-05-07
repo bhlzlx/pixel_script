@@ -3,7 +3,8 @@
 #include <map>
 
 #include <AST.h>
-#include <vm/vm_code_model.h>
+#include <vm/vm_object.h>
+#include <vm/vm_env.h>
 
 
 char const* code = R"(
@@ -85,14 +86,9 @@ std::function<void(compiler::ASTNode const*)> callback = [](compiler::ASTNode co
 int main() {
     compiler::Env env;
     compiler::ASTBuilder builder;
-    auto prog = builder.buildAST(code);
+    auto prog = builder.buildAST(&env, code);
     assert(prog);
     compiler::ASTMultiExpr* multiExpr = dynamic_cast<compiler::ASTMultiExpr*>(prog.node);
-    // for(auto expr: multiExpr->expressions()) {
-    //     if(expr->type() == compiler::ASTNodeType::Function) {
-    //         env.traverseAST(expr, callback);
-    //     }
-    // }
-    env.compileCodeChunk()
+    auto rst = env.compileCodeChunk("game.test", prog.node);
     return 0;
 }

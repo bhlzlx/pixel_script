@@ -2,6 +2,7 @@
 #include "token.h"
 #include "token_parser.h"
 #include "AST.h"
+#include "vm/vm_env.h"
 #include <map>
 #include <stack>
 #include <cassert>
@@ -679,8 +680,8 @@ namespace compiler {
         _consumedPositions.pop_back();
     }
 
-    MatchResult ASTBuilder::buildAST( char const* code) {
-        _tokenParser = new TokenParser();
+    MatchResult ASTBuilder::buildAST(Env* env, char const* code) {
+        _tokenParser = new TokenParser(env);
         _tokenParser->init(code);
         auto rst = matchCodeChunk();
         delete _tokenParser;
