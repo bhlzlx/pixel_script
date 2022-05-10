@@ -1,6 +1,6 @@
 ﻿# pragma once
 
-#include "../AST.h"
+#include "../ast_node.h"
 #include <unordered_map>
 #include "vm_types.h"
 #include "vm_symbol.h"
@@ -21,14 +21,27 @@ namespace compiler {
     class Object {
     protected:
         ObjectType              _type;
+        uint32_t                _refCount;           
         SymbolLayout*           _symbolLayout;
         std::vector<Value>      _members;
     public:
         Object(SymbolLayout* symbolLayout, ObjectType type = ObjectType::GeneralValue)
             : _type(type)
+            , _refCount(1)
             , _symbolLayout(symbolLayout)
             , _members(symbolLayout->size())
         {
+        }
+
+        void ref() {
+            ++_refCount;
+        }
+
+        void deref() {
+            --_refCount;
+            if(_refCount == 0) {
+                delete this;
+            }
         }
 
         Value* getValue(Name name) {
@@ -36,6 +49,14 @@ namespace compiler {
             if(~loc == 0) {
                 return nullptr;
             }
+            return &_members[loc];
+        }
+
+        Value* at(uint32_t loc) {
+            return &_members[loc];
+        }
+
+        Value const* at(uint32_t loc) const {
             return &_members[loc];
         }
 
@@ -58,6 +79,14 @@ namespace compiler {
         SymbolLayout* symbolLayout() const {
             return _symbolLayout;
         }
+
+        std::pair<bool, uint32_t> addSymbol(Name name, SymbolType type, Value value, Name moduleName) {
+            auto rst = _symbolLayout->regSymbol(name, type, Name());
+            if(rst.first) {
+                _members.push_back(value);
+            }
+            return rst;
+        }
     };
 
     class Package: public Object {
@@ -69,7 +98,7 @@ namespace compiler {
             , _subpackLayouts()
         {}
 
-        bool compileModule(Name name, ASTNode* ast);
+        bool compileModule(Name name, Node* ast);
 
         void unloadModule(Name name);
 

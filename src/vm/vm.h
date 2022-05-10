@@ -1,5 +1,5 @@
 #pragma once
-#include "vm_code_model.h"
+#include "vm_env.h"
 
 namespace compiler {
 

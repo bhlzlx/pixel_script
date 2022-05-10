@@ -6,8 +6,11 @@
 
 namespace compiler {
 
+    namespace ast {
+        class Node;
+    }
+
     class Env;
-    class ASTNode;
     class TokenParser;
 
     enum class ASTParseError {
@@ -31,7 +34,7 @@ namespace compiler {
         CodeChunkMismatch,
     };
     struct MatchResult {
-        ASTNode*        node;
+        ast::Node*      node;
         ASTParseError   error;
         int             line;
         int             column;

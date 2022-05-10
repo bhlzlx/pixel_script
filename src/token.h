@@ -4,7 +4,20 @@
 #include "ast_common.h"
 namespace compiler {
 
+    class Env;
+
     using Name = ksgw::Name;
+
+    namespace keywords {
+    #ifdef KEYWORD
+    #undef KEYWORD
+    #endif
+    #define KEYWORD(kw) extern Name _##kw;
+            #include "keywords.h"
+            extern std::set<Name>    _all;
+        
+        void init(Env* env);
+    }
 
     enum class TokenType {
         // Single-character tokens.
@@ -30,6 +43,7 @@ namespace compiler {
         Eof,
         None
     };
+
 
     class Token {
     private:

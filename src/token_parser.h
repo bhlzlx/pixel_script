@@ -6,15 +6,6 @@
 
 namespace compiler {
 
-#ifdef KEYWORD
-#undef KEYWORD
-#endif
-#define KEYWORD(kw) Name _##kw;
-
-    struct Keywords {
-        #include "keywords.h"
-        std::set<Name>    _all;
-    };
 
     class TokenBuf {
     private:
@@ -75,8 +66,6 @@ namespace compiler {
         int32_t             _column;
         int32_t             _tokenColumn;
     private:
-        Keywords            _keywords;
-
         void fallback() {
             if(_column)
                 --_column;
@@ -102,19 +91,11 @@ namespace compiler {
             , _column(0)
             , _tokenColumn(0)
         {
-            // TokenBuf buf;
-            #undef KEYWORD
-            #define KEYWORD( keyword ) _keywords._##keyword = _env->getName(#keyword); _keywords._all.insert(_keywords._##keyword);
-            #include "keywords.h"
         }
 
         void init(char const* text) {
             _text = text;
             _textLen = strlen(_text);
-        }
-
-        Keywords const& keywords() const {
-            return _keywords;
         }
 
         Token const* nextToken();

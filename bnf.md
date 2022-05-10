@@ -1,7 +1,7 @@
 # 仅为测试参考使用的BNF范式
 * num := [0-9.]
 * id := [a-z_]{a-zA-Z0-9_}
-* args := expr {, expr}
+* params := expr {, expr}
 * postfix := "("[args]")"
 * primary := "(" expr ")" | num | string | id [postfix]
 * factor := closure | "-" primary | primary

@@ -43,6 +43,15 @@
         "typeinfo": "cpp",
         "xmemory": "cpp",
         "xstddef": "cpp",
-        "xutility": "cpp"
+        "xutility": "cpp",
+        "iterator": "cpp",
+        "queue": "cpp",
+        "stack": "cpp",
+        "istream": "cpp",
+        "fstream": "cpp",
+        "ios": "cpp",
+        "ostream": "cpp",
+        "streambuf": "cpp",
+        "xlocbuf": "cpp"
     }
 }

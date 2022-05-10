@@ -2,10 +2,10 @@ add_library( stone STATIC)
 
 target_sources(stone
 PRIVATE
-    # astree.cpp
     token.cpp
     token_parser.cpp
     ast_builder.cpp
+    ast_node.cpp
     # lexer.cpp
     vm/vm_object.cpp
     vm/vm_types.cpp

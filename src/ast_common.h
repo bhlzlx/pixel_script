@@ -12,4 +12,25 @@ namespace compiler {
         Package,
         Member, // package/namespace/object oriented
     };
+
+    class Token;
+    class Lexer;
+    class SymbolLayout;
+    class Value;
+    class Object;
+    class Env;
+    namespace ast {
+        class Node;
+        class ASTLeaf;
+        class ASTIdentifier;
+        class ASTStringList;
+        class ASTBinaryOpExpr;
+        class ASTIfStatement;
+        class ASTWhileStatement;
+        class ASTFunction;
+        class ASTMultiExpr;
+        class ASTPrimary;
+        class ASTNegativeExpression;
+        class ASTVariable;
+    }
 }

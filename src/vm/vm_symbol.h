@@ -1,5 +1,5 @@
 #pragma once
-#include "../AST.h"
+#include "../ast_node.h"
 #include "vm_types.h"
 
 namespace compiler {
@@ -14,25 +14,21 @@ namespace compiler {
     class Symbol {
     private:
         SymbolType          _type;
-        ASTNode const*      _astNode;
-        Value               _value;
+        // Node const*         _astNode;
+        // Value               _value;
         Name                _moduleName;
     public:
-        Symbol(SymbolType type, ASTNode const* astNode, Value value, Name moduleName)
+        Symbol(SymbolType type, Name moduleName)
             : _type(type)
-            , _astNode(astNode)
-            , _value(value)
+            // , _astNode(astNode)
+            // , _value(value)
             , _moduleName(moduleName)
         {
         }
 
-        Value& value() {
-            return _value;
-        }
-
-        ASTNode const* astNode() const{
-            return _astNode;
-        }
+        // Value& value() {
+        //     return _value;
+        // }
 
         SymbolType type() const {
             return _type;
@@ -50,7 +46,7 @@ namespace compiler {
     public:
         SymbolLayout() {}
 
-        bool regSymbol(Name name, SymbolType type, ASTNode const* astNode, Value value, Name moduleName);
+        std::pair<bool, uint32_t> regSymbol(Name name, SymbolType type, Name moduleName);
 
         uint32_t querySymbolLoc(Name name);
 

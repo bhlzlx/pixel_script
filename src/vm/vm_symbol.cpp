@@ -2,14 +2,14 @@
 
 namespace compiler {
     
-    bool SymbolLayout::regSymbol(Name name, SymbolType type, ASTNode const* astNode, Value value, Name moduleName) {
+    std::pair<bool, uint32_t> SymbolLayout::regSymbol(Name name, SymbolType type, Name moduleName) {
         auto iter = _locMap.find(name);
         if(iter == _locMap.end()) {
-            _symbols.push_back({type, astNode, value, moduleName});
+            _symbols.push_back({type, moduleName});
             _locMap[name] = _symbols.size() - 1;
-            return true;
+            return {true, _symbols.size() - 1};
         }
-        return false;
+        return {false, iter->second};
     }
 
     uint32_t SymbolLayout::querySymbolLoc(Name name) {
