@@ -1,7 +1,6 @@
 ﻿#include "ast_builder.h"
 #include "token.h"
 #include "token_parser.h"
-#include "ast_node.h"
 #include "vm/vm_env.h"
 #include "ast_node.h"
 #include <map>
@@ -91,9 +90,8 @@ namespace compiler {
             }
             case TokenType::Identifier: {
                 consumeCurrentToken();
-                auto id = new ASTIdentifier(*token);
+                ASTIdentifier* id = new ASTIdentifier(*token);
                 operand = id;
-                // operand = new ASTLeaf(SType::Identifier, *token);
                 break;
             }
             default: {
@@ -104,7 +102,7 @@ namespace compiler {
         if(!operand) {
             return { nullptr, ASTParseError::PrimaryMismatch, startToken.line(), startToken.column() };
         } else {
-            Node* postfix = nullptr;
+            ASTMultiExpr* postfix = nullptr;
             // 这里添加了函数调用匹配
             // a + b(1) 这种
             auto expr = matchPostfix();
@@ -112,7 +110,9 @@ namespace compiler {
             if(!expr) {
                 return { operand, ASTParseError::None, startToken.line(), startToken.column()};
             } else {
-                postfix = expr.node;
+                if(expr.node) {
+                    postfix = expr.node->asMultiExpr();
+                }
                 ASTPrimary* prim = new ASTPrimary(operand, postfix);
                 return  { prim, ASTParseError::None, startToken.line(), startToken.column() };
             }
@@ -571,7 +571,11 @@ namespace compiler {
                         auto expr = matchExpression();
                         if(!expr) {
                             return expr;
-                        } else {
+                        } else { // 初始化实际是创建的一个function，因为方便后续处理，代码重用，算是一个小trick
+                            // ASTFunction* valueExprFunc = new ASTFunction(VType::Closure);
+                            // ASTMultiExpr* funcBody = new ASTMultiExpr(VType::Block);
+                            // funcBody->addExpr(expr.node);
+                            // valueExprFunc->setBody(funcBody);
                             return { new ASTVariable(id, expr.node), ASTParseError::None, name.line(), name.column() };
                         }
                     }

@@ -32,8 +32,9 @@ int main(int argc, char** argv) {
     compiler::ASTBuilder builder;
     auto prog = builder.buildAST(&env, buffer);
     assert(prog);
-    compiler::ASTMultiExpr* multiExpr = dynamic_cast<compiler::ASTMultiExpr*>(prog.node);
-    auto rst = env.compileCodeChunk("game.test", prog.node);
+    // compiler::ASTMultiExpr* multiExpr = dynamic_cast<compiler::ASTMultiExpr*>(prog.node);
+    auto rst = env.compileCodeChunk("func_test", prog.node);
+    env.initializeModule("func_test");
     env.callFunction("game.test.helloworld");
     return 0;
 }

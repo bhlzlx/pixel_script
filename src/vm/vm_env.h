@@ -1,7 +1,9 @@
 #pragma once
 #include "vm_object.h"
+#include "vm_module.h"
 #include "../name_pool.h"
 #include <functional>
+#include <map>
 
 namespace compiler {
     using Name = ksgw::Name;
@@ -10,13 +12,21 @@ namespace compiler {
 
     using TraverseCallBack = std::function<void(Node const*)>;
 
+    class Module;
+
     class Env {
-    public:
+    private:
+        struct FuncEnv {
+            Value               vt;     // variable table
+            ASTFunction*        func;   // function ast node
+        };
     private:
         NamePool                                _namePool;
-        std::vector<SymbolLayout*>              _symbolLayouts;
         Value                                   _package;
-        std::vector<Value>                      _stackFrame;
+        std::vector<FuncEnv>                    _funcEnvs;
+        std::vector<SymbolLayout*>              _symbolLayouts;
+
+        std::map<Name, Module*, Name::FastLess> _modules;
     private:
         SymbolLayout* newSymbolLayout() {
             auto symLayout = new SymbolLayout();
@@ -31,38 +41,58 @@ namespace compiler {
             compiler::keywords::init(this);
         }
 
+        void initializeModule(char const* module);
+
         Name getName(char const* str);
 
         Value rootPackage() {
             return _package;
         }
 
+        Module* getModule(Name const& name) {
+            auto it = _modules.find(name);
+            if (it != _modules.end()) {
+                return it->second;
+            } else {
+                Module* mod = new Module();
+                auto rst = _modules.insert(std::make_pair(name, mod));
+                return rst.first->second;
+            }
+        }
+
         bool compileCodeChunk(char const* module, Node* ast);
 
-        Value currentFrame() {
-            return _stackFrame.back();
+        FuncEnv const* funcEnv() {
+            return &_funcEnvs.back();
         }
 
         Value preparePackage(Node* ast);
 
-        struct IdentifierLocatorEnv {
-            SymbolLayout*   functionLayout; // local symbol layout
-            SymbolLayout*   packageLayout;    // local symbol layout
+        struct IdLocateEnv {
+            SymbolLayout*   functionLayout;     // local symbol layout
+            SymbolLayout*   packageLayout;      // local symbol layout
         };
 
-        bool locateIdentifier(IdentifierLocatorEnv env, ASTIdentifier const* id) ;
+        bool locateIdentifier(IdLocateEnv env, ASTIdentifier const* id) ;
         
         std::vector<Token> compileFunction(ASTFunction* ast);
 
         void traverseAST(Node const* ast, TraverseCallBack& callBack);
 
-        Value eval(Node const* ast);
-
-        Value evalBinaryOp(Token op, Value const* a, Value const* b);
-
         Value callFunction(Value const& func, std::vector<Value> const& args);
 
         Value callFunction(std::string func); // test
+
+        // eval functions
+        /**
+         * @brief evalAST
+         * @param ast
+         * 
+        **/
+        Value eval(Node const* ast);
+        Value evalBinaryOp(Token op, Value a, Value b);
+        Value evalIdentifier(ASTIdentifier const* id);
+        // Value* evalId(Value const& value);
 
     };
 }

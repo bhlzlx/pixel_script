@@ -67,6 +67,40 @@ namespace ksgw {
     // }
 
     class Name {
+    public:
+        // 描述一段内存
+        struct buffer_t {
+            uint8_t const*      data;
+            uint16_t            length;
+            //
+            uint16_t byteNeed() const {
+                return sizeof(length) + length;
+            }
+            bool operator < ( buffer_t const& other) const {
+                if(length<other.length) {
+                    return true;
+                } else if(length>other.length) {
+                    return false;
+                } else {
+                    return memcmp(data, other.data, length) < 0;
+                }
+            }
+            operator Name() const {
+                return Name(data-sizeof(length));
+            }
+        };
+        struct GernalLess {
+            bool operator () (Name const& a, Name const& b) const {
+                buffer_t bufa { (uint8_t const*)a.text(), a.length() };
+                buffer_t bufb { (uint8_t const*)b.text(), b.length() };
+                return bufa < bufb;
+            };
+        };
+        struct FastLess {
+            bool operator () (Name const& a, Name const& b) const {
+                return a.data() < b.data();
+            };
+        };
     private:
         union {
             uint8_t const*        _addr;
@@ -94,15 +128,15 @@ namespace ksgw {
         uint8_t const* data() const {
             return _addr;
         }
-        bool operator < ( Name const& other) const {
-            if(_proto->length < other._proto->length) {
-                return true;
-            }
-            if(_proto->length > other._proto->length) {
-                return false;
-            }
-            return memcmp(_proto->text, other._proto->text, _proto->length) < 0;
-        }
+        // bool operator < ( Name const& other) const {
+        //     if(_proto->length < other._proto->length) {
+        //         return true;
+        //     }
+        //     if(_proto->length > other._proto->length) {
+        //         return false;
+        //     }
+        //     return memcmp(_proto->text, other._proto->text, _proto->length) < 0;
+        // }
         bool operator == (Name const& other) const {
             return _proto == other._proto;
         }
@@ -112,27 +146,7 @@ namespace ksgw {
     };
 
     class NamePool {
-    public:
-        struct buffer_t {
-            uint8_t const*      data;
-            uint16_t            length;
-            //
-            uint16_t byteNeed() const {
-                return sizeof(length) + length;
-            }
-            bool operator < ( buffer_t const& other) const {
-                if(length<other.length) {
-                    return true;
-                } else if(length>other.length) {
-                    return false;
-                } else {
-                    return memcmp(data, other.data, length) < 0;
-                }
-            }
-            operator Name() const {
-                return Name(data-sizeof(length));
-            }
-        };
+        using buffer_t = Name::buffer_t;
     private:
         std::vector<NameMemoryPoolPage<>*>      _pages;
         std::set<buffer_t>                      _names;

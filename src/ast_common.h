@@ -7,9 +7,9 @@ namespace compiler {
 
     enum class IdentifierType {
         Null,
-        Local,
+        FunctionLocal,
         Global,
-        Package,
+        CurrentPackage,
         Member, // package/namespace/object oriented
     };
 

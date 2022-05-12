@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include <vector>
-#include "ast_common.h"
+#include "vm/vm_types.h"
 
 namespace compiler {
 
@@ -123,6 +123,9 @@ namespace compiler {
             ASTLeaf* asLeaf() const {
                 return _stype == SType::Leaf ? (ASTLeaf*)this : nullptr;
             }
+            ASTPrimary* asPrimary() const {
+                return _stype == SType::Primary ? (ASTPrimary*)this : nullptr;
+            }
         };
 
         class ASTStringList : public Node {
@@ -191,6 +194,14 @@ namespace compiler {
                 return nullptr;
             }
 
+            bool processed() const {
+                return _processed;
+            }
+
+            void valid() const {
+                _valid = true;
+            }
+
             // 局部变量，变量也是动态生成的，所以只存局部变量的一个表中的位置
             // 也可能是通过包访问的一个变量，主时候
             void setValue(IdentifierType type, uint32_t loc) const {
@@ -216,20 +227,40 @@ namespace compiler {
             }
         };
 
+        class ASTMultiExpr : public Node {
+        private:
+            std::vector<Node*> _expressions;
+        public:
+            ASTMultiExpr(VType vtype)
+                : Node(SType::MultiExpr, vtype)
+                , _expressions()
+            {}
+            void addExpr(Node* expr) {
+                _expressions.push_back(expr);
+                expr->setParent(this);
+            }
+            std::vector<Node*> const& expressions() const {
+                return _expressions;
+            }
+            ~ASTMultiExpr() {
+                for(auto expr : _expressions) {
+                    delete expr;
+                }
+            }
+        };
+
         /** 
          * 目前是个函数调用
         */
-        class ASTMultiExpr;
-
         class ASTPrimary : public Node {
         private:
             Node*               _operand;
             ASTMultiExpr*       _params;
         public:
-            ASTPrimary(Node* operand, Node* postfix)
+            ASTPrimary(Node* operand, ASTMultiExpr* postfix)
                 : Node(SType::Primary, VType::None, nullptr)
                 , _operand(operand)
-                , _params((ASTMultiExpr*)postfix)
+                , _params(postfix)
             {
                 operand->setParent(this);
                 postfix->setParent(this);
@@ -290,7 +321,12 @@ namespace compiler {
                 : Node(SType::Variable, VType::None)
                 , _id(id)
                 , _value(value)
-            {}
+            {
+                id->setParent(this);
+                if(value) {
+                    value->setParent(this);
+                }
+            }
 
             Token name() const {
                 return _id->token();
@@ -440,9 +476,9 @@ namespace compiler {
             };
             Token               _name;
             Name                _module;
+            Value               _hostPackage;
             ASTStringList*      _params;
             Node*               _body;
-            SymbolLayout*       _packageLayout;
             SymbolLayout*       _symbolLayout;
         public:
             ASTFunction(VType type)
@@ -451,9 +487,9 @@ namespace compiler {
                 , _compiled(0)
                 , _name()
                 , _module()
+                , _hostPackage()
                 , _params()
                 , _body(nullptr)
-                , _packageLayout(nullptr)
                 , _symbolLayout(nullptr)
             {}
 
@@ -461,12 +497,12 @@ namespace compiler {
                 _symbolLayout = layout;
             }
 
-            void setPackageSymbolLayout(SymbolLayout* layout) {
-                _packageLayout = layout;
+            void setHostPackage(Value pack) {
+                _hostPackage = pack;
             }
 
-            SymbolLayout* packageSymbolLayout() const {
-                return _packageLayout;
+            Value hostPackage() const {
+                return _hostPackage;
             }
 
             SymbolLayout* symbolLayout() const {
@@ -513,36 +549,30 @@ namespace compiler {
                 return _body;
             }
 
+            // global var and local var are different impl
+            // void convertToGlobal() {
+            //     if(_body) {
+            //         ASTFunction* valueExprFunc = new ASTFunction(VType::Closure);
+            //         ASTMultiExpr* funcBody = new ASTMultiExpr(VType::Block);
+            //         funcBody->addExpr(_body);
+            //         _body = valueExprFunc;
+            //     }
+            // }
+
             // get params
             std::vector<Token> const& params() const {
-                return _params->names();
+                static std::vector<Token> empty;
+                if(_params) {
+                    return _params->names();
+                } else {
+                    return empty;
+                }
+                // return _params->names();
             }
 
             ~ASTFunction() {
                 if(_body) {
                     delete _body;
-                }
-            }
-        };
-
-        class ASTMultiExpr : public Node {
-        private:
-            std::vector<Node*> _expressions;
-        public:
-            ASTMultiExpr(VType vtype)
-                : Node(SType::MultiExpr, vtype)
-                , _expressions()
-            {}
-            void addExpr(Node* expr) {
-                _expressions.push_back(expr);
-                expr->setParent(this);
-            }
-            std::vector<Node*> const& expressions() const {
-                return _expressions;
-            }
-            ~ASTMultiExpr() {
-                for(auto expr : _expressions) {
-                    delete expr;
                 }
             }
         };

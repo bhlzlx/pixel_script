@@ -63,12 +63,23 @@ namespace compiler {
             }
             case SType::Variable: {
                 auto var = static_cast<ASTVariable const*>(ast);
+                callBack(var->id());
+                // id is a leaf node, so no need to traverse it
                 callBack(var->valueExpr());
                 traverseAST(var->valueExpr(), callBack);
                 break;
             }
-            case SType::Leaf: {
-                callBack(ast);
+            case SType::Leaf: { // current is leaf, no need to traverse
+                break;
+            }
+            case SType::Primary: {
+                auto operand =ast->asPrimary()->operand(); 
+                auto args = ast->asPrimary()->args();
+                callBack(operand);
+                traverseAST(operand, callBack);
+                if(args) {
+                    traverseAST(args, callBack);
+                }
                 break;
             }
             default: {
@@ -76,11 +87,9 @@ namespace compiler {
                 break;
             }
         }
-
     }
 
     bool Env::compileCodeChunk(char const* mod, Node* ast) {
-        auto module = getName(mod);
         if(ast->structType() == SType::MultiExpr) {
             ASTMultiExpr* exprs = (ASTMultiExpr*)ast;
             auto iter = exprs->expressions().begin();
@@ -89,22 +98,35 @@ namespace compiler {
                 if(expr->valueType() == VType::Package) {
                     auto package = preparePackage(expr);
                     auto packObj = package.asObject();
+                    auto moduleName = getName(mod);
+                    auto module = getModule(moduleName);
+                    module->setHostPackage(package);
                     //
                     ++iter;
                     while(iter != exprs->expressions().end()) {
                         auto expr = *iter;
                         if(expr->structType() == SType::Function) {
                             ASTFunction* func = (ASTFunction*)expr;
-                            auto rst = packObj->addSymbol(func->name().stringLiteral(), SymbolType::Function, Value(func), module);
-                            func->setPackageSymbolLayout(packObj->symbolLayout());
-                            func->setModule(getName(mod));
+                            auto rst = packObj->addSymbol(func->name().stringLiteral(), SymbolType::Function, Value(func), moduleName);
+                            func->setHostPackage(package);
+                            func->setModule(moduleName);
                             if(!rst.first) {
                                 assert(false);
                                 return false;
                             }
                         } else if( expr->structType() == SType::Variable ) {
                             ASTVariable* var = (ASTVariable*)expr;
-                            auto rst = packObj->addSymbol(var->name().stringLiteral(), SymbolType::Variable, Value(var), module);
+                            // 注意这个地方，value不是ast节点，而是实际给了一个空值，占位。
+                            auto rst = packObj->addSymbol(var->name().stringLiteral(), SymbolType::Variable, Value(), moduleName);
+                            if(var->valueExpr()) { // 创建一个特别的function，给var初始化，方便代码重用，处理
+                                ASTMultiExpr* funcBody = new ASTMultiExpr(VType::Block);
+                                funcBody->addExpr(var->valueExpr());
+                                ASTFunction* func = new ASTFunction(VType::Closure);
+                                func->setBody(funcBody);
+                                func->setHostPackage(package);
+                                func->setModule(moduleName);
+                                module->addInitliaze(rst.second, func); // 添加变量到初始化列表
+                            }
                         } else {
                             assert(false && "only function & variable can be defined in package");
                             return false;
@@ -137,48 +159,43 @@ namespace compiler {
             }
         }
         // the callback
+        // 我们关心特定的节点，这些节点代表变量定义与引用
+        /**
+         * @brief 
+         * 1. Variable 变量定义
+         * 2. 二元操作符里的Id
+         *   * id在左边一定是变量引用
+         *   * id在右边如果二元操作符是dot，不是变量否则是变量引用
+         * 3. Primary的operand如果是id，则是变量引用
+         */
         TraverseCallBack processor = [&](compiler::Node const* node) {
-            if(node->structType() == compiler::SType::Variable) {
-                auto var = static_cast<compiler::ASTVariable const*>(node);
-                auto token = var->name();
-                auto regRst = symLayout->regSymbol(token.stringLiteral(), SymbolType::Variable, func->module());
-                var->id()->setValue(IdentifierType::Local, regRst.second);
-            } else if( node->structType() == compiler::SType::BinaryOp) {
-                auto binExpr = static_cast<compiler::ASTBinaryOpExpr const*>(node);
-                auto leftExpr = binExpr->left();
-                auto rightExpr = binExpr->right();
-                if(leftExpr->valueType() == compiler::VType::Id) {
-                    auto rst = locateIdentifier({symLayout, }, static_cast<compiler::ASTIdentifier const*>(leftExpr));
-                    if(!rst) {
-                        compilerErrors.push_back(((ASTIdentifier*)leftExpr)->token());
-                    }
-                } 
-                if(rightExpr->valueType() == compiler::VType::Id) {
-                    if(binExpr->op() != compiler::TokenType::Dot) {
-                        auto id = static_cast<compiler::ASTLeaf const*>(rightExpr);
-                        auto token = id->token();
-                        if(token.type() == compiler::TokenType::Identifier) {
-                            auto rst = locateIdentifier({symLayout, func->packageSymbolLayout()}, static_cast<compiler::ASTIdentifier const*>(rightExpr));
-                            if(!rst) {
-                                compilerErrors.push_back(((ASTIdentifier*)rightExpr)->token());
-                            }
+            ASTIdentifier* id = node->asId();
+            if(!id) {
+                return;
+            }
+            IdLocateEnv locateEnv = {symLayout, func->hostPackage().asObject()->symbolLayout()};
+            auto parent = node->parent();
+            switch(parent->structType()) {
+                case SType::Variable: { // define variable        
+                    auto regRst = symLayout->regSymbol(id->token().stringLiteral(), SymbolType::Variable, func->module());
+                    id->setValue(IdentifierType::FunctionLocal, regRst.second);
+                    return;
+                }
+                case SType::BinaryOp: {
+                    auto binOp = parent->asBinaryExpr();
+                    if(binOp->op() == TokenType::Dot) {
+                        if(node == binOp->right()) {
+                            return;
                         }
                     }
-                }
-            } else if( node->structType() == compiler::SType::Primary) {
-                auto primary = static_cast<compiler::ASTPrimary const*>(node);
-                if(primary->operand()->valueType() == compiler::VType::Id) {
-                    auto id = primary->operand();
-                    auto rst = locateIdentifier({symLayout, func->packageSymbolLayout()}, static_cast<compiler::ASTIdentifier const*>(id));
-                    if(!rst) {
-                        compilerErrors.push_back(((ASTIdentifier*)id)->token());
+                    if(!locateIdentifier(locateEnv, id)) {
+                        compilerErrors.push_back(id->token());
                     }
+                    return;
                 }
-            } else if(node->valueType() == compiler::VType::Id) {
-                if(node->parent()->structType() == compiler::SType::MultiExpr) {
-                    auto rst = locateIdentifier({symLayout, func->packageSymbolLayout()}, static_cast<compiler::ASTIdentifier const*>(node));
-                    if(!rst) {
-                        compilerErrors.push_back(((ASTIdentifier*)node)->token());
+                default: {
+                    if(!locateIdentifier(locateEnv, id)) {
+                        compilerErrors.push_back(id->token());
                     }
                 }
             }
@@ -193,22 +210,22 @@ namespace compiler {
         return compilerErrors;
     }
 
-    bool Env::locateIdentifier(IdentifierLocatorEnv env, ASTIdentifier const* id) {
+    bool Env::locateIdentifier(IdLocateEnv env, ASTIdentifier const* id) {
         auto name = id->token().stringLiteral();
         auto symbolLoc = env.functionLayout->querySymbolLoc(name);
         if(~symbolLoc != 0) { // local var
-            id->setValue( IdentifierType::Local, symbolLoc);
+            id->setValue( IdentifierType::FunctionLocal, symbolLoc);
             return true;
         } else { // current package var
             symbolLoc = env.packageLayout->querySymbolLoc(name);
             if(~symbolLoc != 0) {
-                id->setValue( IdentifierType::Package, symbolLoc);
+                id->setValue( IdentifierType::CurrentPackage, symbolLoc);
                 return true;
             }
             else {
                 symbolLoc = _package.asObject()->symbolLayout()->querySymbolLoc(name);
                 if(~symbolLoc != 0) {
-                    id->setValue( IdentifierType::Package, symbolLoc);
+                    id->setValue( IdentifierType::Global, symbolLoc);
                     return true;
                 }
                 return false;
@@ -219,13 +236,13 @@ namespace compiler {
 
     Value Env::eval(Node const* ast) {
         // MultiExpr,If,While,BinaryOp,Variable,Leaf,Primary,NegtiveOp,Pair,Function,StringList,
-        Value nil;
+        Value rst;
         switch(ast->structType()) {
             case SType::BinaryOp: {
                 ASTBinaryOpExpr* binExpr = ast->asBinaryExpr();
                 Value left = eval(binExpr->left());
                 Value right = eval(binExpr->right());
-                return evalBinaryOp(binExpr->op(), &left, &right);
+                return evalBinaryOp(binExpr->op(), left, right);
             }
             case SType::If: {
                 ASTIfStatement* ifExpr = ast->asIf();
@@ -274,17 +291,24 @@ namespace compiler {
             case SType::Variable:{
                 ASTVariable* var = ast->asVar();
                 ASTIdentifier* id = var->id();
-                Value frame = currentFrame();
+                auto fenv = funcEnv();
                 auto loc = id->valueLoc();
-                Value* val = frame[loc];
-                *val = eval(var->valueExpr());
-                return *val;
+                Value* varVtVal = fenv->vt[loc];
+                Value varExprEvalVal = eval(var->valueExpr());
+                if(varExprEvalVal.type() == ValueType::ValueRef) {
+                    *varVtVal = *varExprEvalVal.ref();
+                } else {
+                    *varVtVal = varExprEvalVal;
+                }
+                return *varVtVal;
             }
             case SType::Primary: {
                 ASTPrimary* primary = (ASTPrimary*)ast;
                 Value val = eval(primary->operand());
-                if(val.type() != ValueType::ASTNode) {
-                    return nil;
+                assert(val.type() == ValueType::ValueRef);
+                val = *val.ref();
+                if(val.type() != ValueType::FunctionNode) { // it must be a function
+                    return rst;
                 } else {
                     std::vector<Value> args;
                     for(auto expr: primary->args()->expressions()) {
@@ -293,6 +317,11 @@ namespace compiler {
                     Node const* node = val.node();
                     if(node->structType() == SType::Function) {
                         ASTFunction* func = (ASTFunction*)node;
+                        for(auto& arg : args) {
+                            if(arg.type() == ValueType::ValueRef) {
+                                arg = *arg.ref(); 
+                            }
+                        }
                         return callFunction(val,args);
                     } else {
                         return Value();
@@ -301,14 +330,10 @@ namespace compiler {
                 break;
             }
             case SType::Leaf: {
-                Value rst;
                 auto leaf = ast->asLeaf();
                 Token token = leaf->token();
                 if(leaf->valueType() == VType::Id) {
-                    rst = Value(leaf);
-                    // auto id = leaf->asId();
-                    // auto loc = id->valueLoc();
-                    // rst = *currentFrame()[loc];
+                    rst = evalIdentifier(leaf->asId());
                 } else {
                     switch(token.type()) {
                         case TokenType::Float: {
@@ -323,6 +348,10 @@ namespace compiler {
                             rst.setString(token.stringLiteral());
                             break;
                         }
+                        default: {
+                            assert(false);
+                            break;
+                        }
                     }
                 }
                 return rst;
@@ -332,29 +361,19 @@ namespace compiler {
                 break;
             }
         }
-        return Value();
+        return rst;
     }
 
-    Value Env::evalBinaryOp(Token op, Value const* a, Value const* b) {
-        auto frame = currentFrame();
-        if(a->type() == ValueType::ASTNode) {
-            assert(a->node()->structType() == SType::Leaf);
-            assert(a->node()->valueType() == VType::Id);
-            auto loc = a->node()->asId()->valueLoc();
-            a = frame[loc];
-        }
-        if(b->type() == ValueType::ASTNode) {
-            assert(b->node()->structType() == SType::Leaf);
-            assert(b->node()->valueType() == VType::Id);
-            auto loc = b->node()->asId()->valueLoc();
-            b = frame[loc];
-        }
-        if(a->type() == ValueType::Int64) {
-            IntegerValue const* ival = (IntegerValue const*)a;
-            return ival->Op(op, *b);
-        } else if(a->type() == ValueType::Float64) {
-            FloatValue const* fval = (FloatValue const*)a;
-            return fval->Op(op, *b);
+    Value Env::evalBinaryOp(Token op, Value a, Value b) {
+        auto fenv = funcEnv();
+        Value* ap = a.ref();
+        Value* bp = b.ref();
+        if(ap->type() == ValueType::Int64) {
+            IntegerValue const* ival = (IntegerValue const*)ap;
+            return ival->Op(op, *bp);
+        } else if(ap->type() == ValueType::Float64) {
+            FloatValue const* fval = (FloatValue const*)ap;
+            return fval->Op(op, *bp);
         } else {
             assert(false && "unsupported type");
         }
@@ -374,19 +393,23 @@ namespace compiler {
             return Value();
         }
         auto params = fn->params();
-        _stackFrame.emplace_back(fn->symbolLayout());
-        auto frame = currentFrame();
-        for(size_t i = 0; (i < params.size())&&(i<args.size()); i++) {
-            Value* argRef = frame[i];
-            *argRef = args[i];
-        }
-        Value rst = eval(fn->body());
-        if(rst.type() == ValueType::ASTNode) {
-            auto id = rst.node()->asId();
-            rst = *currentFrame()[id->valueLoc()];
+        auto vt = Value(fn->symbolLayout());  // value table
+        FuncEnv fenv = { vt, fn };
+        _funcEnvs.push_back(fenv); // 实际上创建了一个新的局部变量表
+        Value rst;
+        {
+            auto fenv = funcEnv();
+            for(size_t i = 0; (i < params.size())&&(i<args.size()); i++) {
+                Value* argRef = fenv->vt[i];
+                *argRef = args[i];
+            }
+            rst = eval(fn->body());
+            if(rst.type() == ValueType::ValueRef) {
+                rst = *rst.ref();
+            }
         }
         // clean up the stack frame
-        _stackFrame.pop_back();
+        _funcEnvs.pop_back();
         return rst;
     }
 
@@ -419,5 +442,67 @@ namespace compiler {
             return callFunction(val, std::vector<Value>());
         }
         return Value();
+    }
+
+    Value Env::evalIdentifier(ASTIdentifier const* id) {
+        auto idType = id->type(); 
+        switch(idType) {
+            case IdentifierType::Global: {
+                return Value(_package[id->valueLoc()]);
+            }
+            case IdentifierType::FunctionLocal: {
+                auto loc = id->valueLoc();
+                auto fenv = funcEnv();
+                return Value(fenv->vt[loc]);
+            }
+            case IdentifierType::CurrentPackage: {
+                auto fenv = funcEnv();
+                Value hostPack = fenv->func->hostPackage();
+                auto loc = id->valueLoc();
+                return Value(hostPack[loc]);
+            }
+            default: {
+                assert(false);
+                break;
+            }
+        }
+        return Value();
+    }
+
+    // Value* Env::evalId(Value const& value) {
+    //     if(value.type() == ValueType::ASTNode) {
+    //         auto node = value.node()->asId();
+    //         if(node->valueType() == VType::Id) {
+    //             auto id = node->asId();
+    //             auto idType = (IdentifierType)id->type();
+    //             switch(idType) {
+    //                 case IdentifierType::Global: {
+    //                     return _package[id->valueLoc()];
+    //                 }
+    //                 case IdentifierType::FunctionLocal: {
+    //                     auto loc = id->valueLoc();
+    //                     auto fenv = funcEnv();
+    //                     return fenv->vt[loc];
+    //                 }
+    //                 case IdentifierType::CurrentPackage: {
+    //                     auto fenv = funcEnv();
+    //                     Value hostPack = fenv->func->hostPackage();
+    //                     auto loc = id->valueLoc();
+    //                     return hostPack[loc];
+    //                 }
+    //                 default: {
+    //                     assert(false);
+    //                     break;
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     return nullptr;
+    // }
+
+    void Env::initializeModule(char const* module) {
+        auto modName = getName(module);
+        auto mod = getModule(modName);
+        mod->initialize(this);
     }
 }

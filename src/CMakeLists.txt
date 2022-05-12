@@ -11,6 +11,7 @@ PRIVATE
     vm/vm_types.cpp
     vm/vm_env.cpp
     vm/vm_symbol.cpp
+    vm/vm_module.cpp
 )
 
 target_include_directories(stone

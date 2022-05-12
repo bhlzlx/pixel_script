@@ -52,6 +52,7 @@
         "ios": "cpp",
         "ostream": "cpp",
         "streambuf": "cpp",
-        "xlocbuf": "cpp"
+        "xlocbuf": "cpp",
+        "*.rh": "cpp"
     }
 }

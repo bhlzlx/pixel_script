@@ -48,14 +48,20 @@ namespace compiler {
         _obj = other._obj;
         _type = other._type;
         if(_type == ValueType::Object) {
-            _obj->ref();
+            _obj->incRef();
         }
+    }
+
+    Value::Value(Value* ref) {
+        _type = ValueType::ValueRef;
+        _ref = ref;
     }
 
     Value::Value(Node const* node)
         : _node(node) 
-        , _type(ValueType::ASTNode)
+        , _type(ValueType::FunctionNode)
     {
+        assert(node->structType() == SType::Function);
     }
 
     Value::Value( Value&& other) {
@@ -66,17 +72,24 @@ namespace compiler {
     }
 
     Value& Value::operator = (Value const& other) {
-        deref(); // deref the old value
+        decRef(); // decRef the old value
         _obj = other._obj;
         _type = other._type;
         if(_type == ValueType::Object) {
-            _obj->ref();
+            _obj->incRef();
         }
         return *this;
     }
 
+    Value* Value::ref() {
+        if(_type == ValueType::ValueRef) {
+            return _ref;
+        }
+        return this;
+    }
+
     Value& Value::operator = (Value&& other) {
-        deref();
+        decRef();
         _obj = other._obj;
         _type = other._type;
         other._obj = nullptr;
@@ -103,7 +116,7 @@ namespace compiler {
     }
 
     ASTFunction* Value::asFunc() const {
-        if(_type != ValueType::ASTNode) {
+        if(_type != ValueType::FunctionNode) {
             return nullptr;
         }
         if(_node->structType() != SType::Function) {
@@ -113,7 +126,7 @@ namespace compiler {
     }
     
     ASTVariable* Value::astVar() const {
-        if(_type != ValueType::ASTNode) {
+        if(_type != ValueType::FunctionNode) {
             return nullptr;
         }
         if(_node->structType() != SType::Variable) {
@@ -122,14 +135,14 @@ namespace compiler {
         return (ASTVariable*)_node;
     }
 
-    void Value::deref() {
+    void Value::decRef() {
         if(_type == ValueType::Object) {
-            _obj->deref();
+            _obj->decRef();
         }
     }
 
     Value::~Value() {
-        deref();
+        decRef();
     }
 
     void Value::setInt64(int64_t i64) {

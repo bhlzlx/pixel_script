@@ -33,11 +33,11 @@ namespace compiler {
         {
         }
 
-        void ref() {
+        void incRef() {
             ++_refCount;
         }
 
-        void deref() {
+        void decRef() {
             --_refCount;
             if(_refCount == 0) {
                 delete this;
@@ -89,20 +89,20 @@ namespace compiler {
         }
     };
 
-    class Package: public Object {
-    private:
-        std::vector<SymbolLayout*> _subpackLayouts;
-    public:
-        Package(SymbolLayout* layout) 
-            : Object( layout, ObjectType::Package)
-            , _subpackLayouts()
-        {}
+    // class Package: public Object {
+    // private:
+    //     std::vector<SymbolLayout*> _subpackLayouts;
+    // public:
+    //     Package(SymbolLayout* layout) 
+    //         : Object( layout, ObjectType::Package)
+    //         , _subpackLayouts()
+    //     {}
 
-        bool compileModule(Name name, Node* ast);
+    //     bool compileModule(Name name, Node* ast);
 
-        void unloadModule(Name name);
+    //     void unloadModule(Name name);
 
-        Package* prepareSubPackage(Name name);
-    };
+    //     Package* prepareSubPackage(Name name);
+    // };
 
 }

@@ -14,21 +14,13 @@ namespace compiler {
     class Symbol {
     private:
         SymbolType          _type;
-        // Node const*         _astNode;
-        // Value               _value;
         Name                _moduleName;
     public:
         Symbol(SymbolType type, Name moduleName)
             : _type(type)
-            // , _astNode(astNode)
-            // , _value(value)
             , _moduleName(moduleName)
         {
         }
-
-        // Value& value() {
-        //     return _value;
-        // }
 
         SymbolType type() const {
             return _type;

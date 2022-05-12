@@ -74,7 +74,8 @@ namespace compiler {
         Float64,
         String,
         Object,
-        ASTNode,
+        ValueRef,
+        FunctionNode,
         UserData
     };
 
@@ -86,6 +87,7 @@ namespace compiler {
             double          _f64;
             Name            _str;
             Object*         _obj;
+            Value*          _ref;
             Node const*     _node;
             void*           _ud;
         };
@@ -99,8 +101,9 @@ namespace compiler {
         Value(SymbolLayout* symbolLayout);
         Value(Value const& other);
         Value(Node const* node);
+        Value(Value* ref);
 
-        Value( Value&& other);
+        Value(Value&& other);
 
         Value& operator = (Value const& other);
         Value& operator = (Value&& other);
@@ -110,7 +113,8 @@ namespace compiler {
         ASTFunction* asFunc() const;
         ASTVariable* astVar() const;
 
-        void deref() ;
+        void decRef() ;
+        Value* ref();
 
         ~Value();
 
