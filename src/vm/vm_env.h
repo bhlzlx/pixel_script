@@ -33,66 +33,63 @@ namespace compiler {
             _symbolLayouts.push_back(symLayout);
             return symLayout;
         }
-    public:
-        Env() {
-            auto layout = newSymbolLayout();
-            _package = Value(layout);
-            //
-            compiler::keywords::init(this);
-        }
-
-        void initializeModule(char const* module);
-
-        Name getName(char const* str);
-
-        Value rootPackage() {
-            return _package;
-        }
-
-        Module* getModule(Name const& name) {
-            auto it = _modules.find(name);
-            if (it != _modules.end()) {
-                return it->second;
-            } else {
-                Module* mod = new Module();
-                auto rst = _modules.insert(std::make_pair(name, mod));
-                return rst.first->second;
-            }
-        }
-
-        bool compileCodeChunk(char const* module, Node* ast);
-
-        FuncEnv const* funcEnv() {
-            return &_funcEnvs.back();
-        }
-
+    private:
+        // utility functions
+        Value rootPackage() { return _package; }
+        FuncEnv const* funcEnv() { return &_funcEnvs.back(); }
         Value preparePackage(Node* ast);
-
         struct IdLocateEnv {
             SymbolLayout*   functionLayout;     // local symbol layout
             SymbolLayout*   packageLayout;      // local symbol layout
         };
-
         bool locateIdentifier(IdLocateEnv env, ASTIdentifier const* id) ;
-        
-        std::vector<Token> compileFunction(ASTFunction* ast);
-
         void traverseAST(Node const* ast, TraverseCallBack& callBack);
+        std::vector<Token> postprocessFunction(ASTFunction* ast);
 
+    public:
+
+        Env() {
+            auto layout = newSymbolLayout();
+            _package = Value(layout);
+            compiler::keywords::init(this);
+        }
+
+        Name createName(char const* str);
+
+        Module* getModule(Name const& name);
+
+        bool compileCodeChunk(char const* module, Node* ast);
+        void initializeModule(char const* module);
         Value callFunction(Value const& func, std::vector<Value> const& args);
 
-        Value callFunction(std::string func); // test
-
-        // eval functions
         /**
-         * @brief evalAST
-         * @param ast
+         * @brief only for test
          * 
+         * @param func 
+         * @return Value 
+         */
+        Value callFunction(std::string func);
+
+        /**
+         * @brief 计算一个节点的值
         **/
         Value eval(Node const* ast);
+
+        /**
+         * @brief 
+         *   二元表达式有点特殊，它是少数直接跟值打交道的，所以单独拿出来实现了
+         * @param op 
+         * @return Value 
+         */
         Value evalBinaryOp(Token op, Value a, Value b);
+
+        /**
+         * @brief 
+         *   计算一个标识符的值，是某个已经存在的于变量表里的变量引用
+         * @param id 
+         * @return Value 
+         */
         Value evalIdentifier(ASTIdentifier const* id);
-        // Value* evalId(Value const& value);
 
     };
 }

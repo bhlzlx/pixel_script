@@ -14,7 +14,7 @@ namespace compiler {
     };
 
     class Token;
-    class Lexer;
+    // class Lexer;
     class SymbolLayout;
     class Value;
     class Object;

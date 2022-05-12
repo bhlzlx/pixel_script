@@ -12,7 +12,7 @@ namespace compiler {
         void init(Env* env) {
             // TokenBuf buf;
             #undef KEYWORD
-            #define KEYWORD( keyword ) _##keyword = env->getName(#keyword); _all.insert(_##keyword);
+            #define KEYWORD( keyword ) _##keyword = env->createName(#keyword); _all.insert(_##keyword);
             #include "keywords.h"
         }
     }

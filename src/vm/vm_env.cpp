@@ -2,7 +2,7 @@
 
 namespace compiler {
 
-    Name Env::getName(char const* str) {
+    Name Env::createName(char const* str) {
         return _namePool.getName(str);
     }
 
@@ -98,7 +98,7 @@ namespace compiler {
                 if(expr->valueType() == VType::Package) {
                     auto package = preparePackage(expr);
                     auto packObj = package.asObject();
-                    auto moduleName = getName(mod);
+                    auto moduleName = createName(mod);
                     auto module = getModule(moduleName);
                     module->setHostPackage(package);
                     //
@@ -146,7 +146,7 @@ namespace compiler {
         }
     }
         
-    std::vector<Token> Env::compileFunction(ASTFunction* ast) {
+    std::vector<Token> Env::postprocessFunction(ASTFunction* ast) {
         assert(ast->structType() == SType::Function);
         SymbolLayout* symLayout = newSymbolLayout();
         std::vector<Token> compilerErrors;
@@ -234,157 +234,11 @@ namespace compiler {
         return false;
     }
 
-    Value Env::eval(Node const* ast) {
-        // MultiExpr,If,While,BinaryOp,Variable,Leaf,Primary,NegtiveOp,Pair,Function,StringList,
-        Value rst;
-        switch(ast->structType()) {
-            case SType::BinaryOp: {
-                ASTBinaryOpExpr* binExpr = ast->asBinaryExpr();
-                Value left = eval(binExpr->left());
-                Value right = eval(binExpr->right());
-                return evalBinaryOp(binExpr->op(), left, right);
-            }
-            case SType::If: {
-                ASTIfStatement* ifExpr = ast->asIf();
-                Value cond = eval(ifExpr->condition());
-                if(cond) {
-                    return eval(ifExpr->elseBranch()); 
-                } else {
-                    return eval(ifExpr->thenBranch());
-                }
-                break;
-            }
-            case SType::While: {
-                Value rst;
-                ASTWhileStatement* whileExpr = ast->asWhile();
-                Value cond = eval(whileExpr->condition());
-                while(cond) {
-                    rst = eval(whileExpr->body());
-                    cond = eval(whileExpr->condition());
-                }
-                return rst;
-            }
-            case SType::MultiExpr: {
-                ASTMultiExpr* multiExpr = ast->asMultiExpr();
-                Value rst;
-                for(auto expr: multiExpr->expressions()) {
-                    rst = eval(expr);
-                }
-                return rst;
-            }
-            case SType::NegtiveOp: {
-                ASTNegativeExpression* negtiveOp = ast->asNegativeExpr();
-                Value val = eval(negtiveOp->value());
-                Value rst;
-                if(val.type() == ValueType::Int64) {
-                    rst.setInt64(-val.intValue());
-                    return rst;
-                } else if(val.type() == ValueType::Float64) {
-                    rst.setFloat64(-val.floatValue());
-                    return rst;
-                } else {
-                    ExecuteException except(negtiveOp->op());
-                    throw except;
-                }
-                return Value();
-            }
-            case SType::Variable:{
-                ASTVariable* var = ast->asVar();
-                ASTIdentifier* id = var->id();
-                auto fenv = funcEnv();
-                auto loc = id->valueLoc();
-                Value* varVtVal = fenv->vt[loc];
-                Value varExprEvalVal = eval(var->valueExpr());
-                if(varExprEvalVal.type() == ValueType::ValueRef) {
-                    *varVtVal = *varExprEvalVal.ref();
-                } else {
-                    *varVtVal = varExprEvalVal;
-                }
-                return *varVtVal;
-            }
-            case SType::Primary: {
-                ASTPrimary* primary = (ASTPrimary*)ast;
-                Value val = eval(primary->operand());
-                assert(val.type() == ValueType::ValueRef);
-                val = *val.ref();
-                if(val.type() != ValueType::FunctionNode) { // it must be a function
-                    return rst;
-                } else {
-                    std::vector<Value> args;
-                    for(auto expr: primary->args()->expressions()) {
-                        args.push_back(eval(expr));
-                    }
-                    Node const* node = val.node();
-                    if(node->structType() == SType::Function) {
-                        ASTFunction* func = (ASTFunction*)node;
-                        for(auto& arg : args) {
-                            if(arg.type() == ValueType::ValueRef) {
-                                arg = *arg.ref(); 
-                            }
-                        }
-                        return callFunction(val,args);
-                    } else {
-                        return Value();
-                    }
-                }
-                break;
-            }
-            case SType::Leaf: {
-                auto leaf = ast->asLeaf();
-                Token token = leaf->token();
-                if(leaf->valueType() == VType::Id) {
-                    rst = evalIdentifier(leaf->asId());
-                } else {
-                    switch(token.type()) {
-                        case TokenType::Float: {
-                            rst.setFloat64(token.floatLiteral());
-                            break;
-                        }
-                        case TokenType::Integer: {
-                            rst.setInt64(token.integerLiteral());
-                            break;
-                        }
-                        case TokenType::String: {
-                            rst.setString(token.stringLiteral());
-                            break;
-                        }
-                        default: {
-                            assert(false);
-                            break;
-                        }
-                    }
-                }
-                return rst;
-            }
-            default: {
-                assert(false);
-                break;
-            }
-        }
-        return rst;
-    }
-
-    Value Env::evalBinaryOp(Token op, Value a, Value b) {
-        auto fenv = funcEnv();
-        Value* ap = a.ref();
-        Value* bp = b.ref();
-        if(ap->type() == ValueType::Int64) {
-            IntegerValue const* ival = (IntegerValue const*)ap;
-            return ival->Op(op, *bp);
-        } else if(ap->type() == ValueType::Float64) {
-            FloatValue const* fval = (FloatValue const*)ap;
-            return fval->Op(op, *bp);
-        } else {
-            assert(false && "unsupported type");
-        }
-        return Value();
-    }
-
     Value Env::callFunction(Value const& func, std::vector<Value> const& args) {
         // assert(func.type() == ValueType::Function);
         ASTFunction* fn = (ASTFunction*)func.node();
         if(!fn->compiled()){
-            auto errs = this->compileFunction(fn);
+            auto errs = this->postprocessFunction(fn);
             if(errs.size()) {
                 return Value();
             }
@@ -425,7 +279,7 @@ namespace compiler {
             } else {
                 id = std::string(func.begin()+last, func.begin()+pos);
             }
-            auto name = getName(id.c_str());
+            auto name = createName(id.c_str());
             auto attr = val[name];
             if(attr) {
                 val = *attr;
@@ -444,65 +298,20 @@ namespace compiler {
         return Value();
     }
 
-    Value Env::evalIdentifier(ASTIdentifier const* id) {
-        auto idType = id->type(); 
-        switch(idType) {
-            case IdentifierType::Global: {
-                return Value(_package[id->valueLoc()]);
-            }
-            case IdentifierType::FunctionLocal: {
-                auto loc = id->valueLoc();
-                auto fenv = funcEnv();
-                return Value(fenv->vt[loc]);
-            }
-            case IdentifierType::CurrentPackage: {
-                auto fenv = funcEnv();
-                Value hostPack = fenv->func->hostPackage();
-                auto loc = id->valueLoc();
-                return Value(hostPack[loc]);
-            }
-            default: {
-                assert(false);
-                break;
-            }
-        }
-        return Value();
-    }
-
-    // Value* Env::evalId(Value const& value) {
-    //     if(value.type() == ValueType::ASTNode) {
-    //         auto node = value.node()->asId();
-    //         if(node->valueType() == VType::Id) {
-    //             auto id = node->asId();
-    //             auto idType = (IdentifierType)id->type();
-    //             switch(idType) {
-    //                 case IdentifierType::Global: {
-    //                     return _package[id->valueLoc()];
-    //                 }
-    //                 case IdentifierType::FunctionLocal: {
-    //                     auto loc = id->valueLoc();
-    //                     auto fenv = funcEnv();
-    //                     return fenv->vt[loc];
-    //                 }
-    //                 case IdentifierType::CurrentPackage: {
-    //                     auto fenv = funcEnv();
-    //                     Value hostPack = fenv->func->hostPackage();
-    //                     auto loc = id->valueLoc();
-    //                     return hostPack[loc];
-    //                 }
-    //                 default: {
-    //                     assert(false);
-    //                     break;
-    //                 }
-    //             }
-    //         }
-    //     }
-    //     return nullptr;
-    // }
-
     void Env::initializeModule(char const* module) {
-        auto modName = getName(module);
+        auto modName = createName(module);
         auto mod = getModule(modName);
         mod->initialize(this);
+    }
+
+    Module* Env::getModule(Name const& name) {
+        auto it = _modules.find(name);
+        if (it != _modules.end()) {
+            return it->second;
+        } else {
+            Module* mod = new Module();
+            auto rst = _modules.insert(std::make_pair(name, mod));
+            return rst.first->second;
+        }
     }
 }

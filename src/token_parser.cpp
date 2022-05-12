@@ -185,7 +185,7 @@ namespace compiler {
             if(!std::isblank(ch)) {
                 fallback();
             }
-            _token = Token(TokenType::Identifier, _env->getName(_tokenBuf.str()));
+            _token = Token(TokenType::Identifier, _env->createName(_tokenBuf.str()));
             if(keywords::_all.find(_token.stringLiteral()) != keywords::_all.end()) {
                 _token.setType(TokenType::Keyword);
             }
