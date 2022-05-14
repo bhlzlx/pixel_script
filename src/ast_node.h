@@ -16,6 +16,7 @@ namespace compiler {
             Pair,
             Function,
             StringList,
+            Class,
             None,
         };
 
@@ -35,6 +36,8 @@ namespace compiler {
             WhileStmt,
             Params, // 形参，id列表
             Package,
+            Extends,
+            ClassBody,
         };
 
 
@@ -238,6 +241,13 @@ namespace compiler {
             Token token() const {
                 return _token;
             }
+        };
+
+        class ClassExtends : public Leaf {
+        public:
+            ClassExtends(Token token)
+                : Leaf(VType::Extends, token)
+            {}
         };
 
         class Identifier: public Leaf {
@@ -539,6 +549,20 @@ namespace compiler {
                     delete _body;
                 }
             }
+        };
+
+        class Class : public Node {
+        private:
+            Token           _name;
+            ClassExtends*   _extends;
+            MultiExpr*      _body;
+        public:
+            Class(Token name, ClassExtends* extends, MultiExpr* body)
+                : Node(SType::Class, VType::None)
+                , _name(name)
+                , _extends(extends)
+                , _body(body)
+            {}
         };
 
     }

@@ -33,6 +33,8 @@ namespace compiler {
         PackageMismatch,
         CodeChunkMismatch,
         DotExpected,
+        ClassExtendsMismatch,
+        ClassMismatch,
     };
     struct MatchResult {
         ast::Node*      node;
@@ -75,6 +77,11 @@ namespace compiler {
         MatchResult matchDotAccess();
 
         MatchResult matchDefVariable();
+
+        MatchResult matchClassDef();
+        MatchResult matchExtends();
+        MatchResult matchClassBody();
+        // MatchResult matchMemberDef();
 
         Token const* nextToken();
 

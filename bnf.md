@@ -10,12 +10,13 @@
 * simple := expr
 * block := "{" [statement] {;|EOL| [statement] } "}"
 * statement := if expr block ["else" block] | "while" expr block | def_var | simple
-* program := {func|statement} (; | EOF)
+* program := {def_func|statement} (; | EOF)
 * params := id {, id}
 * param_list := "(" [params] ")"
-* func := "func" id args_decl block
+* def_func := "func" id args_decl block
 * closure := "func" args_decl block
 
+* member : def_var | def_func
 * class_body := "{" member {(EOL|;) member }  "}"
 * def_class := "class" id ["extend" id] class_body
 

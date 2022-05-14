@@ -337,12 +337,17 @@ namespace compiler {
                     if(var) {
                         chunk->addExpr(var.node);
                     } else {
-                        token = nextToken();
-                        if(token->type() == TokenType::Eof) {
-                            return { chunk, ASTParseError::None, token->line(), token->column() };
+                        auto clazz = matchClassDef();
+                        if(clazz) {
+                            chunk->addExpr(clazz.node);
                         } else {
-                            delete chunk;
-                            return { nullptr, ASTParseError::VarMismatch, token->line(), token->column() };
+                            token = nextToken();
+                            if(token->type() == TokenType::Eof) {
+                                return { chunk, ASTParseError::None, token->line(), token->column() };
+                            } else {
+                                delete chunk;
+                                return { nullptr, ASTParseError::VarMismatch, token->line(), token->column() };
+                            }
                         }
                     }
                 }
@@ -643,6 +648,74 @@ namespace compiler {
             }
         }
         return { nullptr, ASTParseError::PackageMismatch, token->line(), token->column() };
+    }
+
+    MatchResult ASTBuilder::matchClassDef() {
+        ConsumeStateHelper helper(this, true);
+        consumeCommaEol();
+        auto token = nextToken();
+        if(token->type() == TokenType::Keyword) {
+            if(token->stringLiteral() == keywords::_class) {
+                consumeCurrentToken();
+                token = nextToken();
+                if(token->type() == TokenType::Identifier) {
+                    auto className = *token;
+                    consumeCurrentToken();
+                    ClassExtends* extends = nullptr;
+                    if(token->type() == TokenType::Keyword) {
+                        if(token->stringLiteral() == keywords::_extends) {
+                            consumeCurrentToken();
+                            token = nextToken();
+                            if(token->type() == TokenType::Identifier) {
+                                consumeCurrentToken();
+                                extends = new ClassExtends(*token);
+                            } else {
+                                return { nullptr, ASTParseError::ClassExtendsMismatch, token->line(), token->column() };
+                            }
+                        }
+                    }
+                    auto body = matchClassBody();
+                    if(body) {
+                        auto clazz = new Class(className, extends, (MultiExpr*)body.node);
+                        return { clazz, ASTParseError::None, className.line(), className.column() };
+                    } else {
+                        return body;
+                    }
+
+                }
+            }
+        }
+        return { nullptr, ASTParseError::ClassMismatch, token->line(), token->column() };
+    }
+
+    MatchResult ASTBuilder::matchClassBody() {
+        ConsumeStateHelper helper(this, true);
+        auto token = nextToken();
+        if(token->type() != TokenType::LeftBrace) {
+            return { nullptr, ASTParseError::LeftParenExpected, token->line(), token->column() };
+        }
+        consumeCurrentToken();
+        MultiExpr* body = new MultiExpr(VType::ClassBody);
+        while(true) {
+            consumeCommaEol();
+            auto var = matchDefVariable();
+            if(var) {
+                body->addExpr(var.node);
+            } else {
+                auto fun = matchFunctionDef();
+                if(fun) {
+                    body->addExpr(fun.node);
+                } else {
+                    break;
+                }
+            }
+        }
+        token = nextToken();
+        if(token->type() != TokenType::RightBrace) {
+            return { nullptr, ASTParseError::RightParenExpected, token->line(), token->column() };
+        }
+        consumeCurrentToken();
+        return { body, ASTParseError::None, token->line(), token->column() };
     }
 
     Token const* ASTBuilder::nextToken() {
