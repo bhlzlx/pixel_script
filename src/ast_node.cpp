@@ -2,4 +2,6 @@
 
 namespace compiler {
 
+    Token Variable::name() const { return id()->token();}
+
 }

@@ -7,13 +7,13 @@ namespace compiler {
         Value rst;
         switch(ast->structType()) {
             case SType::BinaryOp: {
-                ASTBinaryOpExpr* binExpr = ast->asBinaryExpr();
+                BinaryOpExpr* binExpr = ast->asBinaryExpr();
                 Value left = eval(binExpr->left());
                 Value right = eval(binExpr->right());
                 return evalBinaryOp(binExpr->op(), left, right);
             }
             case SType::If: {
-                ASTIfStatement* ifExpr = ast->asIf();
+                IfStmt* ifExpr = ast->asIf();
                 Value cond = eval(ifExpr->condition());
                 if(cond) {
                     return eval(ifExpr->elseBranch()); 
@@ -24,7 +24,7 @@ namespace compiler {
             }
             case SType::While: {
                 Value rst;
-                ASTWhileStatement* whileExpr = ast->asWhile();
+                WhileStmt* whileExpr = ast->asWhile();
                 Value cond = eval(whileExpr->condition());
                 while(cond) {
                     rst = eval(whileExpr->body());
@@ -33,7 +33,7 @@ namespace compiler {
                 return rst;
             }
             case SType::MultiExpr: {
-                ASTMultiExpr* multiExpr = ast->asMultiExpr();
+                MultiExpr* multiExpr = ast->asMultiExpr();
                 Value rst;
                 for(auto expr: multiExpr->expressions()) {
                     rst = eval(expr);
@@ -41,7 +41,7 @@ namespace compiler {
                 return rst;
             }
             case SType::NegtiveOp: {
-                ASTNegativeExpression* negtiveOp = ast->asNegativeExpr();
+                NegativeExpr* negtiveOp = ast->asNegativeExpr();
                 Value val = eval(negtiveOp->value());
                 Value rst;
                 if(val.type() == ValueType::Int64) {
@@ -56,35 +56,40 @@ namespace compiler {
                 }
                 return Value();
             }
-            case SType::Variable:{
-                ASTVariable* var = ast->asVar();
-                ASTIdentifier* id = var->id();
-                auto fenv = funcEnv();
-                auto loc = id->valueLoc();
-                Value* varVtVal = fenv->vt[loc];
-                Value varExprEvalVal = eval(var->valueExpr());
-                if(varExprEvalVal.type() == ValueType::ValueRef) {
-                    *varVtVal = *varExprEvalVal.ref();
-                } else {
-                    *varVtVal = varExprEvalVal;
+            case SType::Pair:{
+                auto valType = ast->valueType();
+                switch(valType) {
+                    case VType::Variable: {
+                        Variable* var = ast->asVar();
+                        Identifier* id = var->id();
+                        auto fenv = funcEnv();
+                        auto loc = id->valueLoc();
+                        Value* varVtVal = fenv->vt[loc];
+                        Value varExprEvalVal = eval(var->valueExpr());
+                        if(varExprEvalVal.type() == ValueType::ValueRef) {
+                            *varVtVal = *varExprEvalVal.ref();
+                        } else {
+                            *varVtVal = varExprEvalVal;
+                        }
+                        return *varVtVal;
+                    }
                 }
-                return *varVtVal;
             }
-            case SType::Primary: {
-                ASTPrimary* primary = (ASTPrimary*)ast;
-                Value val = eval(primary->operand());
+            case SType::FunctionCall: {
+                FunctionCall* caller = ast->asFunctionCall();
+                Value val = eval(caller->methodExpr());
                 assert(val.type() == ValueType::ValueRef);
                 val = *val.ref();
                 if(val.type() != ValueType::FunctionNode) { // it must be a function
                     return rst;
                 } else {
                     std::vector<Value> args;
-                    for(auto expr: primary->args()->expressions()) {
+                    for(auto expr: caller->args()->expressions()) {
                         args.push_back(eval(expr));
                     }
                     Node const* node = val.node();
                     if(node->structType() == SType::Function) {
-                        ASTFunction* func = (ASTFunction*)node;
+                        Function* func = (Function*)node;
                         for(auto& arg : args) {
                             if(arg.type() == ValueType::ValueRef) {
                                 arg = *arg.ref(); 
@@ -153,7 +158,7 @@ namespace compiler {
         return Value();
     }
 
-    Value Env::evalIdentifier(ASTIdentifier const* id) {
+    Value Env::evalIdentifier(Identifier const* id) {
         auto idType = id->type(); 
         switch(idType) {
             case IdentifierType::Global: {

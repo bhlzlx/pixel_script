@@ -21,16 +21,16 @@ namespace compiler {
     class Env;
     namespace ast {
         class Node;
-        class ASTLeaf;
-        class ASTIdentifier;
-        class ASTStringList;
-        class ASTBinaryOpExpr;
-        class ASTIfStatement;
-        class ASTWhileStatement;
-        class ASTFunction;
-        class ASTMultiExpr;
-        class ASTPrimary;
-        class ASTNegativeExpression;
-        class ASTVariable;
+        class Leaf;
+        class Identifier;
+        class StringList;
+        class BinaryOpExpr;
+        class IfStmt;
+        class WhileStmt;
+        class Function;
+        class MultiExpr;
+        class NegativeExpr;
+        class Variable;
+        class FunctionCall;
     }
 }

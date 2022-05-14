@@ -110,8 +110,8 @@ namespace compiler {
         Node const* node() const;
         operator bool () const;
         Object* asObject() const;
-        ASTFunction* asFunc() const;
-        ASTVariable* astVar() const;
+        Function* asFunc() const;
+        // Variable* astVar() const;
 
         void decRef() ;
         Value* ref();

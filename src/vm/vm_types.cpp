@@ -115,25 +115,25 @@ namespace compiler {
         return _obj;
     }
 
-    ASTFunction* Value::asFunc() const {
+    Function* Value::asFunc() const {
         if(_type != ValueType::FunctionNode) {
             return nullptr;
         }
         if(_node->structType() != SType::Function) {
             return nullptr;
         }
-        return (ASTFunction*)_node;
+        return (Function*)_node;
     }
     
-    ASTVariable* Value::astVar() const {
-        if(_type != ValueType::FunctionNode) {
-            return nullptr;
-        }
-        if(_node->structType() != SType::Variable) {
-            return nullptr;
-        }
-        return (ASTVariable*)_node;
-    }
+    // Variable* Value::astVar() const {
+    //     if(_type != ValueType::FunctionNode) {
+    //         return nullptr;
+    //     }
+    //     if(_node->structType() != SType::Variable) {
+    //         return nullptr;
+    //     }
+    //     return (Variable*)_node;
+    // }
 
     void Value::decRef() {
         if(_type == ValueType::Object) {

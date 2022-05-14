@@ -18,7 +18,7 @@ namespace compiler {
     private:
         struct FuncEnv {
             Value               vt;     // variable table
-            ASTFunction*        func;   // function ast node
+            Function*        func;   // function ast node
         };
     private:
         NamePool                                _namePool;
@@ -42,9 +42,9 @@ namespace compiler {
             SymbolLayout*   functionLayout;     // local symbol layout
             SymbolLayout*   packageLayout;      // local symbol layout
         };
-        bool locateIdentifier(IdLocateEnv env, ASTIdentifier const* id) ;
+        bool locateIdentifier(IdLocateEnv env, Identifier const* id) ;
         void traverseAST(Node const* ast, TraverseCallBack& callBack);
-        std::vector<Token> postprocessFunction(ASTFunction* ast);
+        std::vector<Token> postprocessFunction(Function* ast);
 
     public:
 
@@ -89,7 +89,7 @@ namespace compiler {
          * @param id 
          * @return Value 
          */
-        Value evalIdentifier(ASTIdentifier const* id);
+        Value evalIdentifier(Identifier const* id);
 
     };
 }

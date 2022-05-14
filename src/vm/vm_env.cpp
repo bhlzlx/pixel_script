@@ -22,13 +22,13 @@ namespace compiler {
     void Env::traverseAST(Node const* ast, TraverseCallBack& callBack) {
         switch(ast->structType()) {
             case SType::Function: {
-                auto func = static_cast<ASTFunction const*>(ast);
+                auto func = static_cast<Function const*>(ast);
                 callBack(func->body());
                 traverseAST(func->body(), callBack);
                 break;
             }
             case SType::MultiExpr: {
-                auto block = static_cast<ASTMultiExpr const*>(ast);
+                auto block = static_cast<MultiExpr const*>(ast);
                 for(auto& expr : block->expressions()) {
                     callBack(expr);
                     traverseAST(expr, callBack);
@@ -36,7 +36,7 @@ namespace compiler {
                 break;
             }
             case SType::While: {
-                auto whileNode = static_cast<ASTWhileStatement const*>(ast);
+                auto whileNode = static_cast<WhileStmt const*>(ast);
                 callBack(whileNode->condition());
                 traverseAST(whileNode->condition(), callBack);
                 callBack(whileNode->body());
@@ -44,7 +44,7 @@ namespace compiler {
                 break;
             }
             case SType::If: {
-                auto ifNode = static_cast<ASTIfStatement const*>(ast);
+                auto ifNode = static_cast<IfStmt const*>(ast);
                 callBack(ifNode->condition());
                 traverseAST(ifNode->condition(), callBack);
                 callBack(ifNode->thenBranch());
@@ -54,32 +54,24 @@ namespace compiler {
                 break;
             }
             case SType::BinaryOp: {
-                auto binOp = static_cast<ASTBinaryOpExpr const*>(ast);
+                auto binOp = static_cast<BinaryOpExpr const*>(ast);
                 callBack(binOp->left());
                 traverseAST(binOp->left(), callBack);
                 callBack(binOp->right());
                 traverseAST(binOp->right(), callBack);
                 break;
             }
-            case SType::Variable: {
-                auto var = static_cast<ASTVariable const*>(ast);
-                callBack(var->id());
-                // id is a leaf node, so no need to traverse it
-                callBack(var->valueExpr());
-                traverseAST(var->valueExpr(), callBack);
+            case SType::Pair: {
+                auto pair = static_cast<PairExpr const*>(ast);
+                callBack(pair->first());
+                traverseAST(pair->first(), callBack);
+                if(pair->second()) {
+                    callBack(pair->second());
+                    traverseAST(pair->second(), callBack);
+                }
                 break;
             }
             case SType::Leaf: { // current is leaf, no need to traverse
-                break;
-            }
-            case SType::Primary: {
-                auto operand =ast->asPrimary()->operand(); 
-                auto args = ast->asPrimary()->args();
-                callBack(operand);
-                traverseAST(operand, callBack);
-                if(args) {
-                    traverseAST(args, callBack);
-                }
                 break;
             }
             default: {
@@ -91,7 +83,7 @@ namespace compiler {
 
     bool Env::compileCodeChunk(char const* mod, Node* ast) {
         if(ast->structType() == SType::MultiExpr) {
-            ASTMultiExpr* exprs = (ASTMultiExpr*)ast;
+            MultiExpr* exprs = (MultiExpr*)ast;
             auto iter = exprs->expressions().begin();
             if(iter != exprs->expressions().end()) {
                 Node* expr = *iter;
@@ -106,7 +98,7 @@ namespace compiler {
                     while(iter != exprs->expressions().end()) {
                         auto expr = *iter;
                         if(expr->structType() == SType::Function) {
-                            ASTFunction* func = (ASTFunction*)expr;
+                            Function* func = (Function*)expr;
                             auto rst = packObj->addSymbol(func->name().stringLiteral(), SymbolType::Function, Value(func), moduleName);
                             func->setHostPackage(package);
                             func->setModule(moduleName);
@@ -114,14 +106,14 @@ namespace compiler {
                                 assert(false);
                                 return false;
                             }
-                        } else if( expr->structType() == SType::Variable ) {
-                            ASTVariable* var = (ASTVariable*)expr;
+                        } else if( expr->valueType() == VType::Variable ) {
+                            Variable* var = (Variable*)expr;
                             // 注意这个地方，value不是ast节点，而是实际给了一个空值，占位。
                             auto rst = packObj->addSymbol(var->name().stringLiteral(), SymbolType::Variable, Value(), moduleName);
                             if(var->valueExpr()) { // 创建一个特别的function，给var初始化，方便代码重用，处理
-                                ASTMultiExpr* funcBody = new ASTMultiExpr(VType::Block);
+                                MultiExpr* funcBody = new MultiExpr(VType::Block);
                                 funcBody->addExpr(var->valueExpr());
-                                ASTFunction* func = new ASTFunction(VType::Closure);
+                                Function* func = new Function(VType::Closure);
                                 func->setBody(funcBody);
                                 func->setHostPackage(package);
                                 func->setModule(moduleName);
@@ -146,11 +138,11 @@ namespace compiler {
         }
     }
         
-    std::vector<Token> Env::postprocessFunction(ASTFunction* ast) {
+    std::vector<Token> Env::postprocessFunction(Function* ast) {
         assert(ast->structType() == SType::Function);
         SymbolLayout* symLayout = newSymbolLayout();
         std::vector<Token> compilerErrors;
-        ASTFunction* func = (ASTFunction*)ast;
+        Function* func = (Function*)ast;
         func->setSymbolLayout(symLayout);
         for(auto param: func->params()) {
             auto rst = symLayout->regSymbol(param.stringLiteral(), SymbolType::Variable, func->module());
@@ -169,16 +161,18 @@ namespace compiler {
          * 3. Primary的operand如果是id，则是变量引用
          */
         TraverseCallBack processor = [&](compiler::Node const* node) {
-            ASTIdentifier* id = node->asId();
+            Identifier* id = node->asId();
             if(!id) {
                 return;
             }
             IdLocateEnv locateEnv = {symLayout, func->hostPackage().asObject()->symbolLayout()};
             auto parent = node->parent();
             switch(parent->structType()) {
-                case SType::Variable: { // define variable        
-                    auto regRst = symLayout->regSymbol(id->token().stringLiteral(), SymbolType::Variable, func->module());
-                    id->setValue(IdentifierType::FunctionLocal, regRst.second);
+                case SType::Pair: { // define variable        
+                    if(parent->valueType() == VType::Variable) {
+                        auto regRst = symLayout->regSymbol(id->token().stringLiteral(), SymbolType::Variable, func->module());
+                        id->setValue(IdentifierType::FunctionLocal, regRst.second);
+                    }
                     return;
                 }
                 case SType::BinaryOp: {
@@ -203,14 +197,14 @@ namespace compiler {
         // traverse the ast
         traverseAST(ast, processor);
         if(!compilerErrors.size()) {
-            ASTFunction* func = static_cast<ASTFunction*>(ast);
+            Function* func = static_cast<Function*>(ast);
         }
         func->_valid = !compilerErrors.size();
         func->_compiled = true;
         return compilerErrors;
     }
 
-    bool Env::locateIdentifier(IdLocateEnv env, ASTIdentifier const* id) {
+    bool Env::locateIdentifier(IdLocateEnv env, Identifier const* id) {
         auto name = id->token().stringLiteral();
         auto symbolLoc = env.functionLayout->querySymbolLoc(name);
         if(~symbolLoc != 0) { // local var
@@ -236,7 +230,7 @@ namespace compiler {
 
     Value Env::callFunction(Value const& func, std::vector<Value> const& args) {
         // assert(func.type() == ValueType::Function);
-        ASTFunction* fn = (ASTFunction*)func.node();
+        Function* fn = (Function*)func.node();
         if(!fn->compiled()){
             auto errs = this->postprocessFunction(fn);
             if(errs.size()) {

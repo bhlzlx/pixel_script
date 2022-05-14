@@ -11,12 +11,11 @@ namespace compiler {
             If,
             While,
             BinaryOp,
-            Variable,
             Leaf,
-            Primary,
             NegtiveOp,
-            // Pair,
+            Pair,
             Function,
+            FunctionCall,
             StringList,
             None,
         };
@@ -28,9 +27,12 @@ namespace compiler {
             Float,
             Closure,
             Id,
+            Variable,
             Block,
             Module,
             Args, // 实参，表达式列表
+            DotAccess,
+            FunctionCall,
             Params, // 形参，id列表
             Package,
         };
@@ -61,82 +63,82 @@ namespace compiler {
             }
             virtual ~Node() {}
 
-            ASTStringList* asStringList() const {
+            StringList* asStringList() const {
                 if(_stype == SType::StringList) {
-                    return (ASTStringList*)this;
+                    return (StringList*)this;
                 } else {
                     return nullptr;
                 }
             }
-            ASTIdentifier* asId() const {
+            Identifier* asId() const {
                 if(_vtype == VType::Id) {
-                    return (ASTIdentifier*)this;
+                    return (Identifier*)this;
                 } else {
                     return nullptr;
                 }
             }
-            ASTIfStatement* asIf() const {
+            IfStmt* asIf() const {
                 if(_stype == SType::If) {
-                    return (ASTIfStatement*)this;
+                    return (IfStmt*)this;
                 } else {
                     return nullptr;
                 }
             }
-            ASTWhileStatement* asWhile() const {
+            WhileStmt* asWhile() const {
                 if(_stype == SType::While) {
-                    return (ASTWhileStatement*)this;
+                    return (WhileStmt*)this;
                 } else {
                     return nullptr;
                 }
             }
-            ASTFunction* asFunction() const {
+            Function* asFunction() const {
                 if(_stype == SType::Function) {
-                    return (ASTFunction*)this;
+                    return (Function*)this;
                 } else {
                     return nullptr;
                 }
             }
-            ASTMultiExpr* asMultiExpr() const {
+            MultiExpr* asMultiExpr() const {
                 if(_stype == SType::MultiExpr) {
-                    return (ASTMultiExpr*)this;
+                    return (MultiExpr*)this;
                 } else {
                     return nullptr;
                 }
             }
-            ASTNegativeExpression* asNegativeExpr() const {
+            NegativeExpr* asNegativeExpr() const {
                 if(_stype == SType::NegtiveOp) {
-                    return (ASTNegativeExpression*)this;
+                    return (NegativeExpr*)this;
                 } else {
                     return nullptr;
                 }
             }
-            ASTBinaryOpExpr* asBinaryExpr() const {
+            BinaryOpExpr* asBinaryExpr() const {
                 if(_stype == SType::BinaryOp) {
-                    return (ASTBinaryOpExpr*)this;
+                    return (BinaryOpExpr*)this;
                 } else {
                     return nullptr;
                 }
             }
-            ASTVariable* asVar() const {
-                return _stype == SType::Variable ? (ASTVariable*)this : nullptr;
+            Variable* asVar() const {
+                return _vtype == VType::Variable ? (Variable*)this : nullptr;
             }
-            ASTLeaf* asLeaf() const {
-                return _stype == SType::Leaf ? (ASTLeaf*)this : nullptr;
+            Leaf* asLeaf() const {
+                return _stype == SType::Leaf ? (Leaf*)this : nullptr;
             }
-            ASTPrimary* asPrimary() const {
-                return _stype == SType::Primary ? (ASTPrimary*)this : nullptr;
+            FunctionCall* asFunctionCall() const {
+                return _stype == SType::FunctionCall ? (FunctionCall*)this : nullptr;
             }
         };
 
-        class ASTStringList : public Node {
+        class StringList : public Node {
         private:
             std::vector<Token> _names;
         public:
-            ASTStringList(VType type)
+            StringList(VType type)
                 : Node(SType::StringList, type)
                 , _names()
             {}
-            ASTStringList(std::vector<Token>& names, VType type)
+            StringList(std::vector<Token>& names, VType type)
                 : Node(SType::StringList, type)
                 , _names(std::move(names))
             {}
@@ -148,11 +150,81 @@ namespace compiler {
             }
         };
 
-        class ASTLeaf : public Node {
+        class PairExpr : public Node {
+        protected:
+            Node* _first;
+            Node* _second;
+        public:
+            PairExpr(VType vtype, Node* first, Node* second)
+                : Node(SType::Pair, vtype)
+                , _first(first)
+                , _second(second) 
+            {
+                assert(first); first->setParent(this);
+                if(second) {
+                    second->setParent(this);
+                }
+            }
+            Node* first() const {
+                return _first;
+            }
+            Node* second() const {
+                return _second;
+            }
+            ~PairExpr() {
+                if(_first) {
+                    delete _first;
+                }
+                if(_second) {
+                    delete _second;
+                }
+            }
+        };
+
+        class FunctionCall : public PairExpr {
+        public:
+            FunctionCall(Node* methodExpr, MultiExpr* args)
+                : PairExpr(VType::FunctionCall, methodExpr, (Node*)args)
+            {}
+            Node* methodExpr() const { return _first; }
+            MultiExpr* args() const { return _second->asMultiExpr(); }
+        };
+
+        class DotAccess : public PairExpr {
+        public:
+            DotAccess(Node* obj, Node* field)
+                : PairExpr(VType::DotAccess, obj, field)
+            {}
+            Node* obj() const { return _first; }
+            Node* field() const { return _second; }
+        };
+
+        class Variable : public PairExpr {
+        public:
+            Variable(Identifier* id, Node* value)
+                : PairExpr(VType::Variable, (Node*)id, value)
+            {
+            }
+            Token name() const;
+            Identifier* id() const { return _first->asId(); }
+            Node* valueExpr() const { return _second; }
+        };
+
+        class WhileStmt : public PairExpr {
+        public:
+            WhileStmt(Node* cond, Node* body)
+                : PairExpr(VType::None, cond, body)
+            {}
+            Node* condition() const { return _first; }
+            Node* body() const { return _second; }
+        };
+
+
+        class Leaf : public Node {
         protected:
             Token           _token;
         public:
-            ASTLeaf(VType vtype, Token token)
+            Leaf(VType vtype, Token token)
                 : Node(SType::Leaf, vtype, nullptr)
                 , _token(token)
             {}
@@ -161,7 +233,7 @@ namespace compiler {
             }
         };
 
-        class ASTIdentifier: public ASTLeaf {
+        class Identifier: public Leaf {
         private:
             union {
                 struct {
@@ -173,8 +245,8 @@ namespace compiler {
                 uint64_t   _raw;
             };
         public:
-            ASTIdentifier(Token token)
-                : ASTLeaf(VType::Id, token)
+            Identifier(Token token)
+                : Leaf(VType::Id, token)
             {
                 _valid = false;
                 _processed = false;
@@ -227,11 +299,11 @@ namespace compiler {
             }
         };
 
-        class ASTMultiExpr : public Node {
+        class MultiExpr : public Node {
         private:
             std::vector<Node*> _expressions;
         public:
-            ASTMultiExpr(VType vtype)
+            MultiExpr(VType vtype)
                 : Node(SType::MultiExpr, vtype)
                 , _expressions()
             {}
@@ -242,44 +314,20 @@ namespace compiler {
             std::vector<Node*> const& expressions() const {
                 return _expressions;
             }
-            ~ASTMultiExpr() {
+            ~MultiExpr() {
                 for(auto expr : _expressions) {
                     delete expr;
                 }
             }
         };
 
-        /** 
-         * 目前是个函数调用
-        */
-        class ASTPrimary : public Node {
-        private:
-            Node*               _operand;
-            ASTMultiExpr*       _params;
-        public:
-            ASTPrimary(Node* operand, ASTMultiExpr* postfix)
-                : Node(SType::Primary, VType::None, nullptr)
-                , _operand(operand)
-                , _params(postfix)
-            {
-                operand->setParent(this);
-                postfix->setParent(this);
-            }
-            Node* operand() const {
-                return _operand;
-            } 
-            ASTMultiExpr* args() const {
-                return _params;
-            }
-        };
-
-        class ASTBinaryOpExpr : public Node {
+        class BinaryOpExpr : public Node {
         protected:
             TokenType       _op;
-            Node*        _left;
-            Node*        _right;
+            Node*           _left;
+            Node*           _right;
         public:
-            ASTBinaryOpExpr(Node* left = nullptr, Node* right = nullptr, TokenType op = TokenType::None)
+            BinaryOpExpr(Node* left = nullptr, Node* right = nullptr, TokenType op = TokenType::None)
                 : Node(SType::BinaryOp, VType::None, nullptr)
                 , _op(op)
                 , _left(left)
@@ -301,7 +349,7 @@ namespace compiler {
             TokenType op() const {
                 return _op;
             }
-            ~ASTBinaryOpExpr() {
+            ~BinaryOpExpr() {
                 if(_left) {
                     delete _left;
                 }
@@ -311,59 +359,12 @@ namespace compiler {
             }
         };
 
-        class ASTVariable : public Node {
-        private:
-            // Token           _name;
-            ASTIdentifier*      _id;
-            Node*               _value;
-        public:
-            ASTVariable(ASTIdentifier* id, Node* value)
-                : Node(SType::Variable, VType::None)
-                , _id(id)
-                , _value(value)
-            {
-                id->setParent(this);
-                if(value) {
-                    value->setParent(this);
-                }
-            }
-
-            Token name() const {
-                return _id->token();
-            }
-
-            ASTIdentifier* id() const {
-                return _id;
-            }
-
-            Node* valueExpr() const {
-                return _value;
-            }
-        };
-
-        // class ASTPair : public Node {
-        // protected:
-        //     Node* _first;
-        //     Node* _second;
-        // public:
-        //     ASTPair(VType type, Node* first, Node* second) 
-        //         : Node(SType::Pair, type) 
-        //         , _first(first)
-        //         , _second(second) {}
-        //     Node* first() const {
-        //         return _first;
-        //     }
-        //     Node* second() const {
-        //         return _second;
-        //     }
-        // };
-
-        class ASTNegativeExpression : public Node {
+        class NegativeExpr : public Node {
         private:
             Token _op;
             Node* _value;
         public:
-            ASTNegativeExpression(Node* value, Token op) : Node(SType::NegtiveOp, VType::None)
+            NegativeExpr(Node* value, Token op) : Node(SType::NegtiveOp, VType::None)
                 , _op(op)
                 , _value(value)
             {
@@ -375,20 +376,20 @@ namespace compiler {
             Node const* value() const {
                 return _value;
             }
-            ~ASTNegativeExpression() {
+            ~NegativeExpr() {
                 if(_value) {
                     delete _value;
                 }
             }
         };
 
-        class ASTIfStatement : public Node {
+        class IfStmt : public Node {
         private:
             Node* _condition;
             Node* _thenBranch;
             Node* _elseBranch;
         public:
-            ASTIfStatement() : Node(SType::If, VType::None) 
+            IfStmt() : Node(SType::If, VType::None) 
                 , _condition(nullptr)
                 , _thenBranch(nullptr)
                 , _elseBranch(nullptr)
@@ -414,7 +415,7 @@ namespace compiler {
             Node* elseBranch() const {
                 return _elseBranch;
             }
-            ~ASTIfStatement() {
+            ~IfStmt() {
                 if(_condition) {
                     delete _condition;
                 }
@@ -427,47 +428,13 @@ namespace compiler {
             }
         };
 
-        class ASTWhileStatement : public Node {
-        private:
-            Node* _condition;
-            Node* _body;
-        public:
-            ASTWhileStatement()
-                : Node(SType::While, VType::None)
-                , _condition(nullptr)
-                , _body(nullptr)
-            {}
-            void setCondition(Node* condition) {
-                _condition = condition;
-                _condition->setParent(this);
-            }
-            void setBody(Node* body) {
-                _body = body;
-                _body->setParent(this);
-            }
-            Node* condition() const {
-                return _condition;
-            }
-            Node* body() const {
-                return _body;
-            }
-            ~ASTWhileStatement() {
-                if(_condition) {
-                    delete _condition;
-                }
-                if(_body) {
-                    delete _body;
-                }
-            }
-        };
-
         /**
-         * @brief ASTFunction
+         * @brief Function
          *   函数的AST描述，每个函数都有唯一的变量表
          * 脚本加载这后不会更新这些变量表，而是在首次执行时更新变量表，如果脚本有重载行为，则会设置为脏
          * 强制下次执行时间更新变量表
          */
-        class ASTFunction : public Node {
+        class Function : public Node {
             friend class ::compiler::Env;
         private:
             struct {
@@ -477,11 +444,11 @@ namespace compiler {
             Token               _name;
             Name                _module;
             Value               _hostPackage;
-            ASTStringList*      _params;
+            StringList*      _params;
             Node*               _body;
             SymbolLayout*       _symbolLayout;
         public:
-            ASTFunction(VType type)
+            Function(VType type)
                 : Node(SType::Function, type)
                 , _valid(0)
                 , _compiled(0)
@@ -529,7 +496,7 @@ namespace compiler {
                 return _module;
             }
 
-            void setParams(ASTStringList* params) {
+            void setParams(StringList* params) {
                 assert(params);
                 _params = params;
                 _params->setParent(this);
@@ -549,16 +516,6 @@ namespace compiler {
                 return _body;
             }
 
-            // global var and local var are different impl
-            // void convertToGlobal() {
-            //     if(_body) {
-            //         ASTFunction* valueExprFunc = new ASTFunction(VType::Closure);
-            //         ASTMultiExpr* funcBody = new ASTMultiExpr(VType::Block);
-            //         funcBody->addExpr(_body);
-            //         _body = valueExprFunc;
-            //     }
-            // }
-
             // get params
             std::vector<Token> const& params() const {
                 static std::vector<Token> empty;
@@ -570,7 +527,7 @@ namespace compiler {
                 // return _params->names();
             }
 
-            ~ASTFunction() {
+            ~Function() {
                 if(_body) {
                     delete _body;
                 }

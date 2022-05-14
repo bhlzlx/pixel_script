@@ -32,6 +32,7 @@ namespace compiler {
         VarMismatch,
         PackageMismatch,
         CodeChunkMismatch,
+        DotExpected,
     };
     struct MatchResult {
         ast::Node*      node;
@@ -70,7 +71,8 @@ namespace compiler {
         MatchResult matchPackage();
 
         MatchResult matchArgs();
-        MatchResult matchPostfix();
+        MatchResult matchArgList();
+        MatchResult matchDotAccess();
 
         MatchResult matchDefVariable();
 

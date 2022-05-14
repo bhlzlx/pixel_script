@@ -55,12 +55,12 @@ namespace compiler {
         switch(token->type()) {
             case TokenType::Integer: {
                 consumeCurrentToken();
-                operand = new ASTLeaf(VType::Int, *token);
+                operand = new Leaf(VType::Int, *token);
                 return { operand, ASTParseError::None, token->line(), token->column() };
             }
             case TokenType::String: {
                 consumeCurrentToken();
-                operand = new ASTLeaf(VType::String, *token);
+                operand = new Leaf(VType::String, *token);
                 return { operand, ASTParseError::None, token->line(), token->column() };
             }
             case TokenType::Keyword: { // 目前关键字只有func
@@ -90,32 +90,18 @@ namespace compiler {
             }
             case TokenType::Identifier: {
                 consumeCurrentToken();
-                ASTIdentifier* id = new ASTIdentifier(*token);
-                operand = id;
+                Identifier* id = new Identifier(*token);
+                operand = (Node*)id;
                 break;
             }
             default: {
                 return { nullptr, ASTParseError::PrimaryMismatch, token->line(), token->column() };
             }
         }
-        // 特定的匹配才有operand一说
         if(!operand) {
             return { nullptr, ASTParseError::PrimaryMismatch, startToken.line(), startToken.column() };
-        } else {
-            ASTMultiExpr* postfix = nullptr;
-            // 这里添加了函数调用匹配
-            // a + b(1) 这种
-            auto expr = matchPostfix();
-            // if postfix is not nullptr, it means there is only a operand avail, so we just return the operand
-            if(!expr) {
-                return { operand, ASTParseError::None, startToken.line(), startToken.column()};
-            } else {
-                if(expr.node) {
-                    postfix = expr.node->asMultiExpr();
-                }
-                ASTPrimary* prim = new ASTPrimary(operand, postfix);
-                return  { prim, ASTParseError::None, startToken.line(), startToken.column() };
-            }
+        } else { // 尝试匹配.
+            return { operand, ASTParseError::None, startToken.line(), startToken.column() };
         }
     }
 
@@ -129,7 +115,7 @@ namespace compiler {
             auto primNode = matchPrimary();
             if(primNode) {
                 rst = { 
-                    new ASTNegativeExpression(primNode.node, *token), 
+                    new NegativeExpr(primNode.node, *token), 
                     ASTParseError::None,
                     startToken.line(),
                     startToken.column()
@@ -139,6 +125,27 @@ namespace compiler {
             }
         } else {
             rst =  matchPrimary();
+            if(!rst) {
+                return { nullptr, ASTParseError::PrimaryMismatch, startToken.line(), startToken.column() };
+            }
+            Node* node = rst.node;
+            while(true)  {
+                rst = matchArgList(); // 参见 args 的匹配实现，实际是multiexpr
+                if(rst) {
+                    auto funcCall = new FunctionCall(node, rst.node->asMultiExpr()); 
+                    node = funcCall;
+                    break;
+                } else {
+                    rst = matchDotAccess(); // 返回的是一个Leaf String
+                    if(rst) {
+                        auto dotAccess = new DotAccess(node, rst.node);
+                        node = dotAccess;
+                    } else {
+                        break;
+                    }
+                }
+            }
+            return { node, ASTParseError::None, startToken.line(), startToken.column() };
         }
         return rst;
     }
@@ -177,7 +184,7 @@ namespace compiler {
                             factorStack.pop();
                             auto left = factorStack.top();
                             factorStack.pop();
-                            auto binExpr = new ASTBinaryOpExpr(left, right, op);
+                            auto binExpr = new BinaryOpExpr(left, right, op);
                             factorStack.push(binExpr);
                         }
                         auto rst = factorStack.top();
@@ -190,7 +197,7 @@ namespace compiler {
                     if(op>=opStack.top()) {
                         auto factor1 = factorStack.top(); factorStack.pop();
                         auto factor2 = factorStack.top(); factorStack.pop();
-                        auto binExpr = new ASTBinaryOpExpr(factor1, factor2, opStack.top());
+                        auto binExpr = new BinaryOpExpr(factor1, factor2, opStack.top());
                         opStack.pop();
                         factorStack.push(binExpr);
                     }
@@ -223,7 +230,7 @@ namespace compiler {
         auto token = nextToken();
         if(token->type() == TokenType::LeftBrace) {
             consumeCurrentToken();
-            auto exprs = new ASTMultiExpr(VType::Block);
+            auto exprs = new MultiExpr(VType::Block);
             auto statement = matchStatement();
             if(statement) {
                 exprs->addExpr(statement.node);
@@ -257,7 +264,7 @@ namespace compiler {
         auto token = nextToken();
         if(token->stringLiteral() == keywords::_if) {
             auto IfToken = *token;
-            ASTIfStatement* if_stmt = new ASTIfStatement();
+            IfStmt* if_stmt = new IfStmt();
             consumeCurrentToken();
             auto expr = matchExpression();
             if(!expr) {
@@ -297,9 +304,7 @@ namespace compiler {
                     delete expr.node;
                     rst = block;
                 } else {
-                    auto while_stmt = new ASTWhileStatement();
-                    while_stmt->setBody(block.node);
-                    while_stmt->setCondition(expr.node);
+                    auto while_stmt = new WhileStmt(expr.node, block.node);
                     return { while_stmt, ASTParseError::None, WhileToken.line(), WhileToken.column() };
                 }
             }
@@ -316,7 +321,7 @@ namespace compiler {
 
     MatchResult ASTBuilder::matchCodeChunk() {
         ConsumeStateHelper helper(this, false);
-        auto chunk = new ASTMultiExpr(VType::Module);
+        auto chunk = new MultiExpr(VType::Module);
         auto pack = matchPackage();
         if(pack) {
             chunk->addExpr(pack.node);
@@ -351,7 +356,7 @@ namespace compiler {
      * @brief 
      *  bnf : params : param {, param}
      * @param _tokenParser 
-     * @return MatchResult ASTStringList
+     * @return MatchResult StringList
      */
     MatchResult ASTBuilder::matchParams() {
         ConsumeStateHelper helper(this, true);
@@ -364,10 +369,7 @@ namespace compiler {
             std::vector<Token> tokens;
             tokens.push_back(*token);
             consumeCurrentToken();
-            // auto params = new ASTMultiExpr(VType::Params);
-            // auto params = new ASTStringList()
-            auto param = new ASTLeaf(VType::Id, *token);
-            // params->addExpr(param);
+            auto param = new Leaf(VType::Id, *token);
             while(true) {
                 token = nextToken();
                 if(token->type() == TokenType::Comma) {
@@ -383,7 +385,7 @@ namespace compiler {
                     break;
                 }
             }
-            return { new ASTStringList(tokens, VType::Params), ASTParseError::None, startToken.line(), startToken.column() };
+            return { new StringList(tokens, VType::Params), ASTParseError::None, startToken.line(), startToken.column() };
         }
         return rst;
     }
@@ -426,7 +428,7 @@ namespace compiler {
     MatchResult ASTBuilder::matchFunctionDef() {
         consumeCommaEol();
         ConsumeStateHelper helper(this, true);
-        ASTFunction* func = nullptr;
+        Function* func = nullptr;
         auto token = nextToken();
         Token startToken = *token;
         if(token->stringLiteral() != keywords::_func) { // "func"
@@ -438,13 +440,13 @@ namespace compiler {
                 return MatchResult { nullptr, ASTParseError::MissFunctionName, token->line(), token->column() };
             } else {
                 consumeCurrentToken();
-                auto func = new ASTFunction(VType::None);
+                auto func = new Function(VType::None);
                 func->setName(*token);
                 auto paramList = matchParamList(); // paramlist
                 if(paramList) {
                     func->setParams(paramList.node->asStringList());
                 } else {
-                    func->setParams(new ASTStringList(VType::Params));
+                    func->setParams(new StringList(VType::Params));
                 }
                 auto block = matchBlock(); // body
                 if(!block) {
@@ -474,7 +476,7 @@ namespace compiler {
         if(!expr) {
             return expr; // no expr, empty args
         } else {
-            auto multiExpr = new ASTMultiExpr(VType::Args);
+            auto multiExpr = new MultiExpr(VType::Args);
             multiExpr->addExpr(expr.node);
             while(true) {
                 auto token = nextToken();
@@ -500,7 +502,7 @@ namespace compiler {
      * @param _tokenParser 
      * @return MatchResult multi expressions
      */
-    MatchResult ASTBuilder::matchPostfix() {
+    MatchResult ASTBuilder::matchArgList() {
         ConsumeStateHelper helper(this, true);
         auto token = nextToken();
         MatchResult rst = {};
@@ -522,6 +524,24 @@ namespace compiler {
         return rst;
     }
 
+    MatchResult ASTBuilder::matchDotAccess() {
+        ConsumeStateHelper helper(this, true);
+        auto token = nextToken();
+        Token startToken = *token;
+        if(token->type() != TokenType::Dot) {
+            return MatchResult { nullptr, ASTParseError::DotExpected, token->line(), token->column() };
+        } else {
+            consumeCurrentToken();
+            token = nextToken();
+            if(token->type() != TokenType::Identifier) {
+                return MatchResult { nullptr, ASTParseError::ShouldFollowIdentifier, token->line(), token->column() };
+            } else {
+                consumeCurrentToken();
+                return { new Leaf(VType::String, *token), ASTParseError::None, startToken.line(), startToken.column() };
+            }
+        }
+    }
+
     MatchResult ASTBuilder::matchClosure() {
         ConsumeStateHelper helper(this, true);
         auto token = nextToken();
@@ -537,7 +557,7 @@ namespace compiler {
                 if(!body) {
                     delete params;
                 } else {
-                    auto closure = new ASTFunction(VType::Closure);
+                    auto closure = new Function(VType::Closure);
                     closure->setParams(params->asStringList());
                     closure->setBody(body);
                     return { closure, ASTParseError::None, startToken.line(), startToken.column() };
@@ -557,13 +577,13 @@ namespace compiler {
                 token = nextToken();
                 if(token->type() == TokenType::Identifier) {
                     Token name = *token;
-                    ASTIdentifier* id = new ASTIdentifier(name);
+                    Identifier* id = new Identifier(name);
                     consumeCurrentToken();
                     token = nextToken();
                     if(token->type() != TokenType::Assign) {
                         if(token->type() == TokenType::Semicolon || token->type() == TokenType::Eol) {
                             consumeCurrentToken();
-                            return { new ASTVariable(id, nullptr), ASTParseError::None, name.line(), name.column() };
+                            return { new Variable(id, nullptr), ASTParseError::None, name.line(), name.column() };
                         }
                         return { nullptr, ASTParseError::AssignExpected, name.line(), name.column() };
                     } else {
@@ -571,12 +591,8 @@ namespace compiler {
                         auto expr = matchExpression();
                         if(!expr) {
                             return expr;
-                        } else { // 初始化实际是创建的一个function，因为方便后续处理，代码重用，算是一个小trick
-                            // ASTFunction* valueExprFunc = new ASTFunction(VType::Closure);
-                            // ASTMultiExpr* funcBody = new ASTMultiExpr(VType::Block);
-                            // funcBody->addExpr(expr.node);
-                            // valueExprFunc->setBody(funcBody);
-                            return { new ASTVariable(id, expr.node), ASTParseError::None, name.line(), name.column() };
+                        } else { 
+                            return { new Variable(id, expr.node), ASTParseError::None, name.line(), name.column() };
                         }
                     }
                 } else {
@@ -603,7 +619,7 @@ namespace compiler {
                         token = nextToken();
                         if(token->type() == TokenType::Eol) {
                             consumeCurrentToken();
-                            return { new ASTStringList(names, VType::Package), ASTParseError::None, token->line(), token->column() };
+                            return { new StringList(names, VType::Package), ASTParseError::None, token->line(), token->column() };
                         } else {
                             if(token->type() != TokenType::Dot) {
                                 return { nullptr, ASTParseError::PackageMismatch, token->line(), token->column() };

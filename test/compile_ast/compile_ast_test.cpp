@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
     //get the dir of the executable
     path = path.substr(0, path.find_last_of("\\/"));
     path = path.substr(0, path.find_last_of("\\/"));
-    path+="/scripts/func_test.script";
+    path+="/scripts/oop_test.script";
 
 
     std::ifstream file(path, std::ios::in | std::ios::binary);
@@ -32,9 +32,10 @@ int main(int argc, char** argv) {
     compiler::ASTBuilder builder;
     auto prog = builder.buildAST(&env, buffer);
     assert(prog);
-    // compiler::ASTMultiExpr* multiExpr = dynamic_cast<compiler::ASTMultiExpr*>(prog.node);
-    auto rst = env.compileCodeChunk("func_test", prog.node);
-    env.initializeModule("func_test");
+    // compiler::MultiExpr* multiExpr = dynamic_cast<compiler::MultiExpr*>(prog.node);
+    char const* module = "oop_test";
+    auto rst = env.compileCodeChunk(module, prog.node);
+    env.initializeModule(module);
     env.callFunction("game.test.helloworld");
     return 0;
 }

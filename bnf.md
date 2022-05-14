@@ -1,24 +1,31 @@
 # 仅为测试参考使用的BNF范式
 * num := [0-9.]
 * id := [a-z_]{a-zA-Z0-9_}
-* params := expr {, expr}
-* postfix := "("[args]")"
-* primary := "(" expr ")" | num | string | id [postfix]
-* factor := closure | "-" primary | primary
+* args := expr {, expr}
+* arg_list : "("[args]")"
+* primary := "(" expr ")" | closure | num | string | id
+* factor := "-" primary | primary { postfix | ("." id) }
 * expr := factor { OP factor }
 * def_var := "var" id [= expr]
 * simple := expr
 * block := "{" [statement] {;|EOL| [statement] } "}"
 * statement := if expr block ["else" block] | "while" expr block | def_var | simple
 * program := {func|statement} (; | EOF)
-* args := id {, id}
-* args_decl := "(" [args] ")"
+* params := id {, id}
+* param_list := "(" [params] ")"
 * func := "func" id args_decl block
 * closure := "func" args_decl block
 
+* class_body := "{" member {(EOL|;) member }  "}"
+* def_class := "class" id ["extend" id] class_body
 
-* package := "package" {.id} EOL
+* package := "package" id {.id} EOL
 * code_chunk := package { def_var | function } EOF
+
+
+## 补充
+
+factor 代表一个值或者一个可以处理完作为一个值来运算，所以
 
 ## 注释
 
