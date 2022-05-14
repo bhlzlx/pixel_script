@@ -36,6 +36,6 @@ int main(int argc, char** argv) {
     char const* module = "oop_test";
     auto rst = env.compileCodeChunk(module, prog.node);
     env.initializeModule(module);
-    env.callFunction("game.test.helloworld");
+    env.callFunction("game.test.entry");
     return 0;
 }

@@ -32,5 +32,6 @@ namespace compiler {
         class NegativeExpr;
         class Variable;
         class FunctionCall;
+        class DotAccess;
     }
 }

@@ -22,16 +22,6 @@ namespace compiler {
                 }
                 break;
             }
-            case SType::While: {
-                Value rst;
-                WhileStmt* whileExpr = ast->asWhile();
-                Value cond = eval(whileExpr->condition());
-                while(cond) {
-                    rst = eval(whileExpr->body());
-                    cond = eval(whileExpr->condition());
-                }
-                return rst;
-            }
             case SType::MultiExpr: {
                 MultiExpr* multiExpr = ast->asMultiExpr();
                 Value rst;
@@ -65,7 +55,8 @@ namespace compiler {
                         auto fenv = funcEnv();
                         auto loc = id->valueLoc();
                         Value* varVtVal = fenv->vt[loc];
-                        Value varExprEvalVal = eval(var->valueExpr());
+                        Value varExprEvalVal;
+                        varExprEvalVal = eval(var->valueExpr());
                         if(varExprEvalVal.type() == ValueType::ValueRef) {
                             *varVtVal = *varExprEvalVal.ref();
                         } else {
@@ -73,34 +64,62 @@ namespace compiler {
                         }
                         return *varVtVal;
                     }
-                }
-            }
-            case SType::FunctionCall: {
-                FunctionCall* caller = ast->asFunctionCall();
-                Value val = eval(caller->methodExpr());
-                assert(val.type() == ValueType::ValueRef);
-                val = *val.ref();
-                if(val.type() != ValueType::FunctionNode) { // it must be a function
-                    return rst;
-                } else {
-                    std::vector<Value> args;
-                    for(auto expr: caller->args()->expressions()) {
-                        args.push_back(eval(expr));
-                    }
-                    Node const* node = val.node();
-                    if(node->structType() == SType::Function) {
-                        Function* func = (Function*)node;
-                        for(auto& arg : args) {
-                            if(arg.type() == ValueType::ValueRef) {
-                                arg = *arg.ref(); 
+                    case VType::FunctionCall: {
+                        FunctionCall* caller = ast->asFunctionCall();
+                        Value val = eval(caller->methodExpr());
+                        assert(val.type() == ValueType::ValueRef);
+                        val = *val.ref();
+                        if(val.type() != ValueType::FunctionNode) { // it must be a function
+                            return rst;
+                        } else {
+                            std::vector<Value> args;
+                            if(caller->args()) {
+                                for(auto expr: caller->args()->expressions()) {
+                                    args.push_back(eval(expr));
+                                }
+                            }
+                            Node const* node = val.node();
+                            if(node->structType() == SType::Function) {
+                                Function* func = (Function*)node;
+                                for(auto& arg : args) {
+                                    if(arg.type() == ValueType::ValueRef) {
+                                        arg = *arg.ref(); 
+                                    }
+                                }
+                                return callFunction(val,args);
+                            } else {
+                                return Value();
                             }
                         }
-                        return callFunction(val,args);
-                    } else {
-                        return Value();
+                    }
+                    case VType::WhileStmt: {
+                        Value rst;
+                        WhileStmt* whileExpr = ast->asWhile();
+                        Value cond = eval(whileExpr->condition());
+                        while(cond) {
+                            rst = eval(whileExpr->body());
+                            cond = eval(whileExpr->condition());
+                        }
+                        return rst;
+                    }
+                    case VType::DotAccess: {
+                        DotAccess* dotAccess = ast->asDotAccess();
+                        Value obj = eval(dotAccess->obj()); // object must be a ref
+                        Value* objPtr = obj.ref();
+                        auto fieldLeaf = dotAccess->field()->asLeaf();
+                        assert(fieldLeaf); assert(fieldLeaf->valueType() == VType::String);
+                        Name fieldName = fieldLeaf->token().stringLiteral();
+                        Value* valPtr = (*objPtr)[fieldName]; // we should return the value's ref
+                        if(valPtr) {
+                            return Value(valPtr); // create ref
+                        } else {
+                            return Value();
+                        }
+                    }
+                    default: {
+                        break;
                     }
                 }
-                break;
             }
             case SType::Leaf: {
                 auto leaf = ast->asLeaf();
@@ -147,10 +166,6 @@ namespace compiler {
         } else if(ap->type() == ValueType::Float64) {
             FloatValue const* fval = (FloatValue const*)ap;
             return fval->Op(op, *bp);
-        } else if(ap->type() == ValueType::Object) {
-            // test
-            // bp->type() == ValueType::
-            // ap->operator[]()
         }
         else {
             assert(false && "unsupported type");

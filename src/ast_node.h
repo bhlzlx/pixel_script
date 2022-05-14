@@ -9,13 +9,12 @@ namespace compiler {
         enum class SType : uint8_t {
             MultiExpr,
             If,
-            While,
+            // While,
             BinaryOp,
             Leaf,
             NegtiveOp,
             Pair,
             Function,
-            FunctionCall,
             StringList,
             None,
         };
@@ -33,6 +32,7 @@ namespace compiler {
             Args, // 实参，表达式列表
             DotAccess,
             FunctionCall,
+            WhileStmt,
             Params, // 形参，id列表
             Package,
         };
@@ -85,8 +85,15 @@ namespace compiler {
                 }
             }
             WhileStmt* asWhile() const {
-                if(_stype == SType::While) {
+                if(_vtype == VType::WhileStmt) {
                     return (WhileStmt*)this;
+                } else {
+                    return nullptr;
+                }
+            }
+            DotAccess* asDotAccess() const {
+                if(_vtype == VType::DotAccess) {
+                    return (DotAccess*)this;
                 } else {
                     return nullptr;
                 }
@@ -126,7 +133,7 @@ namespace compiler {
                 return _stype == SType::Leaf ? (Leaf*)this : nullptr;
             }
             FunctionCall* asFunctionCall() const {
-                return _stype == SType::FunctionCall ? (FunctionCall*)this : nullptr;
+                return _vtype == VType::FunctionCall ? (FunctionCall*)this : nullptr;
             }
         };
 
@@ -187,7 +194,7 @@ namespace compiler {
                 : PairExpr(VType::FunctionCall, methodExpr, (Node*)args)
             {}
             Node* methodExpr() const { return _first; }
-            MultiExpr* args() const { return _second->asMultiExpr(); }
+            MultiExpr* args() const { return _second ? _second->asMultiExpr() : nullptr; }
         };
 
         class DotAccess : public PairExpr {
@@ -213,7 +220,7 @@ namespace compiler {
         class WhileStmt : public PairExpr {
         public:
             WhileStmt(Node* cond, Node* body)
-                : PairExpr(VType::None, cond, body)
+                : PairExpr(VType::WhileStmt, cond, body)
             {}
             Node* condition() const { return _first; }
             Node* body() const { return _second; }

@@ -131,8 +131,10 @@ namespace compiler {
             Node* node = rst.node;
             while(true)  {
                 rst = matchArgList(); // 参见 args 的匹配实现，实际是multiexpr
-                if(rst) {
-                    auto funcCall = new FunctionCall(node, rst.node->asMultiExpr()); 
+                // 补充一下，虽然匹配args会返回空，并不意味着失败，参数量为0时也会返回空，所以再判断下error code，
+                // 如果error code没有错误，则说明匹配成功，只是没有参数
+                if(rst || rst.error == ASTParseError::None) {
+                    auto funcCall = new FunctionCall(node, rst.node ? rst.node->asMultiExpr() : nullptr); 
                     node = funcCall;
                     break;
                 } else {

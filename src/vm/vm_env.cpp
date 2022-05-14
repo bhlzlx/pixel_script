@@ -35,14 +35,6 @@ namespace compiler {
                 }
                 break;
             }
-            case SType::While: {
-                auto whileNode = static_cast<WhileStmt const*>(ast);
-                callBack(whileNode->condition());
-                traverseAST(whileNode->condition(), callBack);
-                callBack(whileNode->body());
-                traverseAST(whileNode->body(), callBack);
-                break;
-            }
             case SType::If: {
                 auto ifNode = static_cast<IfStmt const*>(ast);
                 callBack(ifNode->condition());
@@ -172,6 +164,10 @@ namespace compiler {
                     if(parent->valueType() == VType::Variable) {
                         auto regRst = symLayout->regSymbol(id->token().stringLiteral(), SymbolType::Variable, func->module());
                         id->setValue(IdentifierType::FunctionLocal, regRst.second);
+                    } else if(parent->valueType() == VType::DotAccess) {
+                        if(!locateIdentifier(locateEnv, id)) {
+                            compilerErrors.push_back(id->token());
+                        }
                     }
                     return;
                 }
