@@ -35,6 +35,7 @@ namespace compiler {
         DotExpected,
         ClassExtendsMismatch,
         ClassMismatch,
+        DotAccessMismatch,
     };
     struct MatchResult {
         ast::Node*      node;

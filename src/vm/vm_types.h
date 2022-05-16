@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <unordered_map>
+#include <functional>
 #include <vector>
 #include "../name_pool.h"
 #include "ast_common.h"
@@ -68,7 +69,7 @@ namespace compiler {
 
     using Name = ksgw::Name;
 
-    enum class ValueType : uint8_t {
+    enum class PrimeVType : uint8_t {
         Nil,
         Int64,
         Float64,
@@ -81,7 +82,8 @@ namespace compiler {
 
     class Value {
     protected:
-        ValueType           _type;    // type of the value
+        PrimeVType           _type;    // type of the value
+        SymbolLayoutType     _stype;   // for only object
         union {
             int64_t         _i64;
             double          _f64;
@@ -93,7 +95,8 @@ namespace compiler {
         };
     public:
         Value() 
-            : _type(ValueType::Nil)
+            : _type(PrimeVType::Nil)
+            , _stype(SymbolLayoutType::None)
             , _i64(0)
         {
         }
@@ -102,7 +105,6 @@ namespace compiler {
         Value(Value const& other);
         Value(Node const* node);
         Value(Value* ref);
-
         Value(Value&& other);
 
         Value& operator = (Value const& other);
@@ -111,17 +113,19 @@ namespace compiler {
         operator bool () const;
         Object* asObject() const;
         Function* asFunc() const;
-        // Variable* astVar() const;
 
         void decRef() ;
+        void incRef() ;
         Value* ref();
+        void deref();
 
         ~Value();
 
         void setInt64(int64_t i64);
         void setFloat64(double f64);
         void setString(Name name);
-        ValueType type() const;
+        PrimeVType type() const;
+        SymbolLayoutType stype() const;
         void setUd(void * u);
 
         void* ud() const;
@@ -132,11 +136,15 @@ namespace compiler {
 
         Name stringValue() const;
 
-        Value* operator[](uint32_t loc);
-        Value* operator[](uint32_t loc) const;
+        // Value operator[](uint32_t loc);
+        Value operator[](uint32_t loc) const;
 
-        Value* operator[](Name name) ;
-        Value const* operator[](Name name) const;
+        // Value operator[](Name name) ;
+        Value operator[](Name name) const;
+
+        // Value& operator = (Value const& other);
+
+        void enumerateFunctions(std::function<void(ast::Function*)> const& func) const;
     };
 
     class IntegerValue: public Value {
@@ -149,11 +157,11 @@ namespace compiler {
             Value rst;
             switch(op.type()) {
                 case TokenType::Plus: {
-                    if(other.type() == ValueType::Int64) {
+                    if(other.type() == PrimeVType::Int64) {
                         rst.setInt64(intValue() + other.intValue());
                         return rst;
                     }
-                    else if(other.type() == ValueType::Float64) {
+                    else if(other.type() == PrimeVType::Float64) {
                         rst.setInt64(intValue() + other.floatValue());
                         return rst;
                     } else {
@@ -161,11 +169,11 @@ namespace compiler {
                     }
                 }
                 case TokenType::Minus: {
-                    if(other.type() == ValueType::Int64) {
+                    if(other.type() == PrimeVType::Int64) {
                         rst.setInt64(intValue() - other.intValue());
                         return rst;
                     }
-                    else if(other.type() == ValueType::Float64) {
+                    else if(other.type() == PrimeVType::Float64) {
                         rst.setInt64(intValue() - other.floatValue());
                         return rst;
                     } else {
@@ -173,11 +181,11 @@ namespace compiler {
                     }
                 }
                 case TokenType::Star: {
-                    if(other.type() == ValueType::Int64) {
+                    if(other.type() == PrimeVType::Int64) {
                         rst.setInt64(intValue() * other.intValue());
                         return rst;
                     }
-                    else if(other.type() == ValueType::Float64) {
+                    else if(other.type() == PrimeVType::Float64) {
                         rst.setInt64(intValue() * other.floatValue());
                         return rst;
                     } else {
@@ -185,11 +193,11 @@ namespace compiler {
                     }
                 }
                 case TokenType::Slash: {
-                    if(other.type() == ValueType::Int64) {
+                    if(other.type() == PrimeVType::Int64) {
                         rst.setInt64(intValue() / other.intValue());
                         return rst;
                     }
-                    else if(other.type() == ValueType::Float64) {
+                    else if(other.type() == PrimeVType::Float64) {
                         rst.setInt64(intValue() / other.floatValue());
                         return rst;
                     } else {
@@ -198,10 +206,10 @@ namespace compiler {
                 }
                 case TokenType::Assign: {
                     auto v = const_cast<IntegerValue*>(this);
-                    if(other.type() == ValueType::Int64) {
+                    if(other.type() == PrimeVType::Int64) {
                         v->setInt64(other.intValue());
                         return *this;
-                    } else if(other.type() == ValueType::Float64) {
+                    } else if(other.type() == PrimeVType::Float64) {
                         v->setFloat64(other.floatValue());
                         return *this;
                     } else {
@@ -209,11 +217,11 @@ namespace compiler {
                     }
                 }
                 case TokenType::Less: {
-                    if(other.type() == ValueType::Int64) {
+                    if(other.type() == PrimeVType::Int64) {
                         rst.setInt64(intValue() < other.intValue());
                         return rst;
                     }
-                    else if(other.type() == ValueType::Float64) {
+                    else if(other.type() == PrimeVType::Float64) {
                         rst.setInt64(intValue() < other.floatValue());
                         return rst;
                     } else {
@@ -237,11 +245,11 @@ namespace compiler {
             Value rst;
             switch(op.type()) {
                 case TokenType::Plus: {
-                    if(other.type() == ValueType::Int64) {
+                    if(other.type() == PrimeVType::Int64) {
                         rst.setFloat64(floatValue() + other.intValue());
                         return rst;
                     }
-                    else if(other.type() == ValueType::Float64) {
+                    else if(other.type() == PrimeVType::Float64) {
                         rst.setFloat64(floatValue() + other.floatValue());
                         return rst;
                     } else {
@@ -249,11 +257,11 @@ namespace compiler {
                     }
                 }
                 case TokenType::Minus: {
-                    if(other.type() == ValueType::Int64) {
+                    if(other.type() == PrimeVType::Int64) {
                         rst.setFloat64(floatValue() - other.intValue());
                         return rst;
                     }
-                    else if(other.type() == ValueType::Float64) {
+                    else if(other.type() == PrimeVType::Float64) {
                         rst.setFloat64(floatValue() - other.floatValue());
                         return rst;
                     } else {
@@ -261,11 +269,11 @@ namespace compiler {
                     }
                 }
                 case TokenType::Star: {
-                    if(other.type() == ValueType::Int64) {
+                    if(other.type() == PrimeVType::Int64) {
                         rst.setFloat64(floatValue() * other.intValue());
                         return rst;
                     }
-                    else if(other.type() == ValueType::Float64) {
+                    else if(other.type() == PrimeVType::Float64) {
                         rst.setFloat64(floatValue() * other.floatValue());
                         return rst;
                     } else {
@@ -273,11 +281,11 @@ namespace compiler {
                     }
                 }
                 case TokenType::Slash: {
-                    if(other.type() == ValueType::Int64) {
+                    if(other.type() == PrimeVType::Int64) {
                         rst.setFloat64(floatValue() / other.intValue());
                         return rst;
                     }
-                    else if(other.type() == ValueType::Float64) {
+                    else if(other.type() == PrimeVType::Float64) {
                         rst.setFloat64(floatValue() / other.floatValue());
                         return rst;
                     } else {
@@ -286,10 +294,10 @@ namespace compiler {
                 }
                 case TokenType::Assign: {
                     auto v = const_cast<FloatValue*>(this);
-                    if(other.type() == ValueType::Int64) {
+                    if(other.type() == PrimeVType::Int64) {
                         v->setInt64(other.intValue());
                         return *this;
-                    } else if(other.type() == ValueType::Float64) {
+                    } else if(other.type() == PrimeVType::Float64) {
                         v->setFloat64(other.floatValue());
                         return *this;
                     } else {
@@ -297,11 +305,11 @@ namespace compiler {
                     }
                 }
                 case TokenType::Less: {
-                    if(other.type() == ValueType::Int64) {
+                    if(other.type() == PrimeVType::Int64) {
                         rst.setFloat64(floatValue() < other.intValue());
                         return rst;
                     }
-                    else if(other.type() == ValueType::Float64) {
+                    else if(other.type() == PrimeVType::Float64) {
                         rst.setFloat64(floatValue() < other.floatValue());
                         return rst;
                     } else {

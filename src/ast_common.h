@@ -10,7 +10,7 @@ namespace compiler {
         FunctionLocal,
         Global,
         CurrentPackage,
-        Member, // package/namespace/object oriented
+        ClassMember, // package/namespace/object oriented
     };
 
     class Token;
@@ -19,6 +19,7 @@ namespace compiler {
     class Value;
     class Object;
     class Env;
+    class Module;
     namespace ast {
         class Node;
         class Leaf;
@@ -33,5 +34,24 @@ namespace compiler {
         class Variable;
         class FunctionCall;
         class DotAccess;
+        class Class;
+        class NewOperator;
     }
+
+    enum class SymbolType {
+        Variable,
+        Package,
+        Function,
+        Class,
+        NewOperator,
+    };
+
+    enum class SymbolLayoutType {
+        None,
+        Package,
+        Class,
+        // ClassInstance,
+        Function,
+    };
+
 }

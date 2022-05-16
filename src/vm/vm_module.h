@@ -1,8 +1,12 @@
 #pragma once
 #include "../ast_common.h"
 #include "vm_object.h"
+// #include "../token.h"
+#include <functional>
 
 namespace compiler {
+
+    using namespace ast;
 
     /**
      * @brief 
@@ -15,7 +19,17 @@ namespace compiler {
     private:
         Value                                   _package;       // 模块所在包
         std::vector<std::pair<uint32_t, Node*>> _initliazeList; // 初始化列表
+        std::vector<Node*>                      _functions;
+        std::vector<Value>                      _classes;
+
+        struct IdLocateEnv {
+            SymbolLayout*   functionLayout;     // local symbol layout
+            SymbolLayout*   classLayout;        // class symbol layout  
+            SymbolLayout*   packageLayout;      // current package symbol layout
+            SymbolLayout*   globalLayout;       // global symbol layout
+        };
     public:
+        using TraverseCallBack = std::function<void(Node const*)>;
         Module()
             : _package()
             , _initliazeList()
@@ -23,7 +37,14 @@ namespace compiler {
 
         void setHostPackage(Value package);
         void addInitliaze(uint32_t loc, Node* node);
+        void addFunction(Node* node);
+        void addClass(Value cls);
 
+        void traverseAST(Node const* ast, TraverseCallBack& callBack) ;
+
+        std::vector<Token> postprocess(Env* env);
+        std::vector<Token> postprocessFunction(Env* env, Node* ast, IdLocateEnv locateEnv);
+        bool locateIdentifier(IdLocateEnv env, Identifier const* id);
         void initialize(Env* env);
         
     };

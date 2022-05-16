@@ -159,6 +159,10 @@ namespace compiler {
             _token = Token(TokenType::Dot, keywords::_none);
             updateTokenLocation();
             rst = true;
+        } else if(',' == ch) {
+            _token = Token(TokenType::Comma, keywords::_none);
+            updateTokenLocation();
+            rst = true;
         } else if(';' == ch) {
             _token = Token(TokenType::Semicolon, keywords::_none);
             updateTokenLocation();

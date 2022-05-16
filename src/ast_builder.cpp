@@ -64,12 +64,18 @@ namespace compiler {
                 return { operand, ASTParseError::None, token->line(), token->column() };
             }
             case TokenType::Keyword: { // 目前关键字只有func
-                auto closure = matchClosure();
-                if(closure) {
-                    return closure;
-                } else {
+                if(token->stringLiteral() == keywords::_func) {
+                    auto closure = matchClosure();
+                    if(closure) {
+                        return closure;
+                    }
                     return { nullptr, ASTParseError::FunctionMismatch, token->line(), token->column() };
                 }
+                if(token->stringLiteral() == keywords::_self) {
+                    consumeCurrentToken();
+                    return { new Leaf(VType::Id, *token), ASTParseError::None, token->line(), token->column() };
+                }
+                return { nullptr, ASTParseError::PrimaryMismatch, token->line(), token->column() };
             }
             case TokenType::LeftParen: {
                 consumeCurrentToken();
@@ -490,6 +496,7 @@ namespace compiler {
                 if(token->type() == TokenType::Comma) {
                     consumeCurrentToken();
                     expr = matchExpression();
+                    multiExpr->addExpr(expr.node);
                     if(!expr) {
                         delete multiExpr;
                         return expr;
@@ -540,7 +547,7 @@ namespace compiler {
         } else {
             consumeCurrentToken();
             token = nextToken();
-            if(token->type() != TokenType::Identifier) {
+            if(token->type() != TokenType::Identifier && token->type() != TokenType::Keyword) {
                 return MatchResult { nullptr, ASTParseError::ShouldFollowIdentifier, token->line(), token->column() };
             } else {
                 consumeCurrentToken();
@@ -659,9 +666,9 @@ namespace compiler {
                 consumeCurrentToken();
                 token = nextToken();
                 if(token->type() == TokenType::Identifier) {
-                    auto className = *token;
+                    auto className = *token; // get class name
                     consumeCurrentToken();
-                    ClassExtends* extends = nullptr;
+                    ClassExtends* extends = nullptr; // get extends info
                     if(token->type() == TokenType::Keyword) {
                         if(token->stringLiteral() == keywords::_extends) {
                             consumeCurrentToken();
@@ -674,6 +681,7 @@ namespace compiler {
                             }
                         }
                     }
+                    // match clas body
                     auto body = matchClassBody();
                     if(body) {
                         auto clazz = new Class(className, extends, (MultiExpr*)body.node);
@@ -704,6 +712,7 @@ namespace compiler {
             } else {
                 auto fun = matchFunctionDef();
                 if(fun) {
+                    fun.node->asFunction()->addSelfParam(); // convert to member function
                     body->addExpr(fun.node);
                 } else {
                     break;

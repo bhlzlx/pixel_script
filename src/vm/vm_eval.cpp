@@ -4,7 +4,7 @@ namespace compiler {
 
     Value Env::eval(Node const* ast) {
         // MultiExpr,If,While,BinaryOp,Variable,Leaf,Primary,NegtiveOp,Pair,Function,StringList,
-        Value rst;
+        Value nil;
         switch(ast->structType()) {
             case SType::BinaryOp: {
                 BinaryOpExpr* binExpr = ast->asBinaryExpr();
@@ -14,37 +14,42 @@ namespace compiler {
             }
             case SType::If: {
                 IfStmt* ifExpr = ast->asIf();
+                Value ifRst;
                 Value cond = eval(ifExpr->condition());
+                cond.deref();
                 if(cond) {
-                    return eval(ifExpr->elseBranch()); 
+                    ifRst = eval(ifExpr->elseBranch()); 
                 } else {
-                    return eval(ifExpr->thenBranch());
+                    ifRst = eval(ifExpr->thenBranch());
                 }
+                ifRst.deref();
+                return ifRst;
                 break;
             }
             case SType::MultiExpr: {
+                Value multiExprRst;
                 MultiExpr* multiExpr = ast->asMultiExpr();
-                Value rst;
                 for(auto expr: multiExpr->expressions()) {
-                    rst = eval(expr);
+                    multiExprRst = eval(expr);
+                    multiExprRst.deref();
                 }
-                return rst;
+                return multiExprRst;
             }
             case SType::NegtiveOp: {
                 NegativeExpr* negtiveOp = ast->asNegativeExpr();
                 Value val = eval(negtiveOp->value());
                 Value rst;
-                if(val.type() == ValueType::Int64) {
+                if(val.type() == PrimeVType::Int64) {
                     rst.setInt64(-val.intValue());
                     return rst;
-                } else if(val.type() == ValueType::Float64) {
+                } else if(val.type() == PrimeVType::Float64) {
                     rst.setFloat64(-val.floatValue());
                     return rst;
                 } else {
                     ExecuteException except(negtiveOp->op());
                     throw except;
                 }
-                return Value();
+                return nil;
             }
             case SType::Pair:{
                 auto valType = ast->valueType();
@@ -54,39 +59,57 @@ namespace compiler {
                         Identifier* id = var->id();
                         auto fenv = funcEnv();
                         auto loc = id->valueLoc();
-                        Value* varVtVal = fenv->vt[loc];
-                        Value varExprEvalVal;
-                        varExprEvalVal = eval(var->valueExpr());
-                        if(varExprEvalVal.type() == ValueType::ValueRef) {
-                            *varVtVal = *varExprEvalVal.ref();
-                        } else {
-                            *varVtVal = varExprEvalVal;
-                        }
-                        return *varVtVal;
+                        Value varVtVal = fenv->vt[loc];
+                        Value varExprEvalVal = eval(var->valueExpr());
+                        varVtVal = *varExprEvalVal.ref();
+                        return varVtVal;
                     }
                     case VType::FunctionCall: {
                         FunctionCall* caller = ast->asFunctionCall();
                         Value val = eval(caller->methodExpr());
-                        assert(val.type() == ValueType::ValueRef);
+                        assert(val.type() == PrimeVType::FunctionNode);
                         val = *val.ref();
-                        if(val.type() != ValueType::FunctionNode) { // it must be a function
-                            return rst;
+                        if(val.type() != PrimeVType::FunctionNode) { // it must be a function
+                            return nil;
                         } else {
-                            std::vector<Value> args;
-                            if(caller->args()) {
-                                for(auto expr: caller->args()->expressions()) {
-                                    args.push_back(eval(expr));
-                                }
-                            }
                             Node const* node = val.node();
                             if(node->structType() == SType::Function) {
-                                Function* func = (Function*)node;
-                                for(auto& arg : args) {
-                                    if(arg.type() == ValueType::ValueRef) {
-                                        arg = *arg.ref(); 
+                                // 传递self对象，机智的我想到了这个办法
+                                Value self;
+                                Node* methodExpr = caller->methodExpr();
+                                if(methodExpr->valueType() == VType::DotAccess) {
+                                    DotAccess* dotAccess = methodExpr->asDotAccess();
+                                    self = *(eval(dotAccess->obj()).ref());
+                                }
+                                switch(node->valueType()) {
+                                    case VType::None: {
+                                        std::vector<Value> args;
+                                        if(self && self.stype() == SymbolLayoutType::Class) {
+                                            args.push_back(self); // 传递this指针！
+                                        }
+                                        if(caller->args()) {
+                                            for(auto expr: caller->args()->expressions()) {
+                                                args.push_back(eval(expr));
+                                            }
+                                        }
+                                        Function* func = (Function*)node;
+                                        for(auto& arg : args) {
+                                            if(arg.type() == PrimeVType::ValueRef) {
+                                                arg = std::move(*arg.ref());
+                                            }
+                                        }
+                                        return callFunction(val,args);
+                                    }
+                                    case VType::NewOperator: {
+                                        NewOperator* newOp = node->asNew();
+                                        // create a new object value with the layout
+                                        Value val = Value(newOp->symbolLayout());
+                                        return val;
+                                    }
+                                    default: {
+                                        assert(false);
                                     }
                                 }
-                                return callFunction(val,args);
                             } else {
                                 return Value();
                             }
@@ -109,12 +132,8 @@ namespace compiler {
                         auto fieldLeaf = dotAccess->field()->asLeaf();
                         assert(fieldLeaf); assert(fieldLeaf->valueType() == VType::String);
                         Name fieldName = fieldLeaf->token().stringLiteral();
-                        Value* valPtr = (*objPtr)[fieldName]; // we should return the value's ref
-                        if(valPtr) {
-                            return Value(valPtr); // create ref
-                        } else {
-                            return Value();
-                        }
+                        Value valPtr = (*objPtr)[fieldName]; // we should return the value's ref
+                        return valPtr;
                     }
                     default: {
                         break;
@@ -122,22 +141,23 @@ namespace compiler {
                 }
             }
             case SType::Leaf: {
+                Value leafRst;
                 auto leaf = ast->asLeaf();
                 Token token = leaf->token();
                 if(leaf->valueType() == VType::Id) {
-                    rst = evalIdentifier(leaf->asId());
+                    leafRst = evalIdentifier(leaf->asId()); // a ref from var table
                 } else {
                     switch(token.type()) {
                         case TokenType::Float: {
-                            rst.setFloat64(token.floatLiteral());
+                            leafRst.setFloat64(token.floatLiteral());
                             break;
                         }
                         case TokenType::Integer: {
-                            rst.setInt64(token.integerLiteral());
+                            leafRst.setInt64(token.integerLiteral());
                             break;
                         }
                         case TokenType::String: {
-                            rst.setString(token.stringLiteral());
+                            leafRst.setString(token.stringLiteral());
                             break;
                         }
                         default: {
@@ -146,24 +166,28 @@ namespace compiler {
                         }
                     }
                 }
-                return rst;
+                return leafRst;
             }
             default: {
                 assert(false);
                 break;
             }
         }
-        return rst;
+        return nil;
     }
 
     Value Env::evalBinaryOp(Token op, Value a, Value b) {
         auto fenv = funcEnv();
+        if(op.type() == TokenType::Assign) {
+            a = *b.ref();
+            return a;
+        }
         Value* ap = a.ref();
         Value* bp = b.ref();
-        if(ap->type() == ValueType::Int64) {
+        if(ap->type() == PrimeVType::Int64) {
             IntegerValue const* ival = (IntegerValue const*)ap;
             return ival->Op(op, *bp);
-        } else if(ap->type() == ValueType::Float64) {
+        } else if(ap->type() == PrimeVType::Float64) {
             FloatValue const* fval = (FloatValue const*)ap;
             return fval->Op(op, *bp);
         }
@@ -175,20 +199,31 @@ namespace compiler {
 
     Value Env::evalIdentifier(Identifier const* id) {
         auto idType = id->type(); 
+        Value rst;
         switch(idType) {
             case IdentifierType::Global: {
-                return Value(_package[id->valueLoc()]);
+                rst = _package[id->valueLoc()];
+                break;
             }
             case IdentifierType::FunctionLocal: {
                 auto loc = id->valueLoc();
                 auto fenv = funcEnv();
-                return Value(fenv->vt[loc]);
+                rst = fenv->vt[loc];
+                break;
             }
             case IdentifierType::CurrentPackage: {
                 auto fenv = funcEnv();
                 Value hostPack = fenv->func->hostPackage();
                 auto loc = id->valueLoc();
-                return Value(hostPack[loc]);
+                rst = hostPack[loc];
+                break;
+            }
+            case IdentifierType::ClassMember: {
+                auto fenv = funcEnv();
+                auto self = *fenv->vt[0].ref(); //self is a ref
+                // self = std::move(*self.ref());
+                assert(self.stype() == SymbolLayoutType::Class);
+                return self[id->token().stringLiteral()];
             }
             case IdentifierType::Null: {
             }
@@ -197,7 +232,7 @@ namespace compiler {
                 break;
             }
         }
-        return Value();
+        return rst;
     }
 
 }

@@ -4,62 +4,64 @@
 
 namespace compiler {
 
-    Value* Value::operator[](Name name)  {
-        if(this->_type == ValueType::Object) {
+    Value Value::operator[](Name name) const {
+        if(this->_type == PrimeVType::Object) {
             Object* obj = (Object*)_ud;
             return obj->operator[](name);
         }
         else {
-            return nullptr;
+            return Value();
         }
     }
 
-    Value const* Value::operator[](Name name) const {
-        if(this->_type == ValueType::Object) {
-            Object const* obj = (Object*)_ud;
-            return &obj->operator[](name);
-        }
-        else {
-            return nullptr;
-        }
-    }
+    // Value const* Value::operator[](Name name) const {
+    //     if(this->_type == PrimeVType::Object) {
+    //         Object const* obj = (Object*)_ud;
+    //         return &obj->operator[](name);
+    //     }
+    //     else {
+    //         return nullptr;
+    //     }
+    // }
 
-    Value* Value::operator[](uint32_t loc) {
-        if(this->_type == ValueType::Object) {
+    // Value Value::operator[](uint32_t loc) {
+    //     if(this->_type == PrimeVType::Object) {
+    //         return _obj->at(loc);
+    //     }
+    //     return Value();
+    // }
+
+    Value Value::operator[](uint32_t loc) const {
+        if(this->_type == PrimeVType::Object) {
             return _obj->at(loc);
         }
-        return nullptr;
+        return Value();
     }
-
-    Value* Value::operator[](uint32_t loc) const {
-        if(this->_type == ValueType::Object) {
-            return _obj->at(loc);
-        }
-        return nullptr;
-    }
-
 
     Value::Value(SymbolLayout* symbolLayout) {
-        _type = ValueType::Object;
+        _type = PrimeVType::Object;
         _obj = new Object(symbolLayout);
+        _stype = symbolLayout->type();
     }
 
     Value::Value(Value const& other) {
         _obj = other._obj;
         _type = other._type;
-        if(_type == ValueType::Object) {
+        _stype = other._stype;
+        if(_type == PrimeVType::Object) {
             _obj->incRef();
         }
     }
 
     Value::Value(Value* ref) {
-        _type = ValueType::ValueRef;
+        _type = PrimeVType::ValueRef;
         _ref = ref;
     }
 
     Value::Value(Node const* node)
         : _node(node) 
-        , _type(ValueType::FunctionNode)
+        , _type(PrimeVType::FunctionNode)
+        , _stype(SymbolLayoutType::Function)
     {
         assert(node->structType() == SType::Function);
     }
@@ -67,34 +69,64 @@ namespace compiler {
     Value::Value( Value&& other) {
         _obj = other._obj;
         _type = other._type;
-        other._type = ValueType::Nil;
+        _stype = other._stype;
+        other._type = PrimeVType::Nil;
         other._obj = nullptr;
     }
 
     Value& Value::operator = (Value const& other) {
-        decRef(); // decRef the old value
-        _obj = other._obj;
-        _type = other._type;
-        if(_type == ValueType::Object) {
-            _obj->incRef();
+        if(_type == PrimeVType::ValueRef) { // 把other的值，赋值给自己在的ref
+            *_ref = other;
+        } else {
+            decRef(); // decRef the old value
+            _obj = other._obj;
+            _type = other._type;
+            _stype = other._stype;
+            incRef(); // incRef the new value
         }
         return *this;
     }
 
+    Value& Value::operator = (Value&& other) {
+        if(_type == PrimeVType::ValueRef) {
+            *_ref = other;
+            other._ref = nullptr;
+        } else {
+            decRef();
+            _obj = other._obj;
+            _type = other._type;
+            _stype = other._stype;
+            other._obj = nullptr;
+        }
+        other._type = PrimeVType::Nil;
+        other._stype = SymbolLayoutType::None;
+        return *this;
+    }
+
+    void Value::incRef() {
+        if(_type == PrimeVType::Object) {
+            _obj->incRef();
+        }
+    }
+
+    void Value::decRef() {
+        if(_type == PrimeVType::Object) {
+            _obj->decRef();
+        }
+    }
+
     Value* Value::ref() {
-        if(_type == ValueType::ValueRef) {
+        if(_type == PrimeVType::ValueRef) {
             return _ref;
         }
         return this;
     }
 
-    Value& Value::operator = (Value&& other) {
-        decRef();
-        _obj = other._obj;
-        _type = other._type;
-        other._obj = nullptr;
-        other._type = ValueType::Nil;
-        return *this;
+    void Value::deref() {
+        if(_type == PrimeVType::ValueRef) {
+            auto ref = _ref;
+            new(this)Value(*ref);
+        }
     }
 
     Node const* Value::node() const {
@@ -102,21 +134,21 @@ namespace compiler {
     }
 
     Value::operator bool () const {
-        if(_type == ValueType::Nil) {
+        if(_type == PrimeVType::Nil) {
             return false;
         }
         return _i64 != 0;
     }
 
     Object* Value::asObject() const {
-        if(_type != ValueType::Object) {
+        if(_type != PrimeVType::Object) {
             return nullptr;
         }
         return _obj;
     }
 
     Function* Value::asFunc() const {
-        if(_type != ValueType::FunctionNode) {
+        if(_type != PrimeVType::FunctionNode) {
             return nullptr;
         }
         if(_node->structType() != SType::Function) {
@@ -125,19 +157,14 @@ namespace compiler {
         return (Function*)_node;
     }
     
-    // Variable* Value::astVar() const {
-    //     if(_type != ValueType::FunctionNode) {
-    //         return nullptr;
-    //     }
-    //     if(_node->structType() != SType::Variable) {
-    //         return nullptr;
-    //     }
-    //     return (Variable*)_node;
-    // }
-
-    void Value::decRef() {
-        if(_type == ValueType::Object) {
-            _obj->decRef();
+    void Value::enumerateFunctions(std::function<void(ast::Function*)> const& func) const {
+        if(_type == PrimeVType::Object) {
+            auto symlayout = this->asObject()->symbolLayout();
+            for(auto const& sym : symlayout->symbols()) {
+                if(sym.symbol.type() == SymbolType::Function) {
+                    func((ast::Function*)sym.value.asFunc());
+                }
+            }
         }
     }
 
@@ -146,21 +173,21 @@ namespace compiler {
     }
 
     void Value::setInt64(int64_t i64) {
-        _type = ValueType::Int64;
+        _type = PrimeVType::Int64;
         _i64 = i64;
     }
 
     void Value::setFloat64(double f64) {
-        _type = ValueType::Float64;
+        _type = PrimeVType::Float64;
         _f64 = f64;
     }
 
     void Value::setString(Name name) {
-        _type = ValueType::String;
+        _type = PrimeVType::String;
         _str = name;
     }
 
-    ValueType Value::type() const {
+    PrimeVType Value::type() const {
         return _type;
     }
 
@@ -182,6 +209,10 @@ namespace compiler {
 
     Name Value::stringValue() const {
         return _str;
+    }
+
+    SymbolLayoutType Value::stype() const {
+        return _stype;
     }
 
 }

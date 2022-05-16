@@ -53,6 +53,13 @@
         "ostream": "cpp",
         "streambuf": "cpp",
         "xlocbuf": "cpp",
-        "*.rh": "cpp"
+        "*.rh": "cpp",
+        "locale": "cpp",
+        "stdexcept": "cpp",
+        "xfacet": "cpp",
+        "xiosbase": "cpp",
+        "xlocinfo": "cpp",
+        "xlocmes": "cpp",
+        "xloctime": "cpp"
     }
 }

@@ -17,6 +17,7 @@ namespace compiler {
             Function,
             StringList,
             Class,
+            // NewOperator,
             None,
         };
 
@@ -38,6 +39,7 @@ namespace compiler {
             Package,
             Extends,
             ClassBody,
+            NewOperator,
         };
 
 
@@ -129,6 +131,13 @@ namespace compiler {
                     return nullptr;
                 }
             }
+            Class* asClass() const {
+                if(_stype == SType::Class) {
+                    return (Class*)this;
+                } else {
+                    return nullptr;
+                }
+            }
             Variable* asVar() const {
                 return _vtype == VType::Variable ? (Variable*)this : nullptr;
             }
@@ -137,6 +146,9 @@ namespace compiler {
             }
             FunctionCall* asFunctionCall() const {
                 return _vtype == VType::FunctionCall ? (FunctionCall*)this : nullptr;
+            }
+            NewOperator* asNew() const {
+                return _vtype == VType::NewOperator ? (NewOperator*)this : nullptr;
             }
         };
 
@@ -154,6 +166,9 @@ namespace compiler {
             {}
             void addName(Token name) {
                 _names.push_back(name);
+            }
+            void pushFront(Token name) { // 类函数需要补一个this参数
+                _names.insert(_names.begin(), name);
             }
             std::vector<Token> const& names() const {
                 return _names;
@@ -453,7 +468,8 @@ namespace compiler {
          */
         class Function : public Node {
             friend class ::compiler::Env;
-        private:
+            friend class ::compiler::Module;
+        protected:
             struct {
                 uint64_t        _valid: 1;    // 编译过而且没问题
                 uint64_t        _compiled: 1;   // 编译过了
@@ -461,7 +477,7 @@ namespace compiler {
             Token               _name;
             Name                _module;
             Value               _hostPackage;
-            StringList*      _params;
+            StringList*         _params;
             Node*               _body;
             SymbolLayout*       _symbolLayout;
         public:
@@ -541,7 +557,13 @@ namespace compiler {
                 } else {
                     return empty;
                 }
-                // return _params->names();
+            }
+
+            void addSelfParam() {
+                if(!_params) {
+                    _params = new StringList(VType::Params);
+                }
+                _params->pushFront(Token(TokenType::Identifier, keywords::_self));
             }
 
             ~Function() {
@@ -563,6 +585,39 @@ namespace compiler {
                 , _extends(extends)
                 , _body(body)
             {}
+
+            Name name() {
+                return _name.stringLiteral();
+            }
+
+            ClassExtends* extends() {
+                return _extends;
+            }
+
+            MultiExpr* body() {
+                return _body;
+            }
+        };
+
+        class NewOperator : public Function {
+        private:
+            SymbolLayout*   _classSymbol;
+        public:
+            NewOperator(SymbolLayout* layout)
+                : Function(VType::NewOperator)
+                , _classSymbol(layout)
+            {
+                _compiled = 1;
+                _valid = 1;
+            }
+
+            void setSymbolLayout(SymbolLayout* layout) {
+                _classSymbol = layout;
+            }
+
+            SymbolLayout* symbolLayout() {
+                return _classSymbol;
+            }
         };
 
     }

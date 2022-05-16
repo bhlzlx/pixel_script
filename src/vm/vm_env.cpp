@@ -11,7 +11,7 @@ namespace compiler {
         auto pack = rootPackage();
         for( auto name : package->names() ) {
             Object* parent = pack.asObject();
-            auto layout = newSymbolLayout();
+            auto layout = newSymbolLayout(SymbolLayoutType::Package);
             Value subpack(layout);
             parent->addSymbol(name.stringLiteral(), SymbolType::Package, subpack, Name());
             pack = subpack;
@@ -94,14 +94,16 @@ namespace compiler {
                             auto rst = packObj->addSymbol(func->name().stringLiteral(), SymbolType::Function, Value(func), moduleName);
                             func->setHostPackage(package);
                             func->setModule(moduleName);
-                            if(!rst.first) {
+                            if(!rst.item) {
                                 assert(false);
                                 return false;
                             }
+                            module->addFunction(func);
                         } else if( expr->valueType() == VType::Variable ) {
                             Variable* var = (Variable*)expr;
                             // 注意这个地方，value不是ast节点，而是实际给了一个空值，占位。
                             auto rst = packObj->addSymbol(var->name().stringLiteral(), SymbolType::Variable, Value(), moduleName);
+                            assert(rst.item);
                             if(var->valueExpr()) { // 创建一个特别的function，给var初始化，方便代码重用，处理
                                 MultiExpr* funcBody = new MultiExpr(VType::Block);
                                 funcBody->addExpr(var->valueExpr());
@@ -109,9 +111,40 @@ namespace compiler {
                                 func->setBody(funcBody);
                                 func->setHostPackage(package);
                                 func->setModule(moduleName);
-                                module->addInitliaze(rst.second, func); // 添加变量到初始化列表
+                                module->addInitliaze(rst.loc, func); // 添加变量到初始化列表
                             }
-                        } else {
+                        } else if(expr->structType() == SType::Class) { // 对 Class 节点处理
+                            Class* clazz = (Class*)expr; 
+                            auto clazzLayout = new SymbolLayout(SymbolLayoutType::Class);
+                            auto clazzValue = Value(clazzLayout);
+                            auto clazzObj = clazzValue.asObject();
+                            for(auto expr : clazz->body()->expressions()) {
+                                if(expr->structType() == SType::Function) {
+                                    Function* func = (Function*)expr;
+                                    auto rst = clazzObj->addSymbol(func->name().stringLiteral(), SymbolType::Function, Value(func), moduleName);
+                                    func->setHostPackage(package);
+                                    func->setModule(moduleName);
+                                    if(!rst.item) {
+                                        assert(false);
+                                        return false;
+                                    }
+                                } else if(expr->valueType() == VType::Variable) {
+                                    Variable* var = (Variable*)expr;
+                                    // 不支持默认值
+                                    auto rst = clazzObj->addSymbol(var->name().stringLiteral(), SymbolType::Variable, Value(), moduleName);
+                                    if(!rst.item) {
+                                        assert(false && "add symbol failed!");
+                                        return false;
+                                    }
+                                }
+                            }
+                            clazzLayout->reorderSymbols(); // 类需要重新排序
+                            auto newOperator = new ast::NewOperator(clazzLayout);
+                            clazzObj->addSymbol(keywords::_new, SymbolType::NewOperator, Value(newOperator), moduleName);
+                            // 将class信息添加到包里
+                            packObj->addSymbol(clazz->name(), SymbolType::Class, clazzValue, moduleName);
+                            module->addClass(clazzValue);
+                        }else {
                             assert(false && "only function & variable can be defined in package");
                             return false;
                         }
@@ -129,16 +162,22 @@ namespace compiler {
             return false;
         }
     }
+
+    
+    // bool Env::postprocessModule(char const* module) {
+    //     auto name = createName(module);
+    //     auto this->_modules[name];
+    // }
         
-    std::vector<Token> Env::postprocessFunction(Function* ast) {
+    std::vector<Token> Env::postprocessFunction(Function* ast, IdLocateEnv locateEnv) {
         assert(ast->structType() == SType::Function);
-        SymbolLayout* symLayout = newSymbolLayout();
+        SymbolLayout* symLayout = newSymbolLayout(SymbolLayoutType::Function);
         std::vector<Token> compilerErrors;
         Function* func = (Function*)ast;
         func->setSymbolLayout(symLayout);
         for(auto param: func->params()) {
-            auto rst = symLayout->regSymbol(param.stringLiteral(), SymbolType::Variable, func->module());
-            if(!rst.first) {
+            auto rst = symLayout->regSymbol(param.stringLiteral(), SymbolType::Variable, Value(), func->module());
+            if(!rst.item) {
                 compilerErrors.push_back(param);
             }
         }
@@ -157,13 +196,13 @@ namespace compiler {
             if(!id) {
                 return;
             }
-            IdLocateEnv locateEnv = {symLayout, func->hostPackage().asObject()->symbolLayout()};
+            // IdLocateEnv locateEnv = {symLayout, func->hostPackage().asObject()->symbolLayout()};
             auto parent = node->parent();
             switch(parent->structType()) {
                 case SType::Pair: { // define variable        
                     if(parent->valueType() == VType::Variable) {
-                        auto regRst = symLayout->regSymbol(id->token().stringLiteral(), SymbolType::Variable, func->module());
-                        id->setValue(IdentifierType::FunctionLocal, regRst.second);
+                        auto regRst = symLayout->regSymbol(id->token().stringLiteral(), SymbolType::Variable, Value(), func->module());
+                        id->setValue(IdentifierType::FunctionLocal, regRst.loc);
                     } else if(parent->valueType() == VType::DotAccess) {
                         if(!locateIdentifier(locateEnv, id)) {
                             compilerErrors.push_back(id->token());
@@ -206,34 +245,33 @@ namespace compiler {
         if(~symbolLoc != 0) { // local var
             id->setValue( IdentifierType::FunctionLocal, symbolLoc);
             return true;
-        } else { // current package var
-            symbolLoc = env.packageLayout->querySymbolLoc(name);
+        } else {
+            symbolLoc = env.classLayout->querySymbolLoc(name);
             if(~symbolLoc != 0) {
-                id->setValue( IdentifierType::CurrentPackage, symbolLoc);
+                id->setValue(IdentifierType::ClassMember, symbolLoc);
                 return true;
-            }
-            else {
-                symbolLoc = _package.asObject()->symbolLayout()->querySymbolLoc(name);
+            } else { // current package var
+                symbolLoc = env.packageLayout->querySymbolLoc(name);
                 if(~symbolLoc != 0) {
-                    id->setValue( IdentifierType::Global, symbolLoc);
+                    id->setValue( IdentifierType::CurrentPackage, symbolLoc);
                     return true;
                 }
-                return false;
+                else { // global
+                    symbolLoc = _package.asObject()->symbolLayout()->querySymbolLoc(name);
+                    if(~symbolLoc != 0) {
+                        id->setValue( IdentifierType::Global, symbolLoc);
+                        return true;
+                    }
+                    return false;
+                }
             }
         }
         return false;
     }
 
     Value Env::callFunction(Value const& func, std::vector<Value> const& args) {
-        // assert(func.type() == ValueType::Function);
         Function* fn = (Function*)func.node();
-        if(!fn->compiled()){
-            auto errs = this->postprocessFunction(fn);
-            if(errs.size()) {
-                return Value();
-            }
-        }
-        if(!fn->valid()) {
+        if(!fn->compiled() || !fn->valid()){
             return Value();
         }
         auto params = fn->params();
@@ -244,13 +282,10 @@ namespace compiler {
         {
             auto fenv = funcEnv();
             for(size_t i = 0; (i < params.size())&&(i<args.size()); i++) {
-                Value* argRef = fenv->vt[i];
-                *argRef = args[i];
+                fenv->vt[i] = args[i];
+                // argRef = args[i]; // ref assign
             }
-            rst = eval(fn->body());
-            if(rst.type() == ValueType::ValueRef) {
-                rst = *rst.ref();
-            }
+            rst = eval(fn->body()); // 代码块的返回值不应该是ref类型
         }
         // clean up the stack frame
         _funcEnvs.pop_back();
@@ -272,7 +307,7 @@ namespace compiler {
             auto name = createName(id.c_str());
             auto attr = val[name];
             if(attr) {
-                val = *attr;
+                val = attr;
             } else {
                 return Value();
             }
@@ -292,6 +327,16 @@ namespace compiler {
         auto modName = createName(module);
         auto mod = getModule(modName);
         mod->initialize(this);
+    }
+
+    bool Env::postprocessModule(char const* module) {
+        auto modName = createName(module);
+        auto mod = getModule(modName);
+        auto rst =  mod->postprocess(this);
+        if(rst.size()) {
+            return false;
+        }
+        return true;
     }
 
     Module* Env::getModule(Name const& name) {

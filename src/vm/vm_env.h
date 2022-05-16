@@ -15,6 +15,7 @@ namespace compiler {
     class Module;
 
     class Env {
+        friend class Module;
     private:
         struct FuncEnv {
             Value               vt;     // variable table
@@ -28,11 +29,6 @@ namespace compiler {
 
         std::map<Name, Module*, Name::FastLess> _modules;
     private:
-        SymbolLayout* newSymbolLayout() {
-            auto symLayout = new SymbolLayout();
-            _symbolLayouts.push_back(symLayout);
-            return symLayout;
-        }
     private:
         // utility functions
         Value rootPackage() { return _package; }
@@ -40,18 +36,24 @@ namespace compiler {
         Value preparePackage(Node* ast);
         struct IdLocateEnv {
             SymbolLayout*   functionLayout;     // local symbol layout
-            SymbolLayout*   packageLayout;      // local symbol layout
+            SymbolLayout*   packageLayout;      // current package symbol layout
+            SymbolLayout*   classLayout;        // class symbol layout  
         };
         bool locateIdentifier(IdLocateEnv env, Identifier const* id) ;
         void traverseAST(Node const* ast, TraverseCallBack& callBack);
-        std::vector<Token> postprocessFunction(Function* ast);
-
+        std::vector<Token> postprocessFunction(Function* ast, IdLocateEnv env);
     public:
 
         Env() {
-            auto layout = newSymbolLayout();
+            auto layout = newSymbolLayout(SymbolLayoutType::Package);
             _package = Value(layout);
             compiler::keywords::init(this);
+        }
+
+        SymbolLayout* newSymbolLayout(SymbolLayoutType type) {
+            auto symLayout = new SymbolLayout(type);
+            _symbolLayouts.push_back(symLayout);
+            return symLayout;
         }
 
         Name createName(char const* str);
@@ -59,6 +61,7 @@ namespace compiler {
         Module* getModule(Name const& name);
 
         bool compileCodeChunk(char const* module, Node* ast);
+        bool postprocessModule(char const* module);
         void initializeModule(char const* module);
         Value callFunction(Value const& func, std::vector<Value> const& args);
 
