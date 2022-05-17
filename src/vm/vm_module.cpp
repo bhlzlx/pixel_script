@@ -30,7 +30,10 @@ namespace compiler {
             auto node = pair.second;
             postprocessFunction(env, node, locateEnv);
             Value valRef = _package[loc];
-            *valRef.ref() = env->callFunction(Value(node), {});
+            int retCount = env->callFunction(Value(node));
+            assert(retCount == 1);
+            valRef = env->stackValues().popValue();
+            // valRef = env->stackValues().topValue();
         }
     }
 

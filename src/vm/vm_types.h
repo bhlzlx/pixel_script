@@ -71,13 +71,14 @@ namespace compiler {
 
     enum class PrimeVType : uint8_t {
         Nil,
+        Boolean,
         Int64,
         Float64,
         String,
         Object,
         ValueRef,
         FunctionNode,
-        UserData
+        Userdata
     };
 
     class Value {
@@ -91,7 +92,7 @@ namespace compiler {
             Object*         _obj;
             Value*          _ref;
             Node const*     _node;
-            void*           _ud;
+            UserdataObject* _ud;
         };
     public:
         Value() 
@@ -106,6 +107,7 @@ namespace compiler {
         Value(Node const* node);
         Value(Value* ref);
         Value(Value&& other);
+        Value(UserdataObject* ud);
 
         Value& operator = (Value const& other);
         Value& operator = (Value&& other);
@@ -126,13 +128,14 @@ namespace compiler {
         void setString(Name name);
         PrimeVType type() const;
         SymbolLayoutType stype() const;
-        void setUd(void * u);
 
-        void* ud() const;
+        UserdataObject* ud() const;
 
         int64_t intValue() const;
 
         double floatValue() const;
+
+        bool booleanValue() const;
 
         Name stringValue() const;
 

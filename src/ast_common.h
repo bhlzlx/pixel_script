@@ -1,23 +1,19 @@
 #pragma once
 #include "name_pool.h"
 #include "token.h"
+#include <vector>
+#include <map>
 
 namespace compiler {
-    using Name = ksgw::Name;
 
-    enum class IdentifierType {
-        Null,
-        FunctionLocal,
-        Global,
-        CurrentPackage,
-        ClassMember, // package/namespace/object oriented
-    };
+    using Name = ksgw::Name;
 
     class Token;
     // class Lexer;
     class SymbolLayout;
     class Value;
     class Object;
+    class UserdataObject;
     class Env;
     class Module;
     namespace ast {
@@ -38,7 +34,15 @@ namespace compiler {
         class NewOperator;
     }
 
-    enum class SymbolType {
+    enum class IdentifierType : uint8_t {
+        Null,
+        FunctionLocal,
+        Global,
+        CurrentPackage,
+        ClassMember, // package/namespace/object oriented
+    };
+
+    enum class SymbolType : uint8_t {
         Variable,
         Package,
         Function,
@@ -46,7 +50,7 @@ namespace compiler {
         NewOperator,
     };
 
-    enum class SymbolLayoutType {
+    enum class SymbolLayoutType : uint8_t {
         None,
         Package,
         Class,

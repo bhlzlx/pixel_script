@@ -269,30 +269,34 @@ namespace compiler {
         return false;
     }
 
-    Value Env::callFunction(Value const& func, std::vector<Value> const& args) {
+    int Env::callFunction(Value const& func) {
         Function* fn = (Function*)func.node();
         if(!fn->compiled() || !fn->valid()){
             return Value();
         }
         auto params = fn->params();
-        auto vt = Value(fn->symbolLayout());  // value table
-        FuncEnv fenv = { vt, fn };
+        auto layout = fn->symbolLayout();  // value table
+        FuncEnv fenv = { fn };
         _funcEnvs.push_back(fenv); // 实际上创建了一个新的局部变量表
         Value rst;
         {
             auto fenv = funcEnv();
-            for(size_t i = 0; (i < params.size())&&(i<args.size()); i++) {
-                fenv->vt[i] = args[i];
-                // argRef = args[i]; // ref assign
+            // 补全栈空间
+            if(layout->size() > _stackValues.topFrameSize()) {
+                auto appendSize = layout->size() - _stackValues.topFrameSize();
+                for(size_t i = 0; i<appendSize; ++i) {
+                    _stackValues.pushValue(Value()); // 添加空值
+                }
             }
             rst = eval(fn->body()); // 代码块的返回值不应该是ref类型
         }
         // clean up the stack frame
         _funcEnvs.pop_back();
-        return rst;
+        _stackValues.pushValue(rst);
+        return 1;
     }
 
-    Value Env::callFunction(std::string func) {
+    Value Env::callFuncWithPath(std::string func) {
         std::string id;
         size_t last =0;
         size_t pos;
@@ -318,7 +322,12 @@ namespace compiler {
         } while(true);
         auto astFunc = val.asFunc();
         if(astFunc) {
-            return callFunction(val, std::vector<Value>());
+            _stackValues.prepareNextFrame();
+            auto retCount = callFunction(val);
+            assert(retCount == 1);
+            auto rst = _stackValues.popValue();
+            _stackValues.popFrame();
+            return rst;
         }
         return Value();
     }

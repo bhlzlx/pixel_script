@@ -11,7 +11,6 @@ using namespace compiler::ast;
 
 namespace compiler {
 
-
     class ConsumeStateHelper {
     private:
         ASTBuilder*     _builder;

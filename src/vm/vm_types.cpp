@@ -1,5 +1,6 @@
 #include "vm_object.h"
 #include "vm_types.h"
+#include "vm_userdata.h"
 #include <exception>
 
 namespace compiler {
@@ -13,23 +14,6 @@ namespace compiler {
             return Value();
         }
     }
-
-    // Value const* Value::operator[](Name name) const {
-    //     if(this->_type == PrimeVType::Object) {
-    //         Object const* obj = (Object*)_ud;
-    //         return &obj->operator[](name);
-    //     }
-    //     else {
-    //         return nullptr;
-    //     }
-    // }
-
-    // Value Value::operator[](uint32_t loc) {
-    //     if(this->_type == PrimeVType::Object) {
-    //         return _obj->at(loc);
-    //     }
-    //     return Value();
-    // }
 
     Value Value::operator[](uint32_t loc) const {
         if(this->_type == PrimeVType::Object) {
@@ -112,6 +96,8 @@ namespace compiler {
     void Value::decRef() {
         if(_type == PrimeVType::Object) {
             _obj->decRef();
+        } else if(_type == PrimeVType::Userdata) {
+            _ud->decRef();
         }
     }
 
@@ -191,11 +177,7 @@ namespace compiler {
         return _type;
     }
 
-    void Value::setUd(void * u) {
-        _ud = u;
-    }
-
-    void* Value::ud() const {
+    UserdataObject* Value::ud() const {
         return _ud;
     }
 
@@ -215,4 +197,7 @@ namespace compiler {
         return _stype;
     }
 
+    bool Value::booleanValue() const {
+        return _i64 != 0;
+    }
 }

@@ -26,7 +26,7 @@ namespace compiler {
             _buf.resize(2, '\0');
             _buf[0] = _buf[1] = 0;
         }
-        void push_back( char ch ) {
+        void push_back(char ch) {
             _buf.push_back(ch);
             ++(*(uint16_t*)_buf.data());
         }
@@ -48,6 +48,8 @@ namespace compiler {
             Identifier, // keyword/var
             Integer, // pure number
             Float, //
+            String, //
+            StringEscape,
             // Brackets, // { } [ ] ()
             Op, // + - * / += *= /= ++ --
             // Semicolon, // ;

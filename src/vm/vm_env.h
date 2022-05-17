@@ -4,6 +4,7 @@
 #include "../name_pool.h"
 #include <functional>
 #include <map>
+#include <type_traits>
 
 namespace compiler {
     using Name = ksgw::Name;
@@ -14,16 +15,75 @@ namespace compiler {
 
     class Module;
 
+    /**
+     * @brief 
+     * sizeof(Value) * 8 * 64 = 512
+     */
+
+    class StackValues {
+    private:
+        std::vector<Value>      _params;
+        std::vector<size_t>     _frameBases; // 
+    private:
+        Value* currentFrame() const {
+            return const_cast<Value*>(&_params[_frameBases.back()]);
+        }
+    public:
+        StackValues() {}
+        void pushValue(Value const& value) {
+            _params.push_back(value);
+        }
+        void pushValue(Value&& value) {
+            _params.emplace_back(std::move(value));
+        }
+        void prepareNextFrame() {
+            _frameBases.push_back(_params.size());
+        }
+        void popFrame() {
+            while(_params.size() > _frameBases.back()) {
+                _params.pop_back();
+            }
+            _frameBases.pop_back();
+        }
+        size_t topFrameSize() const {
+            if(_params.size() == 0) {
+                return 0;
+            } else {
+                return _params.size() - _frameBases.back();
+            }
+        }
+        Value localValueRef(size_t index) const {
+            size_t frameSize = topFrameSize();
+            if(index >= frameSize) {
+                return Value();
+            } else {
+                return Value(currentFrame() + index);
+            }
+        }
+        Value popValue() {
+            Value value(std::move(_params.back()));
+            _params.pop_back();
+            return value;
+        }
+        // Value topValueRef() const {
+        //     return Value(const_cast<Value*>(&_params.back()));
+        // }
+        // Value topValue() const {
+        //     return _params.back();
+        // }
+    };
+
     class Env {
         friend class Module;
     private:
         struct FuncEnv {
-            Value               vt;     // variable table
-            Function*        func;   // function ast node
+            // Value*              vt;     // 废弃了
+            Function*           func;   // function ast node
         };
     private:
         NamePool                                _namePool;
         Value                                   _package;
+        StackValues                             _stackValues;
         std::vector<FuncEnv>                    _funcEnvs;
         std::vector<SymbolLayout*>              _symbolLayouts;
 
@@ -48,7 +108,18 @@ namespace compiler {
             auto layout = newSymbolLayout(SymbolLayoutType::Package);
             _package = Value(layout);
             compiler::keywords::init(this);
+            _stackValues.prepareNextFrame();
+            _stackValues.pushValue(_package);
         }
+
+        ~Env() {
+            _stackValues.popFrame();
+        }
+
+        StackValues& stackValues() {
+            return _stackValues;
+        }
+
 
         SymbolLayout* newSymbolLayout(SymbolLayoutType type) {
             auto symLayout = new SymbolLayout(type);
@@ -63,7 +134,7 @@ namespace compiler {
         bool compileCodeChunk(char const* module, Node* ast);
         bool postprocessModule(char const* module);
         void initializeModule(char const* module);
-        Value callFunction(Value const& func, std::vector<Value> const& args);
+        int callFunction(Value const& func);
 
         /**
          * @brief only for test
@@ -71,7 +142,7 @@ namespace compiler {
          * @param func 
          * @return Value 
          */
-        Value callFunction(std::string func);
+        Value callFuncWithPath(std::string func);
 
         /**
          * @brief 计算一个节点的值

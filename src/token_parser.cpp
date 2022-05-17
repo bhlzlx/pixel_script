@@ -155,6 +155,8 @@ namespace compiler {
             rst = true;
         } else if(matchOperator(ch) || _token.type() != TokenType::None) {
             _state = State::Op;
+        } else if(ch == '"') {
+            _state = State::String;
         } else if('.' == ch) {
             _token = Token(TokenType::Dot, keywords::_none);
             updateTokenLocation();
@@ -176,6 +178,40 @@ namespace compiler {
             rst = true;
         }
         return rst;
+    }
+
+    bool TokenParser::dealString(char ch) {
+        if(_tokenColumn == -1) {
+            _tokenColumn = _column;
+        }
+        if(_state == State::StringEscape) { 
+            if(ch == 'n') {
+                _tokenBuf.push_back('\n');
+            } else if(ch == 't') {
+                _tokenBuf.push_back('\t');
+            } else if(ch == 'r') {
+                _tokenBuf.push_back('\r');
+            } else if(ch == '"') {
+                _tokenBuf.push_back('"');
+            } else if(ch == '\\') {
+                _tokenBuf.push_back('\\');
+            } else {
+                _tokenBuf.push_back(ch);
+            }
+            _state = State::String;
+        } else if(_state == State::String) {
+            if(ch == '"') {
+                _state = State::None;
+                _token = Token(TokenType::String, _env->createName(_tokenBuf.str()));
+                updateTokenLocation();
+                return true;
+            } else if(ch == '\\') {
+                _state = State::StringEscape;
+            } else {
+                _tokenBuf.push_back(ch);
+            }
+        }
+        return false;
     }
 
     bool TokenParser::dealIdentifier(char ch) {
@@ -280,6 +316,10 @@ namespace compiler {
                 }
                 case State::Op: {
                     rst = dealOp(ch); break;
+                }
+                case State::String: 
+                case State::StringEscape: {
+                    rst = dealString(ch); break;
                 }
             }
             ++_pos;

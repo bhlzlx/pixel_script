@@ -57,9 +57,9 @@ namespace compiler {
                     case VType::Variable: {
                         Variable* var = ast->asVar();
                         Identifier* id = var->id();
-                        auto fenv = funcEnv();
+                        // auto fenv = funcEnv();
                         auto loc = id->valueLoc();
-                        Value varVtVal = fenv->vt[loc];
+                        Value varVtVal = _stackValues.localValueRef(loc); // ref
                         Value varExprEvalVal = eval(var->valueExpr());
                         varVtVal = *varExprEvalVal.ref();
                         return varVtVal;
@@ -83,22 +83,21 @@ namespace compiler {
                                 }
                                 switch(node->valueType()) {
                                     case VType::None: {
-                                        std::vector<Value> args;
+                                        _stackValues.prepareNextFrame();
                                         if(self && self.stype() == SymbolLayoutType::Class) {
-                                            args.push_back(self); // 传递this指针！
+                                            _stackValues.pushValue(std::move(self));// 传递this指针！
                                         }
+                                        // 传递参数
                                         if(caller->args()) {
                                             for(auto expr: caller->args()->expressions()) {
-                                                args.push_back(eval(expr));
+                                                _stackValues.pushValue(eval(expr));
                                             }
                                         }
-                                        Function* func = (Function*)node;
-                                        for(auto& arg : args) {
-                                            if(arg.type() == PrimeVType::ValueRef) {
-                                                arg = std::move(*arg.ref());
-                                            }
-                                        }
-                                        return callFunction(val,args);
+                                        auto rstCount = callFunction(val);
+                                        assert(rstCount == 1);
+                                        Value rst = _stackValues.popValue();
+                                        _stackValues.popFrame();
+                                        return rst;
                                     }
                                     case VType::NewOperator: {
                                         NewOperator* newOp = node->asNew();
@@ -208,7 +207,8 @@ namespace compiler {
             case IdentifierType::FunctionLocal: {
                 auto loc = id->valueLoc();
                 auto fenv = funcEnv();
-                rst = fenv->vt[loc];
+                assert(loc < _stackValues.topFrameSize());
+                rst = _stackValues.localValueRef(loc); // create a ref
                 break;
             }
             case IdentifierType::CurrentPackage: {
@@ -220,8 +220,8 @@ namespace compiler {
             }
             case IdentifierType::ClassMember: {
                 auto fenv = funcEnv();
-                auto self = *fenv->vt[0].ref(); //self is a ref
-                // self = std::move(*self.ref());
+                auto self = _stackValues.localValueRef(0);// 第一个参数就是self //self is a ref
+                self.deref();
                 assert(self.stype() == SymbolLayoutType::Class);
                 return self[id->token().stringLiteral()];
             }
