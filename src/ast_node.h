@@ -563,7 +563,7 @@ namespace compiler {
                 if(!_params) {
                     _params = new StringList(VType::Params);
                 }
-                _params->pushFront(Token(TokenType::Identifier, keywords::_self));
+                _params->pushFront(Token(TokenType::Identifier, lang_keywords::_self));
             }
 
             ~Function() {

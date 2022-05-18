@@ -41,6 +41,11 @@ namespace compiler {
         _type = PrimeVType::ValueRef;
         _ref = ref;
     }
+    
+    Value::Value(BridgeFunc func) {
+        _type = PrimeVType::BridgeFunc;
+        _bridgeFunc = func;
+    }
 
     Value::Value(Node const* node)
         : _node(node) 
@@ -56,6 +61,11 @@ namespace compiler {
         _stype = other._stype;
         other._type = PrimeVType::Nil;
         other._obj = nullptr;
+    }
+
+    Value::Value(Name name) {
+        _str = name;
+        _type = PrimeVType::String;
     }
 
     Value& Value::operator = (Value const& other) {
@@ -143,6 +153,13 @@ namespace compiler {
         return (Function*)_node;
     }
     
+    BridgeFunc Value::asBridgeFunc() const {
+        if(_type != PrimeVType::BridgeFunc) {
+            return nullptr;
+        }
+        return _bridgeFunc;
+    }
+
     void Value::enumerateFunctions(std::function<void(ast::Function*)> const& func) const {
         if(_type == PrimeVType::Object) {
             auto symlayout = this->asObject()->symbolLayout();
@@ -200,4 +217,5 @@ namespace compiler {
     bool Value::booleanValue() const {
         return _i64 != 0;
     }
+
 }

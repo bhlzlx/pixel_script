@@ -24,6 +24,7 @@ namespace compiler {
     private:
         std::vector<Value>      _params;
         std::vector<size_t>     _frameBases; // 
+        size_t                  _argBeg;
     private:
         Value* currentFrame() const {
             return const_cast<Value*>(&_params[_frameBases.back()]);
@@ -31,15 +32,28 @@ namespace compiler {
     public:
         StackValues() {}
         void pushValue(Value const& value) {
-            _params.push_back(value);
+            if(value.type() == PrimeVType::ValueRef) {
+                Value v = value;
+                v.deref();
+                _params.push_back(v);
+            } else {
+                _params.push_back(value);
+            }
         }
         void pushValue(Value&& value) {
+            if(value.type() == PrimeVType::ValueRef) {
+                value.deref();
+            }
             _params.emplace_back(std::move(value));
         }
-        void prepareNextFrame() {
-            _frameBases.push_back(_params.size());
+        void pushArgBegin() {
+            _argBeg = _params.size();
         }
-        void popFrame() {
+        void pushArgEnd() {
+            _frameBases.push_back(_argBeg);
+            _argBeg = ~0;
+        }
+        void popToArgBegin() {
             while(_params.size() > _frameBases.back()) {
                 _params.pop_back();
             }
@@ -52,6 +66,7 @@ namespace compiler {
                 return _params.size() - _frameBases.back();
             }
         }
+        // 在vm里更新栈内值的时候，使用localValueRef
         Value localValueRef(size_t index) const {
             size_t frameSize = topFrameSize();
             if(index >= frameSize) {
@@ -60,17 +75,24 @@ namespace compiler {
                 return Value(currentFrame() + index);
             }
         }
-        Value popValue() {
-            Value value(std::move(_params.back()));
-            _params.pop_back();
-            return value;
+        // 获取栈上的参数的时候，使用localValue
+        Value localValue(size_t index) const {
+            size_t frameSize = topFrameSize();
+            if(index >= frameSize) {
+                return Value();
+            } else {
+                return Value(currentFrame()[index]);
+            }
         }
-        // Value topValueRef() const {
-        //     return Value(const_cast<Value*>(&_params.back()));
-        // }
-        // Value topValue() const {
-        //     return _params.back();
-        // }
+        Value popValue() {
+            if(_params.size() > _frameBases.back()) {
+                Value rst(std::move(_params.back()));
+                _params.pop_back();
+                return rst;
+            } else {
+                return Value();
+            }
+        }
     };
 
     class Env {
@@ -89,9 +111,7 @@ namespace compiler {
 
         std::map<Name, Module*, Name::FastLess> _modules;
     private:
-    private:
         // utility functions
-        Value rootPackage() { return _package; }
         FuncEnv const* funcEnv() { return &_funcEnvs.back(); }
         Value preparePackage(Node* ast);
         struct IdLocateEnv {
@@ -104,22 +124,17 @@ namespace compiler {
         std::vector<Token> postprocessFunction(Function* ast, IdLocateEnv env);
     public:
 
-        Env() {
-            auto layout = newSymbolLayout(SymbolLayoutType::Package);
-            _package = Value(layout);
-            compiler::keywords::init(this);
-            _stackValues.prepareNextFrame();
-            _stackValues.pushValue(_package);
-        }
+        Env();
 
         ~Env() {
-            _stackValues.popFrame();
+            _stackValues.popToArgBegin();
         }
+
+        Value root() { return _package; }
 
         StackValues& stackValues() {
             return _stackValues;
         }
-
 
         SymbolLayout* newSymbolLayout(SymbolLayoutType type) {
             auto symLayout = new SymbolLayout(type);

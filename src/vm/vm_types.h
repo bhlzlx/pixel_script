@@ -34,41 +34,6 @@ namespace compiler {
         }
     };
 
-    // this script is for 64 bit only
-    class TagPointer {
-    private:
-        union {
-            uint64_t    _value;
-            void*       _pointer;
-            struct {
-                uint64_t   _tag : 16;
-                uint64_t   _addr : 48;
-            };
-        };
-        template<class T>
-        T* getPointer() {
-            return reinterpret_cast<T*>(_addr);
-        };
-        template<class T>
-        T const* getPointer() const {
-            return reinterpret_cast<T*>(_addr);
-        };
-        template<class T>
-        operator T*() {
-            return getPointer<T>();
-        };
-        template<class T>
-        operator T const*() const{
-            return getPointer<T>();
-        };
-        TagPointer(void* ptr = nullptr) {
-            _pointer = ptr;
-            _tag = 0;
-        }
-    };
-
-    using Name = ksgw::Name;
-
     enum class PrimeVType : uint8_t {
         Nil,
         Boolean,
@@ -78,7 +43,8 @@ namespace compiler {
         Object,
         ValueRef,
         FunctionNode,
-        Userdata
+        Userdata,
+        BridgeFunc,
     };
 
     class Value {
@@ -93,6 +59,7 @@ namespace compiler {
             Value*          _ref;
             Node const*     _node;
             UserdataObject* _ud;
+            BridgeFunc      _bridgeFunc;
         };
     public:
         Value() 
@@ -108,6 +75,8 @@ namespace compiler {
         Value(Value* ref);
         Value(Value&& other);
         Value(UserdataObject* ud);
+        Value(BridgeFunc func);
+        Value(Name name);
 
         Value& operator = (Value const& other);
         Value& operator = (Value&& other);
@@ -115,6 +84,7 @@ namespace compiler {
         operator bool () const;
         Object* asObject() const;
         Function* asFunc() const;
+        BridgeFunc asBridgeFunc() const;
 
         void decRef() ;
         void incRef() ;
@@ -139,13 +109,9 @@ namespace compiler {
 
         Name stringValue() const;
 
-        // Value operator[](uint32_t loc);
         Value operator[](uint32_t loc) const;
 
-        // Value operator[](Name name) ;
         Value operator[](Name name) const;
-
-        // Value& operator = (Value const& other);
 
         void enumerateFunctions(std::function<void(ast::Function*)> const& func) const;
     };

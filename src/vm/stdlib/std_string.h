@@ -12,19 +12,17 @@ namespace compiler {
 
     namespace string_impl {
 
-        using Name = ksgw::Name;
-
         std::string toString(Value const& value) ;
 
-        Value string_append(Value const* args, uint32_t argc);
-        Value string_length(std::vector<Value> const& args);
+        int string_append(Env* env);
+        int string_length(Env* env);
+        int console_log(Env* env);
 
-
-        Value console_log(std::vector<Value> const& args) {
-        }
-
+        extern UserdataLayout* stringLayout;
 
         Value createString(Env* env, char const* str);        
+
+        void initString(Env* env);
 
     }
 

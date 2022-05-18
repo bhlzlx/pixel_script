@@ -63,14 +63,14 @@ namespace compiler {
                 return { operand, ASTParseError::None, token->line(), token->column() };
             }
             case TokenType::Keyword: { // 目前关键字只有func
-                if(token->stringLiteral() == keywords::_func) {
+                if(token->stringLiteral() == lang_keywords::_func) {
                     auto closure = matchClosure();
                     if(closure) {
                         return closure;
                     }
                     return { nullptr, ASTParseError::FunctionMismatch, token->line(), token->column() };
                 }
-                if(token->stringLiteral() == keywords::_self) {
+                if(token->stringLiteral() == lang_keywords::_self) {
                     consumeCurrentToken();
                     return { new Leaf(VType::Id, *token), ASTParseError::None, token->line(), token->column() };
                 }
@@ -269,7 +269,7 @@ namespace compiler {
         ConsumeStateHelper helper(this, false);
         MatchResult rst = {};
         auto token = nextToken();
-        if(token->stringLiteral() == keywords::_if) {
+        if(token->stringLiteral() == lang_keywords::_if) {
             auto IfToken = *token;
             IfStmt* if_stmt = new IfStmt();
             consumeCurrentToken();
@@ -285,7 +285,7 @@ namespace compiler {
                 } else {
                     if_stmt->setThenBranch(block.node);
                     token = nextToken();
-                    if(token->stringLiteral() == keywords::_else) {
+                    if(token->stringLiteral() == lang_keywords::_else) {
                         consumeCurrentToken();
                         auto block = matchBlock();
                         if(!block) {
@@ -299,7 +299,7 @@ namespace compiler {
                 }
                 return { if_stmt, ASTParseError::None, IfToken.line(), IfToken.column() };
             }
-        } else if(token->stringLiteral() == keywords::_while) {
+        } else if(token->stringLiteral() == lang_keywords::_while) {
             auto WhileToken = *token;
             consumeCurrentToken();
             auto expr = matchExpression();
@@ -443,7 +443,7 @@ namespace compiler {
         Function* func = nullptr;
         auto token = nextToken();
         Token startToken = *token;
-        if(token->stringLiteral() != keywords::_func) { // "func"
+        if(token->stringLiteral() != lang_keywords::_func) { // "func"
             return MatchResult { nullptr, ASTParseError::FunctionMismatch, token->line(), token->column() };
         } else {
             consumeCurrentToken();
@@ -563,7 +563,7 @@ namespace compiler {
         Node* params = nullptr;
         Node* body = nullptr;
         if(token->type() == TokenType::Keyword) {
-            if(token->stringLiteral() == keywords::_func) {
+            if(token->stringLiteral() == lang_keywords::_func) {
                 consumeCurrentToken();
                 params = matchParamList().node;
                 body = matchBlock().node;
@@ -585,7 +585,7 @@ namespace compiler {
         ConsumeStateHelper helper(this, true);
         auto token = nextToken();
         if(token->type() == TokenType::Keyword) {
-            if(token->stringLiteral() == keywords::_var) {
+            if(token->stringLiteral() == lang_keywords::_var) {
                 consumeCurrentToken();
                 token = nextToken();
                 if(token->type() == TokenType::Identifier) {
@@ -621,7 +621,7 @@ namespace compiler {
         consumeCommaEol();
         auto token = nextToken();
         if(token->type() == TokenType::Keyword) {
-            if(token->stringLiteral() == keywords::_package) {
+            if(token->stringLiteral() == lang_keywords::_package) {
                 consumeCurrentToken();
                 token = nextToken();
                 std::vector<Token> names;
@@ -661,7 +661,7 @@ namespace compiler {
         consumeCommaEol();
         auto token = nextToken();
         if(token->type() == TokenType::Keyword) {
-            if(token->stringLiteral() == keywords::_class) {
+            if(token->stringLiteral() == lang_keywords::_class) {
                 consumeCurrentToken();
                 token = nextToken();
                 if(token->type() == TokenType::Identifier) {
@@ -669,7 +669,7 @@ namespace compiler {
                     consumeCurrentToken();
                     ClassExtends* extends = nullptr; // get extends info
                     if(token->type() == TokenType::Keyword) {
-                        if(token->stringLiteral() == keywords::_extends) {
+                        if(token->stringLiteral() == lang_keywords::_extends) {
                             consumeCurrentToken();
                             token = nextToken();
                             if(token->type() == TokenType::Identifier) {

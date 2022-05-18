@@ -8,12 +8,23 @@ namespace compiler {
 
     using Name = ksgw::Name;
 
-    namespace keywords {
+    namespace lang_keywords {
     #ifdef KEYWORD
     #undef KEYWORD
     #endif
     #define KEYWORD(kw) extern Name _##kw;
-            #include "keywords.h"
+            #include "lang_keywords.h"
+            extern std::set<Name>    _all;
+        
+        void init(Env* env);
+    }
+
+    namespace lib_keywords {
+    #ifdef KEYWORD
+    #undef KEYWORD
+    #endif
+    #define KEYWORD(kw) extern Name _##kw;
+            #include "lib_keywords.h"
             extern std::set<Name>    _all;
         
         void init(Env* env);

@@ -82,12 +82,12 @@ namespace compiler {
 
     bool TokenParser::matchBrackets(char ch) {
         switch(ch) {
-            case '(': _token = Token(TokenType::LeftParen, keywords::_none); break;
-            case ')': _token = Token(TokenType::RightParen, keywords::_none); break;
-            case '[': _token = Token(TokenType::LeftBracket, keywords::_none); break;
-            case ']': _token = Token(TokenType::RightBracket, keywords::_none); break;
-            case '{': _token = Token(TokenType::LeftBrace, keywords::_none); break;
-            case '}': _token = Token(TokenType::RightBrace, keywords::_none); break;
+            case '(': _token = Token(TokenType::LeftParen, lang_keywords::_none); break;
+            case ')': _token = Token(TokenType::RightParen, lang_keywords::_none); break;
+            case '[': _token = Token(TokenType::LeftBracket, lang_keywords::_none); break;
+            case ']': _token = Token(TokenType::RightBracket, lang_keywords::_none); break;
+            case '{': _token = Token(TokenType::LeftBrace, lang_keywords::_none); break;
+            case '}': _token = Token(TokenType::RightBrace, lang_keywords::_none); break;
             default:
             return false;
         }
@@ -98,23 +98,23 @@ namespace compiler {
     bool TokenParser::matchOperator(char ch) {
         if(_token.type() == TokenType::None) {
             switch(ch) {
-                case '+': _token = Token(TokenType::Plus, keywords::_none); break;
-                case '-': _token = Token(TokenType::Minus, keywords::_none); break;
-                case '/': _token = Token(TokenType::Slash, keywords::_none); break;
-                case '*': _token = Token(TokenType::Star, keywords::_none); break;
-                case '%': _token = Token(TokenType::Modulus, keywords::_none); break;
-                case '=': _token = Token(TokenType::Assign, keywords::_none); break;
-                case '>': _token = Token(TokenType::Greater, keywords::_none); break;
-                case '<': _token = Token(TokenType::Less, keywords::_none); break;
-                case '.': _token = Token(TokenType::Dot, keywords::_none); break;
+                case '+': _token = Token(TokenType::Plus, lang_keywords::_none); break;
+                case '-': _token = Token(TokenType::Minus, lang_keywords::_none); break;
+                case '/': _token = Token(TokenType::Slash, lang_keywords::_none); break;
+                case '*': _token = Token(TokenType::Star, lang_keywords::_none); break;
+                case '%': _token = Token(TokenType::Modulus, lang_keywords::_none); break;
+                case '=': _token = Token(TokenType::Assign, lang_keywords::_none); break;
+                case '>': _token = Token(TokenType::Greater, lang_keywords::_none); break;
+                case '<': _token = Token(TokenType::Less, lang_keywords::_none); break;
+                case '.': _token = Token(TokenType::Dot, lang_keywords::_none); break;
             }
             return false;
         } else {
             switch(_token.type()) {
                 case TokenType::Assign: {
                     switch(ch) {
-                        case '=': _token = Token(TokenType::Equal, keywords::_none); break;
-                        case '>': _token = Token(TokenType::Equal, keywords::_none); break;
+                        case '=': _token = Token(TokenType::Equal, lang_keywords::_none); break;
+                        case '>': _token = Token(TokenType::Equal, lang_keywords::_none); break;
                         default: {
                             fallback();
                         }
@@ -123,7 +123,7 @@ namespace compiler {
                 }
                 case TokenType::Less: {
                     switch(ch) {
-                        case '=': _token = Token(TokenType::LessEqual, keywords::_none); break;
+                        case '=': _token = Token(TokenType::LessEqual, lang_keywords::_none); break;
                         default: {
                             fallback();
                         }
@@ -145,7 +145,7 @@ namespace compiler {
             _tokenColumn = _column;
         }
         _tokenBuf.clear();
-        _token = Token(TokenType::None, keywords::_none);
+        _token = Token(TokenType::None, lang_keywords::_none);
         bool rst = false;
         if(std::isalpha(ch) || ch == '_') {
             _state = State::Identifier; _tokenBuf.push_back(ch);
@@ -158,19 +158,19 @@ namespace compiler {
         } else if(ch == '"') {
             _state = State::String;
         } else if('.' == ch) {
-            _token = Token(TokenType::Dot, keywords::_none);
+            _token = Token(TokenType::Dot, lang_keywords::_none);
             updateTokenLocation();
             rst = true;
         } else if(',' == ch) {
-            _token = Token(TokenType::Comma, keywords::_none);
+            _token = Token(TokenType::Comma, lang_keywords::_none);
             updateTokenLocation();
             rst = true;
         } else if(';' == ch) {
-            _token = Token(TokenType::Semicolon, keywords::_none);
+            _token = Token(TokenType::Semicolon, lang_keywords::_none);
             updateTokenLocation();
             rst = true;
         } else if('\n' == ch) {
-            _token = Token(TokenType::Eol, keywords::_none);
+            _token = Token(TokenType::Eol, lang_keywords::_none);
             _tokenColumn = _column;
             updateTokenLocation();
             ++_line;
@@ -226,7 +226,7 @@ namespace compiler {
                 fallback();
             }
             _token = Token(TokenType::Identifier, _env->createName(_tokenBuf.str()));
-            if(keywords::_all.find(_token.stringLiteral()) != keywords::_all.end()) {
+            if(lang_keywords::_all.find(_token.stringLiteral()) != lang_keywords::_all.end()) {
                 _token.setType(TokenType::Keyword);
             }
             updateTokenLocation();
@@ -287,7 +287,7 @@ namespace compiler {
                 break;
             }
             default: {
-                _token = Token(TokenType::Eof, keywords::_none);
+                _token = Token(TokenType::Eof, lang_keywords::_none);
             }
         }
         updateTokenLocation();

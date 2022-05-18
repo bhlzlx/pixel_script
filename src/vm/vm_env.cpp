@@ -1,6 +1,19 @@
 #include "vm_env.h"
+#include "stdlib/std_io.h"
 
 namespace compiler {
+
+    Env::Env() {
+        auto layout = newSymbolLayout(SymbolLayoutType::Package);
+        _package = Value(layout);
+        compiler::lang_keywords::init(this);
+        compiler::lib_keywords::init(this);
+        io::init(this);
+        _stackValues.pushArgBegin();
+        _stackValues.pushArgEnd();
+        _stackValues.pushValue(_package);
+
+    }
 
     Name Env::createName(char const* str) {
         return _namePool.getName(str);
@@ -8,7 +21,7 @@ namespace compiler {
 
     Value Env::preparePackage( Node* ast ) {
         auto package = ast->asStringList();
-        auto pack = rootPackage();
+        auto pack = root();
         for( auto name : package->names() ) {
             Object* parent = pack.asObject();
             auto layout = newSymbolLayout(SymbolLayoutType::Package);
@@ -140,7 +153,7 @@ namespace compiler {
                             }
                             clazzLayout->reorderSymbols(); // 类需要重新排序
                             auto newOperator = new ast::NewOperator(clazzLayout);
-                            clazzObj->addSymbol(keywords::_new, SymbolType::NewOperator, Value(newOperator), moduleName);
+                            clazzObj->addSymbol(lang_keywords::_new, SymbolType::NewOperator, Value(newOperator), moduleName);
                             // 将class信息添加到包里
                             packObj->addSymbol(clazz->name(), SymbolType::Class, clazzValue, moduleName);
                             module->addClass(clazzValue);
@@ -272,7 +285,7 @@ namespace compiler {
     int Env::callFunction(Value const& func) {
         Function* fn = (Function*)func.node();
         if(!fn->compiled() || !fn->valid()){
-            return Value();
+            return 0;
         }
         auto params = fn->params();
         auto layout = fn->symbolLayout();  // value table
@@ -322,11 +335,12 @@ namespace compiler {
         } while(true);
         auto astFunc = val.asFunc();
         if(astFunc) {
-            _stackValues.prepareNextFrame();
+            _stackValues.pushArgBegin();
+            _stackValues.pushArgEnd();
             auto retCount = callFunction(val);
             assert(retCount == 1);
             auto rst = _stackValues.popValue();
-            _stackValues.popFrame();
+            _stackValues.popToArgBegin();
             return rst;
         }
         return Value();

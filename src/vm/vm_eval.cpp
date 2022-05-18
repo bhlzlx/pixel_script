@@ -65,28 +65,43 @@ namespace compiler {
                         return varVtVal;
                     }
                     case VType::FunctionCall: {
+                        Value argsItems[16];
                         FunctionCall* caller = ast->asFunctionCall();
                         Value val = eval(caller->methodExpr());
-                        assert(val.type() == PrimeVType::FunctionNode);
+                        assert(val.type() == PrimeVType::FunctionNode || val.type() == PrimeVType::BridgeFunc);
                         val = *val.ref();
-                        if(val.type() != PrimeVType::FunctionNode) { // it must be a function
-                            return nil;
-                        } else {
+                        Node* methodExpr = caller->methodExpr();
+                        // registed c/c++ function
+                        if(val.type() == PrimeVType::BridgeFunc) { // it must be a function
+                            _stackValues.pushArgBegin();
+                            for( auto& arg : caller->args()->expressions()) {
+                                _stackValues.pushValue(eval(arg));
+                            }
+                            _stackValues.pushArgEnd();
+                            int ret = val.asBridgeFunc()(this);
+                            Value rst;
+                            if(ret) {
+                                rst = _stackValues.popValue(); // 只取一个值
+                            }
+                            _stackValues.popToArgBegin();
+                            return rst;
+                        // function defined in script
+                        } else if(val.type() == PrimeVType::FunctionNode) {
                             Node const* node = val.node();
                             if(node->structType() == SType::Function) {
                                 // 传递self对象，机智的我想到了这个办法
                                 Value self;
-                                Node* methodExpr = caller->methodExpr();
                                 if(methodExpr->valueType() == VType::DotAccess) {
                                     DotAccess* dotAccess = methodExpr->asDotAccess();
                                     self = *(eval(dotAccess->obj()).ref());
                                 }
                                 switch(node->valueType()) {
-                                    case VType::None: {
-                                        _stackValues.prepareNextFrame();
+                                    case VType::None: { // 普通函数调用（全局函数以及类函数）
+                                        _stackValues.pushArgBegin();
                                         if(self && self.stype() == SymbolLayoutType::Class) {
                                             _stackValues.pushValue(std::move(self));// 传递this指针！
                                         }
+                                        _stackValues.pushArgEnd();
                                         // 传递参数
                                         if(caller->args()) {
                                             for(auto expr: caller->args()->expressions()) {
@@ -96,7 +111,7 @@ namespace compiler {
                                         auto rstCount = callFunction(val);
                                         assert(rstCount == 1);
                                         Value rst = _stackValues.popValue();
-                                        _stackValues.popFrame();
+                                        _stackValues.popToArgBegin();
                                         return rst;
                                     }
                                     case VType::NewOperator: {
@@ -112,6 +127,8 @@ namespace compiler {
                             } else {
                                 return Value();
                             }
+                        } else {
+                            return Value();
                         }
                     }
                     case VType::WhileStmt: {

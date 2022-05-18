@@ -6,10 +6,6 @@
 
 namespace compiler {
 
-    using Name = ksgw::Name;
-
-    using BridgeFunc = Value(*)(Value const* args, uint32_t argc);
-
     class UserdataLayout {
     private:
         std::vector<BridgeFunc>     _bridgeFuncs;
@@ -58,8 +54,14 @@ namespace compiler {
             }
         }
 
-        Value callMemberMethod(Name methodName) {
-            return Value();
+        int callMemberMethod(Env* env, Name methodName) {
+            auto func = _layout->getFunction(methodName);
+            if(!func) {
+                return 0;
+            } else {
+                return func(env);
+            }
+            return 0;
         }
 
         void* ptr() const {

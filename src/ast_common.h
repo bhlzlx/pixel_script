@@ -8,6 +8,7 @@ namespace compiler {
 
     using Name = ksgw::Name;
 
+
     class Token;
     // class Lexer;
     class SymbolLayout;
@@ -16,6 +17,14 @@ namespace compiler {
     class UserdataObject;
     class Env;
     class Module;
+
+    using BridgeFunc = int(*)(Env* env);
+
+    struct BridgeFuncPair {
+        BridgeFunc func;
+        char const* name;
+    };
+
     namespace ast {
         class Node;
         class Leaf;

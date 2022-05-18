@@ -23,7 +23,7 @@ namespace compiler {
             nullptr, 
             nullptr,
             _package.asObject()->symbolLayout(),
-            env->rootPackage().asObject()->symbolLayout()
+            env->root().asObject()->symbolLayout()
         };
         for (auto& pair : _initliazeList) {
             auto loc = pair.first;
@@ -46,7 +46,7 @@ namespace compiler {
             nullptr, // function local
             nullptr, // class
             _package.asObject()->symbolLayout(), // local package
-            env->rootPackage().asObject()->symbolLayout() // global
+            env->root().asObject()->symbolLayout() // global
         };
         auto rst = std::vector<Token>();
         for(auto func : _functions) {

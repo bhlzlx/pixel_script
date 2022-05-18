@@ -13,7 +13,9 @@ PRIVATE
     vm/vm_env.cpp
     vm/vm_eval.cpp
     vm/vm_userdata.cpp
-    vm/internal_types/string_impl.cpp
+    vm/stdlib/std_io.cpp
+    vm/stdlib/std_string.cpp
+    vm/utils/vm_package_util.cpp
 )
 
 target_include_directories(stone
