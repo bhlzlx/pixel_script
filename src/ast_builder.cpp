@@ -131,6 +131,7 @@ namespace compiler {
                     startToken.line(),
                     startToken.column()
                 };
+                _addDebugInfo(rst.node, {token->stringLiteral(), token->line(), token->column()});
             } else {
                 rst = primNode; // failed
             }
@@ -146,13 +147,16 @@ namespace compiler {
                 // 如果error code没有错误，则说明匹配成功，只是没有参数
                 if(rst || rst.error == ASTParseError::None) {
                     auto funcCall = new FunctionCall(node, rst.node ? rst.node->asMultiExpr() : nullptr); 
+                    _addDebugInfo(funcCall, { token->stringLiteral(), token->line(), token->column() });
                     node = funcCall;
                     break;
                 } else {
+                    token = nextToken();
                     rst = matchDotAccess(); // 返回的是一个Leaf String
                     if(rst) {
                         auto dotAccess = new DotAccess(node, rst.node);
                         node = dotAccess;
+                        _addDebugInfo(dotAccess, {token->stringLiteral(), token->line(), token->column() });
                     } else {
                         break;
                     }
@@ -168,7 +172,7 @@ namespace compiler {
         MatchResult rst = {};
         auto startToken = *nextToken();
         std::stack<Node*> factorStack;
-        std::stack<TokenType> opStack;
+        std::stack<Token> opStack;
         auto factor = matchFactor();
         if(factor) {
             factorStack.push(factor.node);
@@ -197,7 +201,8 @@ namespace compiler {
                             factorStack.pop();
                             auto left = factorStack.top();
                             factorStack.pop();
-                            auto binExpr = new BinaryOpExpr(left, right, op);
+                            auto binExpr = new BinaryOpExpr(left, right, op.type());
+                            _addDebugInfo(binExpr, {op.stringLiteral(), op.line(), op.column()});
                             factorStack.push(binExpr);
                         }
                         auto rst = factorStack.top();
@@ -207,15 +212,16 @@ namespace compiler {
                 consumeCurrentToken();
                 TokenType op = token->type();
                 if(opStack.size()) {
-                    if(op>=opStack.top()) {
+                    if(op>=opStack.top().type()) {
                         auto factor1 = factorStack.top(); factorStack.pop();
                         auto factor2 = factorStack.top(); factorStack.pop();
-                        auto binExpr = new BinaryOpExpr(factor1, factor2, opStack.top());
+                        auto binExpr = new BinaryOpExpr(factor1, factor2, opStack.top().type());
+                        _addDebugInfo(binExpr, { opStack.top().stringLiteral(), opStack.top().line(), opStack.top().column() });
                         opStack.pop();
                         factorStack.push(binExpr);
                     }
                 }
-                opStack.push(op);
+                opStack.push(*token);
                 factor = matchFactor();
                 if(factor) {
                     factorStack.push(factor.node);
@@ -799,7 +805,16 @@ namespace compiler {
         _consumedPositions.pop_back();
     }
 
-    MatchResult ASTBuilder::buildAST(Env* env, char const* code) {
+
+    void ASTBuilder::_addDebugInfo(ast::Node const* node, ExprDebugInfo const& info) {
+        if(_debugInfoMap) {
+            auto& ref = *_debugInfoMap;
+            ref[node] = info;
+        }
+    }
+
+    MatchResult ASTBuilder::buildAST(Env* env, char const* code, DebugInfoMap* debugInfoMap) {
+        _debugInfoMap = debugInfoMap;
         _tokenParser = new TokenParser(env);
         _tokenParser->init(code);
         auto rst = matchCodeChunk();

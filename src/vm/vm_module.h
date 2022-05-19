@@ -1,5 +1,5 @@
 #pragma once
-#include "../ast_common.h"
+#include "../compiler_common.h"
 #include "vm_object.h"
 // #include "../token.h"
 #include <functional>
@@ -21,6 +21,7 @@ namespace compiler {
         std::vector<std::pair<uint32_t, Node*>> _initliazeList; // 初始化列表
         std::vector<Node*>                      _functions;
         std::vector<Value>                      _classes;
+        DebugInfoMap                            _debugInfos;
 
         struct IdLocateEnv {
             SymbolLayout*   functionLayout;     // local symbol layout
@@ -35,6 +36,12 @@ namespace compiler {
             , _initliazeList()
         {}
 
+        void setDebugInfo(DebugInfoMap && debugInfos) {
+            _debugInfos = std::move(debugInfos);
+        }
+        DebugInfoMap const& debugInfo() const {
+            return _debugInfos;
+        }
         void setHostPackage(Value package);
         void addInitliaze(uint32_t loc, Node* node);
         void addFunction(Node* node);

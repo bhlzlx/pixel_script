@@ -13,6 +13,7 @@ PRIVATE
     vm/vm_env.cpp
     vm/vm_eval.cpp
     vm/vm_userdata.cpp
+    vm/vm_primitive_types.cpp
     vm/stdlib/std_io.cpp
     vm/stdlib/std_string.cpp
     vm/utils/vm_package_util.cpp

@@ -5,7 +5,7 @@
 #include <functional>
 #include <vector>
 #include "../name_pool.h"
-#include "ast_common.h"
+#include "compiler_common.h"
 
 namespace compiler {
 
@@ -17,13 +17,20 @@ namespace compiler {
     
     class ExecuteException : public std::exception {
     private:
-        ExecutionError _error;
+        ExecutionError  _error;
+        std::string     _backtrace;
         union {
             Token   _op;
         };
     public:
+        ExecuteException(Token op, std::string&& backtrace)
+            : _op(op)
+            , _backtrace(std::move(backtrace))
+        {
+        }
         ExecuteException(Token op)
             : _op(op)
+            , _backtrace("")
         {
         }
         ExecutionError error() const {
@@ -116,194 +123,6 @@ namespace compiler {
         Value operator[](Name name) const;
 
         void enumerateFunctions(std::function<void(ast::Function*)> const& func) const;
-    };
-
-    class IntegerValue: public Value {
-    public:
-        IntegerValue(int64_t i64) {
-            setInt64(i64);
-        }
-
-        Value Op( Token op, Value const& other) const {
-            Value rst;
-            switch(op.type()) {
-                case TokenType::Plus: {
-                    if(other.type() == PrimeVType::Int64) {
-                        rst.setInt64(intValue() + other.intValue());
-                        return rst;
-                    }
-                    else if(other.type() == PrimeVType::Float64) {
-                        rst.setInt64(intValue() + other.floatValue());
-                        return rst;
-                    } else {
-                        throw ExecuteException(op);
-                    }
-                }
-                case TokenType::Minus: {
-                    if(other.type() == PrimeVType::Int64) {
-                        rst.setInt64(intValue() - other.intValue());
-                        return rst;
-                    }
-                    else if(other.type() == PrimeVType::Float64) {
-                        rst.setInt64(intValue() - other.floatValue());
-                        return rst;
-                    } else {
-                        throw ExecuteException(op);
-                    }
-                }
-                case TokenType::Star: {
-                    if(other.type() == PrimeVType::Int64) {
-                        rst.setInt64(intValue() * other.intValue());
-                        return rst;
-                    }
-                    else if(other.type() == PrimeVType::Float64) {
-                        rst.setInt64(intValue() * other.floatValue());
-                        return rst;
-                    } else {
-                        throw ExecuteException(op);
-                    }
-                }
-                case TokenType::Slash: {
-                    if(other.type() == PrimeVType::Int64) {
-                        rst.setInt64(intValue() / other.intValue());
-                        return rst;
-                    }
-                    else if(other.type() == PrimeVType::Float64) {
-                        rst.setInt64(intValue() / other.floatValue());
-                        return rst;
-                    } else {
-                        throw ExecuteException(op);
-                    }
-                }
-                case TokenType::Assign: {
-                    auto v = const_cast<IntegerValue*>(this);
-                    if(other.type() == PrimeVType::Int64) {
-                        v->setInt64(other.intValue());
-                        return *this;
-                    } else if(other.type() == PrimeVType::Float64) {
-                        v->setFloat64(other.floatValue());
-                        return *this;
-                    } else {
-                        throw ExecuteException(op);
-                    }
-                }
-                case TokenType::Less: {
-                    if(other.type() == PrimeVType::Int64) {
-                        rst.setBool(intValue() < other.intValue());
-                        return rst;
-                    }
-                    else if(other.type() == PrimeVType::Float64) {
-                        rst.setBool(intValue() < other.floatValue());
-                        return rst;
-                    } else {
-                        throw ExecuteException(op);
-                    }
-                }
-                case TokenType::Greater: {
-                    if(other.type() == PrimeVType::Int64) {
-                        rst.setBool(intValue() > other.intValue());
-                        return rst;
-                    }
-                    else if(other.type() == PrimeVType::Float64) {
-                        rst.setBool(intValue() > other.floatValue());
-                        return rst;
-                    } else {
-                        throw ExecuteException(op);
-                    }
-                }
-                default: {
-                    throw ExecuteException(op);
-                }
-            }
-            return Value();
-        }
-    };
-
-    class FloatValue: public Value {
-    public:
-        FloatValue(double f64) {
-            setFloat64(f64);
-        }
-        Value Op( Token op, Value const& other) const {
-            Value rst;
-            switch(op.type()) {
-                case TokenType::Plus: {
-                    if(other.type() == PrimeVType::Int64) {
-                        rst.setFloat64(floatValue() + other.intValue());
-                        return rst;
-                    }
-                    else if(other.type() == PrimeVType::Float64) {
-                        rst.setFloat64(floatValue() + other.floatValue());
-                        return rst;
-                    } else {
-                        throw ExecuteException(op);
-                    }
-                }
-                case TokenType::Minus: {
-                    if(other.type() == PrimeVType::Int64) {
-                        rst.setFloat64(floatValue() - other.intValue());
-                        return rst;
-                    }
-                    else if(other.type() == PrimeVType::Float64) {
-                        rst.setFloat64(floatValue() - other.floatValue());
-                        return rst;
-                    } else {
-                        throw ExecuteException(op);
-                    }
-                }
-                case TokenType::Star: {
-                    if(other.type() == PrimeVType::Int64) {
-                        rst.setFloat64(floatValue() * other.intValue());
-                        return rst;
-                    }
-                    else if(other.type() == PrimeVType::Float64) {
-                        rst.setFloat64(floatValue() * other.floatValue());
-                        return rst;
-                    } else {
-                        throw ExecuteException(op);
-                    }
-                }
-                case TokenType::Slash: {
-                    if(other.type() == PrimeVType::Int64) {
-                        rst.setFloat64(floatValue() / other.intValue());
-                        return rst;
-                    }
-                    else if(other.type() == PrimeVType::Float64) {
-                        rst.setFloat64(floatValue() / other.floatValue());
-                        return rst;
-                    } else {
-                        throw ExecuteException(op);
-                    }
-                }
-                case TokenType::Assign: {
-                    auto v = const_cast<FloatValue*>(this);
-                    if(other.type() == PrimeVType::Int64) {
-                        v->setInt64(other.intValue());
-                        return *this;
-                    } else if(other.type() == PrimeVType::Float64) {
-                        v->setFloat64(other.floatValue());
-                        return *this;
-                    } else {
-                        throw ExecuteException(op);
-                    }
-                }
-                case TokenType::Less: {
-                    if(other.type() == PrimeVType::Int64) {
-                        rst.setFloat64(floatValue() < other.intValue());
-                        return rst;
-                    }
-                    else if(other.type() == PrimeVType::Float64) {
-                        rst.setFloat64(floatValue() < other.floatValue());
-                        return rst;
-                    } else {
-                        throw ExecuteException(op);
-                    }
-                }
-                default: {
-                    throw ExecuteException(op);
-                }
-            }
-        }
     };
 
 } // namespace name

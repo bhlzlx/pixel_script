@@ -89,8 +89,8 @@ namespace compiler {
             , _token(TokenType::None, nullptr)
             // , _tokenCached(false)
             , _state(State::None)
-            , _line(0)
-            , _column(0)
+            , _line(1)
+            , _column(1)
             , _tokenColumn(0)
         {
         }

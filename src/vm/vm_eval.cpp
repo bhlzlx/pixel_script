@@ -1,4 +1,5 @@
 #include "vm_env.h"
+#include "vm_primitive_types.h"
 
 namespace compiler {
 
@@ -10,6 +11,7 @@ namespace compiler {
         }
         switch(ast->structType()) {
             case SType::BinaryOp: {
+                updateEvaluingNode(ast);
                 BinaryOpExpr* binExpr = ast->asBinaryExpr();
                 Value left = eval(binExpr->left());
                 Value right = eval(binExpr->right());
@@ -63,6 +65,7 @@ namespace compiler {
                         return varVtVal;
                     }
                     case VType::FunctionCall: {
+                        updateEvaluingNode(ast);
                         Value argsItems[16];
                         FunctionCall* caller = ast->asFunctionCall();
                         Value val = eval(caller->methodExpr());
@@ -140,6 +143,7 @@ namespace compiler {
                         return rst;
                     }
                     case VType::DotAccess: {
+                        updateEvaluingNode(ast);
                         DotAccess* dotAccess = ast->asDotAccess();
                         Value obj = eval(dotAccess->obj()); // object must be a ref
                         Value* objPtr = obj.ref();
@@ -217,10 +221,10 @@ namespace compiler {
         Value* bp = b.ref();
         if(ap->type() == PrimeVType::Int64) {
             IntegerValue const* ival = (IntegerValue const*)ap;
-            return ival->Op(op, *bp);
+            return ival->Op(this, op, *bp);
         } else if(ap->type() == PrimeVType::Float64) {
             FloatValue const* fval = (FloatValue const*)ap;
-            return fval->Op(op, *bp);
+            return fval->Op(this, op, *bp);
         }
         else {
             assert(false && "unsupported type");
@@ -252,8 +256,7 @@ namespace compiler {
             }
             case IdentifierType::ClassMember: {
                 auto fenv = funcEnv();
-                auto self = _stackFrames.localValueRef(0);// 第一个参数就是self //self is a ref
-                self.deref();
+                auto self = _stackFrames.localValue(0);// 第一个参数就是self //self is a ref
                 assert(self.stype() == SymbolLayoutType::Class);
                 return self[id->token().stringLiteral()];
             }

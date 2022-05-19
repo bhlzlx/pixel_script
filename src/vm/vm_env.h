@@ -99,8 +99,8 @@ namespace compiler {
         friend class Module;
     private:
         struct FuncEnv {
-            // Value*              vt;     // 废弃了
             Function*           func;   // function ast node
+            Node const*         evaluingNode;
             bool                retNow;
         };
     private:
@@ -109,7 +109,6 @@ namespace compiler {
         StackFrames                             _stackFrames;
         std::vector<FuncEnv>                    _funcEnvs;
         std::vector<SymbolLayout*>              _symbolLayouts;
-
         std::map<Name, Module*, Name::FastLess> _modules;
     private:
         // utility functions
@@ -122,6 +121,7 @@ namespace compiler {
         };
         bool locateIdentifier(IdLocateEnv env, Identifier const* id);
         void traverseAST(Node const* ast, TraverseCallBack& callBack);
+        void updateEvaluingNode(Node const* ast);
         std::vector<Token> postprocessFunction(Function* ast, IdLocateEnv env);
     public:
 
@@ -145,9 +145,17 @@ namespace compiler {
 
         Name createName(char const* str);
 
-        Module* getModule(Name const& name);
+        std::string backtrace(char const* errorType) const ;
 
-        bool compileCodeChunk(char const* module, Node* ast);
+        Module* getModule(Name const& name);
+        Module const* getModule(Name const& name) const;
+        /**
+         * @brief 
+         *     只是生成简单的符号表，类，包，函数，全局变量
+         * @return true 
+         * @return false 
+         */
+        bool compileCodeChunk(char const* module, Node* ast, DebugInfoMap* debugInfoMap = nullptr);
         bool postprocessModule(char const* module);
         void initializeModule(char const* module);
         int callFunction(Value const& func);

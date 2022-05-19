@@ -3,6 +3,7 @@
 #include <vector>
 #include <deque>
 #include "token.h"
+#include "compiler_common.h"
 
 namespace compiler {
 
@@ -50,16 +51,13 @@ namespace compiler {
 
     class ConsumeStateHelper;
     class ASTBuilder {
-        // struct TokenHelper {
-        //     size_t cacheSize;
-        // };
         friend class ConsumeStateHelper;
     private:
         TokenParser*                    _tokenParser;
         std::vector<Token>              _consumedTokens;
         std::vector<uint32_t>           _consumedPositions;
         std::deque<Token>               _cachedTokens;
-        // Token const*                    _token;
+        DebugInfoMap*                   _debugInfoMap;
     private: // functions
         MatchResult matchPrimary();
         MatchResult matchFactor();
@@ -96,6 +94,8 @@ namespace compiler {
         void popConsumeState();
         void resumeConsumeState();
         void discardConsumeState();
+
+        void _addDebugInfo(ast::Node const* node, ExprDebugInfo const& info);
     public:
         ASTBuilder()
             : _tokenParser(nullptr)
@@ -105,7 +105,7 @@ namespace compiler {
         {
         }
 
-        MatchResult buildAST(Env* env, char const* code);
+        MatchResult buildAST(Env* env, char const* code, DebugInfoMap* debugInfoMap = nullptr);
 
     };
 

@@ -1,5 +1,6 @@
 #include "vm_env.h"
 #include "stdlib/std_io.h"
+#include <sstream>
 
 namespace compiler {
 
@@ -12,13 +13,16 @@ namespace compiler {
         _stackFrames.pushArgBegin();
         _stackFrames.pushArgEnd();
         _stackFrames.pushValue(_package);
-
     }
 
     Name Env::createName(char const* str) {
         return _namePool.getName(str);
     }
 
+    void Env::updateEvaluingNode(Node const* ast) {
+        _funcEnvs.back().evaluingNode = ast;
+    }
+    
     Value Env::preparePackage( Node* ast ) {
         auto package = ast->asStringList();
         auto pack = root();
@@ -86,7 +90,7 @@ namespace compiler {
         }
     }
 
-    bool Env::compileCodeChunk(char const* mod, Node* ast) {
+    bool Env::compileCodeChunk(char const* mod, Node* ast, DebugInfoMap* debugInfoMap)  {
         if(ast->structType() == SType::MultiExpr) {
             MultiExpr* exprs = (MultiExpr*)ast;
             auto iter = exprs->expressions().begin();
@@ -98,6 +102,7 @@ namespace compiler {
                     auto moduleName = createName(mod);
                     auto module = getModule(moduleName);
                     module->setHostPackage(package);
+                    module->setDebugInfo(std::move(*debugInfoMap));
                     //
                     ++iter;
                     while(iter != exprs->expressions().end()) {
@@ -289,7 +294,7 @@ namespace compiler {
         }
         auto params = fn->params();
         auto layout = fn->symbolLayout();  // value table
-        FuncEnv fenv = { fn, false };
+        FuncEnv fenv = { fn, nullptr, false };
         _funcEnvs.push_back(fenv);
         {
             auto fenv = funcEnv();
@@ -372,5 +377,27 @@ namespace compiler {
             auto rst = _modules.insert(std::make_pair(name, mod));
             return rst.first->second;
         }
+    }
+
+    Module const* Env::getModule(Name const& name) const{
+        auto it = _modules.find(name);
+        if (it != _modules.end()) {
+            return it->second;
+        } else {
+            return nullptr;
+        }
+    }
+
+    std::string Env::backtrace(char const* errorType) const {
+        std::stringstream ss;
+        ss << errorType << std::endl;
+        for(auto it = _funcEnvs.rbegin(); it != _funcEnvs.rend(); ++it) {
+            auto module = getModule(it->func->module());
+            auto debugInfo = module->debugInfo().find(it->evaluingNode);
+            ss << "[" << it->func->module().text() << "] :"; 
+            ss << "" << it->func->name().stringLiteral().text() << "()";
+            ss << debugInfo->second.line << ":" << debugInfo->second.column << std::endl;
+        }
+        return ss.str();
     }
 }

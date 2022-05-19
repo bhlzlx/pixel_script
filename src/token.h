@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include <string>
-#include "ast_common.h"
+#include "compiler_common.h"
 namespace compiler {
 
     class Env;

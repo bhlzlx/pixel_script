@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../ast_common.h"
+#include "../compiler_common.h"
 #include "../name_pool.h"
 #include "vm_object.h"
 

@@ -174,7 +174,7 @@ namespace compiler {
             _tokenColumn = _column;
             updateTokenLocation();
             ++_line;
-            _column = 0;
+            _column = 1;
             rst = true;
         }
         return rst;

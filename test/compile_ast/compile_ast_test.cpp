@@ -30,11 +30,12 @@ int main(int argc, char** argv) {
     file.read(buffer, size);
     compiler::Env env;
     compiler::ASTBuilder builder;
-    auto prog = builder.buildAST(&env, buffer);
+    compiler::DebugInfoMap debugInfo;
+    auto prog = builder.buildAST(&env, buffer, &debugInfo);
     assert(prog);
     // compiler::MultiExpr* multiExpr = dynamic_cast<compiler::MultiExpr*>(prog.node);
     char const* module = "oop_test";
-    auto rst = env.compileCodeChunk(module, prog.node);
+    auto rst = env.compileCodeChunk(module, prog.node, &debugInfo);
     env.initializeModule(module);
     auto val = env.callFuncWithPath("game.test.entry");
     return 0;
