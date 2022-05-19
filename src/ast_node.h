@@ -17,7 +17,7 @@ namespace compiler {
             Function,
             StringList,
             Class,
-            // NewOperator,
+            Return,
             None,
         };
 
@@ -26,6 +26,7 @@ namespace compiler {
             Int,
             String,
             Float,
+            Bool,
             Closure,
             Id,
             Variable,
@@ -150,6 +151,9 @@ namespace compiler {
             NewOperator* asNew() const {
                 return _vtype == VType::NewOperator ? (NewOperator*)this : nullptr;
             }
+            ReturnStmt* asReturn() const {
+                return _stype == SType::Return ? (ReturnStmt*)this : nullptr;
+            }
         };
 
         class StringList : public Node {
@@ -172,6 +176,23 @@ namespace compiler {
             }
             std::vector<Token> const& names() const {
                 return _names;
+            }
+        };
+
+        class ReturnStmt : public Node {
+        private:
+            Node* _expr;
+        public:
+            ReturnStmt(Node* expr)
+                : Node(SType::Return, VType::None)
+                , _expr(expr)
+            {
+                if(expr) {
+                    expr->setParent(this);
+                }
+            }
+            Node* expr() const {
+                return _expr;
             }
         };
 

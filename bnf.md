@@ -9,7 +9,7 @@
 * def_var := "var" id [= expr]
 * simple := expr
 * block := "{" [statement] {;|EOL| [statement] } "}"
-* statement := if expr block ["else" block] | "while" expr block | def_var | simple
+* statement := "return" expr | if expr block ["else" block] | "while" expr block | def_var | simple
 * program := {def_func|statement} (; | EOF)
 * params := id {, id}
 * param_list := "(" [params] ")"

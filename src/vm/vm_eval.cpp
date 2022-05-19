@@ -5,6 +5,9 @@ namespace compiler {
     Value Env::eval(Node const* ast) {
         // MultiExpr,If,While,BinaryOp,Variable,Leaf,Primary,NegtiveOp,Pair,Function,StringList,
         Value nil;
+        if(funcEnv()->retNow) {
+            return Value();
+        }
         switch(ast->structType()) {
             case SType::BinaryOp: {
                 BinaryOpExpr* binExpr = ast->asBinaryExpr();
@@ -14,26 +17,21 @@ namespace compiler {
             }
             case SType::If: {
                 IfStmt* ifExpr = ast->asIf();
-                Value ifRst;
                 Value cond = eval(ifExpr->condition());
                 cond.deref();
-                if(cond) {
-                    ifRst = eval(ifExpr->elseBranch()); 
-                } else {
-                    ifRst = eval(ifExpr->thenBranch());
+                if(cond && ifExpr->thenBranch()) {
+                    eval(ifExpr->thenBranch()); 
+                } else if(ifExpr->elseBranch()) {
+                    eval(ifExpr->elseBranch());
                 }
-                ifRst.deref();
-                return ifRst;
-                break;
+                return nil;
             }
             case SType::MultiExpr: {
-                Value multiExprRst;
                 MultiExpr* multiExpr = ast->asMultiExpr();
                 for(auto expr: multiExpr->expressions()) {
-                    multiExprRst = eval(expr);
-                    multiExprRst.deref();
+                    eval(expr);
                 }
-                return multiExprRst;
+                return nil;
             }
             case SType::NegtiveOp: {
                 NegativeExpr* negtiveOp = ast->asNegativeExpr();
@@ -59,7 +57,7 @@ namespace compiler {
                         Identifier* id = var->id();
                         // auto fenv = funcEnv();
                         auto loc = id->valueLoc();
-                        Value varVtVal = _stackValues.localValueRef(loc); // ref
+                        Value varVtVal = _stackFrames.localValueRef(loc); // ref
                         Value varExprEvalVal = eval(var->valueExpr());
                         varVtVal = *varExprEvalVal.ref();
                         return varVtVal;
@@ -73,17 +71,17 @@ namespace compiler {
                         Node* methodExpr = caller->methodExpr();
                         // registed c/c++ function
                         if(val.type() == PrimeVType::BridgeFunc) { // it must be a function
-                            _stackValues.pushArgBegin();
+                            _stackFrames.pushArgBegin();
                             for( auto& arg : caller->args()->expressions()) {
-                                _stackValues.pushValue(eval(arg));
+                                _stackFrames.pushValue(eval(arg));
                             }
-                            _stackValues.pushArgEnd();
+                            _stackFrames.pushArgEnd();
                             int ret = val.asBridgeFunc()(this);
                             Value rst;
                             if(ret) {
-                                rst = _stackValues.popValue(); // 只取一个值
+                                rst = _stackFrames.popValue(); // 只取一个值
                             }
-                            _stackValues.popToArgBegin();
+                            _stackFrames.popToArgBegin();
                             return rst;
                         // function defined in script
                         } else if(val.type() == PrimeVType::FunctionNode) {
@@ -97,21 +95,21 @@ namespace compiler {
                                 }
                                 switch(node->valueType()) {
                                     case VType::None: { // 普通函数调用（全局函数以及类函数）
-                                        _stackValues.pushArgBegin();
+                                        _stackFrames.pushArgBegin();
                                         if(self && self.stype() == SymbolLayoutType::Class) {
-                                            _stackValues.pushValue(std::move(self));// 传递this指针！
+                                            _stackFrames.pushValue(std::move(self));// 传递this指针！
                                         }
-                                        _stackValues.pushArgEnd();
+                                        _stackFrames.pushArgEnd();
                                         // 传递参数
                                         if(caller->args()) {
                                             for(auto expr: caller->args()->expressions()) {
-                                                _stackValues.pushValue(eval(expr));
+                                                _stackFrames.pushValue(eval(expr));
                                             }
                                         }
                                         auto rstCount = callFunction(val);
                                         assert(rstCount == 1);
-                                        Value rst = _stackValues.popValue();
-                                        _stackValues.popToArgBegin();
+                                        Value rst = _stackFrames.popValue();
+                                        _stackFrames.popToArgBegin();
                                         return rst;
                                     }
                                     case VType::NewOperator: {
@@ -156,6 +154,15 @@ namespace compiler {
                     }
                 }
             }
+            case SType::Return: {
+                ReturnStmt* returnStmt = ast->asReturn();
+                if(returnStmt->expr()) {
+                    auto ret = eval(returnStmt->expr());
+                    _stackFrames.pushValue(ret);
+                }
+                _funcEnvs.back().retNow = true;
+                return Value();
+            }
             case SType::Leaf: {
                 Value leafRst;
                 auto leaf = ast->asLeaf();
@@ -174,6 +181,14 @@ namespace compiler {
                         }
                         case TokenType::String: {
                             leafRst.setString(token.stringLiteral());
+                            break;
+                        }
+                        case TokenType::True: {
+                            leafRst.setBool(true);
+                            break;
+                        }
+                        case TokenType::False: {
+                            leafRst.setBool(false);
                             break;
                         }
                         default: {
@@ -224,8 +239,8 @@ namespace compiler {
             case IdentifierType::FunctionLocal: {
                 auto loc = id->valueLoc();
                 auto fenv = funcEnv();
-                assert(loc < _stackValues.topFrameSize());
-                rst = _stackValues.localValueRef(loc); // create a ref
+                assert(loc < _stackFrames.topFrameSize());
+                rst = _stackFrames.localValueRef(loc); // create a ref
                 break;
             }
             case IdentifierType::CurrentPackage: {
@@ -237,7 +252,7 @@ namespace compiler {
             }
             case IdentifierType::ClassMember: {
                 auto fenv = funcEnv();
-                auto self = _stackValues.localValueRef(0);// 第一个参数就是self //self is a ref
+                auto self = _stackFrames.localValueRef(0);// 第一个参数就是self //self is a ref
                 self.deref();
                 assert(self.stype() == SymbolLayoutType::Class);
                 return self[id->token().stringLiteral()];

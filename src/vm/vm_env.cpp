@@ -9,9 +9,9 @@ namespace compiler {
         compiler::lang_keywords::init(this);
         compiler::lib_keywords::init(this);
         io::init(this);
-        _stackValues.pushArgBegin();
-        _stackValues.pushArgEnd();
-        _stackValues.pushValue(_package);
+        _stackFrames.pushArgBegin();
+        _stackFrames.pushArgEnd();
+        _stackFrames.pushValue(_package);
 
     }
 
@@ -289,24 +289,24 @@ namespace compiler {
         }
         auto params = fn->params();
         auto layout = fn->symbolLayout();  // value table
-        FuncEnv fenv = { fn };
-        _funcEnvs.push_back(fenv); // 实际上创建了一个新的局部变量表
-        Value rst;
+        FuncEnv fenv = { fn, false };
+        _funcEnvs.push_back(fenv);
         {
             auto fenv = funcEnv();
             // 补全栈空间
-            if(layout->size() > _stackValues.topFrameSize()) {
-                auto appendSize = layout->size() - _stackValues.topFrameSize();
+            if(layout->size() > _stackFrames.topFrameSize()) {
+                auto appendSize = layout->size() - _stackFrames.topFrameSize();
                 for(size_t i = 0; i<appendSize; ++i) {
-                    _stackValues.pushValue(Value()); // 添加空值
+                    _stackFrames.pushValue(Value()); // 添加空值
                 }
             }
-            rst = eval(fn->body()); // 代码块的返回值不应该是ref类型
+            eval(fn->body()); // 代码块的返回值不应该是ref类型
         }
-        // clean up the stack frame
         _funcEnvs.pop_back();
-        _stackValues.pushValue(rst);
-        return 1;
+        // 现在改了，返回值在栈上存着呢
+        auto frameSize = _stackFrames.topFrameSize();
+        int ret = frameSize - layout->size();
+        return ret;
     }
 
     Value Env::callFuncWithPath(std::string func) {
@@ -334,14 +334,15 @@ namespace compiler {
             last = pos + 1;
         } while(true);
         auto astFunc = val.asFunc();
+        Value rst;
         if(astFunc) {
-            _stackValues.pushArgBegin();
-            _stackValues.pushArgEnd();
-            auto retCount = callFunction(val);
-            assert(retCount == 1);
-            auto rst = _stackValues.popValue();
-            _stackValues.popToArgBegin();
-            return rst;
+            _stackFrames.pushArgBegin();
+            _stackFrames.pushArgEnd();
+            auto ret = callFunction(val);
+            if(ret) {
+                rst = _stackFrames.popValue();
+            }
+            _stackFrames.popToArgBegin();
         }
         return Value();
     }

@@ -226,7 +226,11 @@ namespace compiler {
                 fallback();
             }
             _token = Token(TokenType::Identifier, _env->createName(_tokenBuf.str()));
-            if(lang_keywords::_all.find(_token.stringLiteral()) != lang_keywords::_all.end()) {
+            if(_token.stringLiteral() == lang_keywords::_true) {
+                _token.setType(TokenType::True);
+            } else if(_token.stringLiteral() == lang_keywords::_false) {
+                _token.setType(TokenType::False);
+            } else if(lang_keywords::_all.find(_token.stringLiteral()) != lang_keywords::_all.end()) {
                 _token.setType(TokenType::Keyword);
             }
             updateTokenLocation();

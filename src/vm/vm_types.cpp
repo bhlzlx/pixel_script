@@ -190,6 +190,11 @@ namespace compiler {
         _str = name;
     }
 
+    void Value::setBool(bool val) {
+        _type = PrimeVType::Boolean;
+        _bool = val;
+    }
+
     PrimeVType Value::type() const {
         return _type;
     }

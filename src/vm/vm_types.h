@@ -54,6 +54,7 @@ namespace compiler {
         union {
             int64_t         _i64;
             double          _f64;
+            bool            _bool;
             Name            _str;
             Object*         _obj;
             Value*          _ref;
@@ -96,6 +97,7 @@ namespace compiler {
         void setInt64(int64_t i64);
         void setFloat64(double f64);
         void setString(Name name);
+        void setBool(bool val);
         PrimeVType type() const;
         SymbolLayoutType stype() const;
 
@@ -187,11 +189,23 @@ namespace compiler {
                 }
                 case TokenType::Less: {
                     if(other.type() == PrimeVType::Int64) {
-                        rst.setInt64(intValue() < other.intValue());
+                        rst.setBool(intValue() < other.intValue());
                         return rst;
                     }
                     else if(other.type() == PrimeVType::Float64) {
-                        rst.setInt64(intValue() < other.floatValue());
+                        rst.setBool(intValue() < other.floatValue());
+                        return rst;
+                    } else {
+                        throw ExecuteException(op);
+                    }
+                }
+                case TokenType::Greater: {
+                    if(other.type() == PrimeVType::Int64) {
+                        rst.setBool(intValue() > other.intValue());
+                        return rst;
+                    }
+                    else if(other.type() == PrimeVType::Float64) {
+                        rst.setBool(intValue() > other.floatValue());
                         return rst;
                     } else {
                         throw ExecuteException(op);

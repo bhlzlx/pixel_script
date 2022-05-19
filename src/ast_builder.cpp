@@ -52,6 +52,12 @@ namespace compiler {
         auto startToken = *token;
         Node* operand = nullptr;
         switch(token->type()) {
+            case TokenType::False:
+            case TokenType::True: {
+                consumeCurrentToken();
+                operand = new Leaf(VType::Bool, *token);
+                return { operand, ASTParseError::None, token->line(), token->column() };
+            }
             case TokenType::Integer: {
                 consumeCurrentToken();
                 operand = new Leaf(VType::Int, *token);
@@ -269,7 +275,18 @@ namespace compiler {
         ConsumeStateHelper helper(this, false);
         MatchResult rst = {};
         auto token = nextToken();
-        if(token->stringLiteral() == lang_keywords::_if) {
+        if(token->stringLiteral() == lang_keywords::_return) {
+            auto retToken = *token;
+            consumeCurrentToken();
+            auto expr = matchExpression();
+            if(expr) {
+                auto retStmt = new ReturnStmt(expr.node);
+                return { retStmt, ASTParseError::None, retToken.line(), retToken.column() };
+            } else {
+                auto retStmt = new ReturnStmt(nullptr);
+                return { retStmt, ASTParseError::None, retToken.line(), retToken.column() };
+            }
+        } else if(token->stringLiteral() == lang_keywords::_if) {
             auto IfToken = *token;
             IfStmt* if_stmt = new IfStmt();
             consumeCurrentToken();

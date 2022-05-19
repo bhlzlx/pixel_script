@@ -41,6 +41,7 @@ namespace compiler {
         class DotAccess;
         class Class;
         class NewOperator;
+        class ReturnStmt;
     }
 
     enum class IdentifierType : uint8_t {

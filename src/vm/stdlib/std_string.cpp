@@ -39,7 +39,7 @@ namespace compiler {
         }
 
         int string_append(Env* env) {
-            StackValues& stack = env->stackValues();
+            StackFrames& stack = env->stackValues();
             size_t paramsCount = stack.topFrameSize();
             if(paramsCount < 2) {
                 return 0;

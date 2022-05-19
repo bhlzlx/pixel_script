@@ -20,7 +20,7 @@ namespace compiler {
      * sizeof(Value) * 8 * 64 = 512
      */
 
-    class StackValues {
+    class StackFrames {
     private:
         std::vector<Value>      _params;
         std::vector<size_t>     _frameBases; // 
@@ -30,7 +30,7 @@ namespace compiler {
             return const_cast<Value*>(&_params[_frameBases.back()]);
         }
     public:
-        StackValues() {}
+        StackFrames() {}
         void pushValue(Value const& value) {
             if(value.type() == PrimeVType::ValueRef) {
                 Value v = value;
@@ -101,11 +101,12 @@ namespace compiler {
         struct FuncEnv {
             // Value*              vt;     // 废弃了
             Function*           func;   // function ast node
+            bool                retNow;
         };
     private:
         NamePool                                _namePool;
         Value                                   _package;
-        StackValues                             _stackValues;
+        StackFrames                             _stackFrames;
         std::vector<FuncEnv>                    _funcEnvs;
         std::vector<SymbolLayout*>              _symbolLayouts;
 
@@ -119,7 +120,7 @@ namespace compiler {
             SymbolLayout*   packageLayout;      // current package symbol layout
             SymbolLayout*   classLayout;        // class symbol layout  
         };
-        bool locateIdentifier(IdLocateEnv env, Identifier const* id) ;
+        bool locateIdentifier(IdLocateEnv env, Identifier const* id);
         void traverseAST(Node const* ast, TraverseCallBack& callBack);
         std::vector<Token> postprocessFunction(Function* ast, IdLocateEnv env);
     public:
@@ -127,13 +128,13 @@ namespace compiler {
         Env();
 
         ~Env() {
-            _stackValues.popToArgBegin();
+            _stackFrames.popToArgBegin();
         }
 
         Value root() { return _package; }
 
-        StackValues& stackValues() {
-            return _stackValues;
+        StackFrames& stackValues() {
+            return _stackFrames;
         }
 
         SymbolLayout* newSymbolLayout(SymbolLayoutType type) {

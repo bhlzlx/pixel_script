@@ -193,8 +193,10 @@ namespace compiler {
                 traverseAST(ifNode->condition(), callBack);
                 callBack(ifNode->thenBranch());
                 traverseAST(ifNode->thenBranch(), callBack);
-                callBack(ifNode->elseBranch());
-                traverseAST(ifNode->elseBranch(), callBack);
+                if(ifNode->elseBranch()) {
+                    callBack(ifNode->elseBranch());
+                    traverseAST(ifNode->elseBranch(), callBack);
+                }
                 break;
             }
             case SType::BinaryOp: {
@@ -216,6 +218,14 @@ namespace compiler {
                 break;
             }
             case SType::Leaf: { // current is leaf, no need to traverse
+                break;
+            }
+            case SType::Return: {
+                auto ret = static_cast<ReturnStmt const*>(ast);
+                if(ret->expr()) {
+                    callBack(ret->expr());
+                    traverseAST(ret->expr(), callBack);
+                }
                 break;
             }
             default: {
