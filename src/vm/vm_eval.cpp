@@ -11,10 +11,10 @@ namespace compiler {
         }
         switch(ast->structType()) {
             case SType::BinaryOp: {
-                updateEvaluingNode(ast);
                 BinaryOpExpr* binExpr = ast->asBinaryExpr();
                 Value left = eval(binExpr->left());
                 Value right = eval(binExpr->right());
+                updateEvaluingNode(ast);
                 return evalBinaryOp(binExpr->op(), left, right);
             }
             case SType::If: {
@@ -39,6 +39,7 @@ namespace compiler {
                 NegativeExpr* negtiveOp = ast->asNegativeExpr();
                 Value val = eval(negtiveOp->value());
                 Value rst;
+                updateEvaluingNode(ast);
                 if(val.type() == PrimeVType::Int64) {
                     rst.setInt64(-val.intValue());
                     return rst;
@@ -65,10 +66,10 @@ namespace compiler {
                         return varVtVal;
                     }
                     case VType::FunctionCall: {
-                        updateEvaluingNode(ast);
                         Value argsItems[16];
                         FunctionCall* caller = ast->asFunctionCall();
                         Value val = eval(caller->methodExpr());
+                        updateEvaluingNode(ast);
                         assert(val.type() == PrimeVType::FunctionNode || val.type() == PrimeVType::BridgeFunc);
                         val = *val.ref();
                         Node* methodExpr = caller->methodExpr();
@@ -143,13 +144,13 @@ namespace compiler {
                         return rst;
                     }
                     case VType::DotAccess: {
-                        updateEvaluingNode(ast);
                         DotAccess* dotAccess = ast->asDotAccess();
                         Value obj = eval(dotAccess->obj()); // object must be a ref
                         Value* objPtr = obj.ref();
                         auto fieldLeaf = dotAccess->field()->asLeaf();
                         assert(fieldLeaf); assert(fieldLeaf->valueType() == VType::String);
                         Name fieldName = fieldLeaf->token().stringLiteral();
+                        updateEvaluingNode(ast);
                         Value valPtr = (*objPtr)[fieldName]; // we should return the value's ref
                         return valPtr;
                     }

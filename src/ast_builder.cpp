@@ -210,13 +210,14 @@ namespace compiler {
                         return { rst, ASTParseError::None, startToken.line(), startToken.column() };
                 }
                 consumeCurrentToken();
-                TokenType op = token->type();
+                // TokenType op = token->type();
                 if(opStack.size()) {
-                    if(op>=opStack.top().type()) {
+                    auto top = opStack.top();
+                    if(token->type() >= top.type()) {
                         auto factor1 = factorStack.top(); factorStack.pop();
                         auto factor2 = factorStack.top(); factorStack.pop();
-                        auto binExpr = new BinaryOpExpr(factor1, factor2, opStack.top().type());
-                        _addDebugInfo(binExpr, { opStack.top().stringLiteral(), opStack.top().line(), opStack.top().column() });
+                        auto binExpr = new BinaryOpExpr(factor1, factor2, top.type());
+                        _addDebugInfo(binExpr, {top.stringLiteral(), top.line(), top.column()});
                         opStack.pop();
                         factorStack.push(binExpr);
                     }
