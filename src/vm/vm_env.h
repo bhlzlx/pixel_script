@@ -30,7 +30,9 @@ namespace compiler {
             return const_cast<Value*>(&_params[_frameBases.back()]);
         }
     public:
-        StackFrames() {}
+        StackFrames() {
+            _params.reserve(512);
+        }
         void pushValue(Value const& value) {
             if(value.type() == PrimeVType::ValueRef) {
                 Value v = value;

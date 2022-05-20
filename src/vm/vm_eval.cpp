@@ -226,6 +226,9 @@ namespace compiler {
         } else if(ap->type() == PrimeVType::Float64) {
             FloatValue const* fval = (FloatValue const*)ap;
             return fval->Op(this, op, *bp);
+        } else if(ap->type() == PrimeVType::String) {
+            StringValue* sval = (StringValue*)ap;
+            return sval->Op(this, op, *bp);
         }
         else {
             assert(false && "unsupported type");

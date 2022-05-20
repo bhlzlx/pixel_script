@@ -121,6 +121,15 @@ namespace compiler {
         MatchResult rst = {};
         auto token = nextToken();
         auto startToken = *token;
+        auto array = matchArray();
+        // 添加array map支持
+        if(array) {
+            return array;
+        }
+        auto map = matchMap();
+        if(map) {
+            return map;
+        }
         if (token->type() == TokenType::Minus) {
             consumeCurrentToken();
             auto primNode = matchPrimary();
@@ -412,7 +421,7 @@ namespace compiler {
                     consumeCurrentToken();
                     token = nextToken();
                     if(token->type() != TokenType::Identifier) {
-                        return MatchResult { nullptr, ASTParseError::ShouldFollowIdentifier, token->line(), token->column() };
+                        return MatchResult { nullptr, ASTParseError::IdentifierExpected, token->line(), token->column() };
                     } else {
                         tokens.push_back(*token);
                         consumeCurrentToken();
@@ -571,7 +580,7 @@ namespace compiler {
             consumeCurrentToken();
             token = nextToken();
             if(token->type() != TokenType::Identifier && token->type() != TokenType::Keyword) {
-                return MatchResult { nullptr, ASTParseError::ShouldFollowIdentifier, token->line(), token->column() };
+                return MatchResult { nullptr, ASTParseError::IdentifierExpected, token->line(), token->column() };
             } else {
                 consumeCurrentToken();
                 return { new Leaf(VType::String, *token), ASTParseError::None, startToken.line(), startToken.column() };
@@ -744,6 +753,99 @@ namespace compiler {
         }
         token = nextToken();
         if(token->type() != TokenType::RightBrace) {
+            return { nullptr, ASTParseError::RightParenExpected, token->line(), token->column() };
+        }
+        consumeCurrentToken();
+        return { body, ASTParseError::None, token->line(), token->column() };
+    }
+
+    MatchResult ASTBuilder::matchArray() {
+        ConsumeStateHelper helper(this, true);
+        consumeCommaEol();
+        auto token = nextToken();
+        if(token->type() != TokenType::LeftBracket) {
+            return { nullptr, ASTParseError::LeftParenExpected, token->line(), token->column() };
+        }
+        consumeCurrentToken();
+        MultiExpr* body = new MultiExpr(VType::Array);
+        consumeCommaEol();
+        auto expr = matchExpression();
+        if(expr) {
+            body->addExpr(expr.node);
+            while(true) {
+                consumeCommaEol();
+                token = nextToken();
+                if(token->type() != TokenType::Comma) {
+                    break;
+                }
+                auto expr = matchExpression();
+                if(expr) {
+                    body->addExpr(expr.node);
+                } else {
+                    break;
+                }
+            }
+        } 
+        token = nextToken();
+        if(token->type() != TokenType::RightBracket) {
+            return { nullptr, ASTParseError::RightParenExpected, token->line(), token->column() };
+        }
+        consumeCurrentToken();
+        return { body, ASTParseError::None, token->line(), token->column() };
+    }
+
+    MatchResult ASTBuilder::matchMapItem() {
+        ConsumeStateHelper helper(this, true);
+        auto token = nextToken();
+        if(token->type() != TokenType::Identifier) {
+            return { nullptr, ASTParseError::IdentifierExpected, token->line(), token->column() };
+        }
+        Name name = token->stringLiteral();
+        consumeCurrentToken();
+        token = nextToken();
+        if(token->type() != TokenType::Colon) {
+            return { nullptr, ASTParseError::ColonExpected, token->line(), token->column() };
+        }
+        consumeCurrentToken();
+        auto expr = matchExpression();
+        if(expr) {
+            return { new MapItem(name, expr.node), ASTParseError::None, token->line(), token->column() };
+        } else {
+            return expr;
+        }
+    }
+
+    MatchResult ASTBuilder::matchMap() {
+        ConsumeStateHelper helper(this, true);
+        consumeCommaEol();
+        auto token = nextToken();
+        if(token->type() != TokenType::LeftBrace) {
+            return { nullptr, ASTParseError::LeftParenExpected, token->line(), token->column() };
+        }
+        consumeCurrentToken();
+        MultiExpr* body = new MultiExpr(VType::Map);
+        consumeCommaEol();
+        auto item = matchMapItem();
+        if(item) {
+            body->addExpr(item.node);
+            while(true) {
+                consumeCommaEol();
+                token = nextToken();
+                if(token->type() != TokenType::Comma) {
+                    break;
+                }
+                consumeCurrentToken();
+                auto item = matchMapItem();
+                if(item) {
+                    body->addExpr(item.node);
+                } else {
+                    break;
+                }
+            }
+        }
+        token = nextToken();
+        if(token->type() != TokenType::RightBrace) {
+            delete body;
             return { nullptr, ASTParseError::RightParenExpected, token->line(), token->column() };
         }
         consumeCurrentToken();

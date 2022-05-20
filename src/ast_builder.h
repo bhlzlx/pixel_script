@@ -23,7 +23,8 @@ namespace compiler {
         PrimaryMismatch,
         ExprMismatch,
         BlockMismatch,
-        ShouldFollowIdentifier,
+        IdentifierExpected,
+        ColonExpected,
         ParamsListMismatch,
         FunctionMismatch,
         MissFunctionName,
@@ -80,6 +81,11 @@ namespace compiler {
         MatchResult matchClassDef();
         MatchResult matchExtends();
         MatchResult matchClassBody();
+
+        MatchResult matchArray();
+
+        MatchResult matchMapItem();
+        MatchResult matchMap();
         // MatchResult matchMemberDef();
 
         Token const* nextToken();

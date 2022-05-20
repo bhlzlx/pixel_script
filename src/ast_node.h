@@ -18,6 +18,7 @@ namespace compiler {
             StringList,
             Class,
             Return,
+            MapItem,
             None,
         };
 
@@ -41,6 +42,8 @@ namespace compiler {
             Extends,
             ClassBody,
             NewOperator,
+            Array,
+            Map,
         };
 
 
@@ -638,6 +641,29 @@ namespace compiler {
 
             SymbolLayout* symbolLayout() {
                 return _classSymbol;
+            }
+        };
+
+        class Array : public MultiExpr {
+        public:
+            Array()
+                : MultiExpr(VType::Array)
+            {}
+        };
+
+        class MapItem : public Node {
+        private:
+            Name            _key;
+            Node*           _value;
+        public:
+            MapItem(Name key, Node* _value)
+                : Node(SType::MapItem, VType::None)
+            {}
+            Name key() const {
+                return _key;
+            }
+            Node* value() const {
+                return _value;
             }
         };
 

@@ -1,5 +1,6 @@
 #include "vm_primitive_types.h"
 #include "vm_env.h"
+#include "stdlib/std_string.h"
 #include <iostream>
 
 namespace compiler {
@@ -16,9 +17,7 @@ namespace compiler {
                     rst.setInt64(intValue() + other.floatValue());
                     return rst;
                 } else {
-                    auto message = env->backtrace("IntegerValue::Op(+) not permitted");
-                    std::cout<<message<<std::endl;
-                    throw ExecuteException(op, std::move(message));
+                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted, "integer op with non-integer type");
                 }
             }
             case TokenType::Minus: {
@@ -30,7 +29,7 @@ namespace compiler {
                     rst.setInt64(intValue() - other.floatValue());
                     return rst;
                 } else {
-                    throw ExecuteException(op);
+                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
                 }
             }
             case TokenType::Star: {
@@ -42,7 +41,7 @@ namespace compiler {
                     rst.setInt64(intValue() * other.floatValue());
                     return rst;
                 } else {
-                    throw ExecuteException(op);
+                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
                 }
             }
             case TokenType::Slash: {
@@ -54,7 +53,7 @@ namespace compiler {
                     rst.setInt64(intValue() / other.floatValue());
                     return rst;
                 } else {
-                    throw ExecuteException(op);
+                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
                 }
             }
             case TokenType::Assign: {
@@ -66,7 +65,7 @@ namespace compiler {
                     v->setFloat64(other.floatValue());
                     return *this;
                 } else {
-                    throw ExecuteException(op);
+                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
                 }
             }
             case TokenType::Less: {
@@ -78,7 +77,7 @@ namespace compiler {
                     rst.setBool(intValue() < other.floatValue());
                     return rst;
                 } else {
-                    throw ExecuteException(op);
+                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
                 }
             }
             case TokenType::Greater: {
@@ -90,11 +89,11 @@ namespace compiler {
                     rst.setBool(intValue() > other.floatValue());
                     return rst;
                 } else {
-                    throw ExecuteException(op);
+                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
                 }
             }
             default: {
-                throw ExecuteException(op);
+                throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
             }
         }
         return Value();
@@ -112,7 +111,7 @@ namespace compiler {
                     rst.setFloat64(floatValue() + other.floatValue());
                     return rst;
                 } else {
-                    throw ExecuteException(op);
+                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
                 }
             }
             case TokenType::Minus: {
@@ -124,7 +123,7 @@ namespace compiler {
                     rst.setFloat64(floatValue() - other.floatValue());
                     return rst;
                 } else {
-                    throw ExecuteException(op);
+                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
                 }
             }
             case TokenType::Star: {
@@ -136,7 +135,7 @@ namespace compiler {
                     rst.setFloat64(floatValue() * other.floatValue());
                     return rst;
                 } else {
-                    throw ExecuteException(op);
+                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
                 }
             }
             case TokenType::Slash: {
@@ -148,7 +147,7 @@ namespace compiler {
                     rst.setFloat64(floatValue() / other.floatValue());
                     return rst;
                 } else {
-                    throw ExecuteException(op);
+                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
                 }
             }
             case TokenType::Assign: {
@@ -160,7 +159,7 @@ namespace compiler {
                     v->setFloat64(other.floatValue());
                     return *this;
                 } else {
-                    throw ExecuteException(op);
+                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
                 }
             }
             case TokenType::Less: {
@@ -172,11 +171,44 @@ namespace compiler {
                     rst.setFloat64(floatValue() < other.floatValue());
                     return rst;
                 } else {
-                    throw ExecuteException(op);
+                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
                 }
             }
             default: {
-                throw ExecuteException(op);
+                throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
+            }
+        }
+    }
+
+
+    Value StringValue::Op(Env* env, Token op, Value const& other) const {
+        Value rst;
+        switch(op.type()) {
+            case TokenType::Plus: {
+                if(other.type() == PrimeVType::String) {
+                    env->stackValues().pushArgBegin();
+                    env->stackValues().pushValue(*this);
+                    env->stackValues().pushValue(other);
+                    env->stackValues().pushArgEnd();
+                    int ret = string_impl::__append(env);
+                    rst = env->stackValues().popValue();
+                    env->stackValues().popToArgBegin();
+                    return rst;
+                } else {
+                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted, "string + other type");
+                }
+            }
+            case TokenType::Assign: {
+                auto v = const_cast<StringValue*>(this);
+                if(other.type() == PrimeVType::String) {
+                    v->setString(other.stringValue());
+                    return *this;
+                } else {
+                    throw DumpException(env, ExecutionError::AssignWasNotPermitted);
+                }
+            }
+            default: {
+                throw DumpException(env, ExecutionError::UnsupportOperator);
             }
         }
     }

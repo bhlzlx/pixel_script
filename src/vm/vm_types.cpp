@@ -1,6 +1,7 @@
 #include "vm_object.h"
 #include "vm_types.h"
 #include "vm_userdata.h"
+#include "vm_env.h"
 #include <exception>
 
 namespace compiler {
@@ -212,7 +213,10 @@ namespace compiler {
     }
 
     Name Value::stringValue() const {
-        return _str;
+        if(_type == PrimeVType::String) {
+            return _str;
+        }
+        return Name();
     }
 
     SymbolLayoutType Value::stype() const {
@@ -223,4 +227,12 @@ namespace compiler {
         return _i64 != 0;
     }
 
-}
+
+    // Exceptions 
+    DumpException::DumpException(Env const* env, ExecutionError error, char const* brifErr)
+        : _error(error)
+        , _message(env->backtrace(brifErr)) 
+    {
+    }
+
+} // namespace compiler

@@ -105,6 +105,10 @@ namespace compiler {
                         if(!locateIdentifier(locateEnv, id)) {
                             compilerErrors.push_back(id->token());
                         }
+                    } else if(parent->valueType() == VType::FunctionCall) {
+                        if(!locateIdentifier(locateEnv, id)) {
+                            compilerErrors.push_back(id->token());
+                        }
                     }
                     return;
                 }

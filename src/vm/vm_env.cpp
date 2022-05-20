@@ -2,6 +2,8 @@
 #include "stdlib/std_io.h"
 #include <sstream>
 
+#include <iostream>
+
 namespace compiler {
 
     Env::Env() {
@@ -181,12 +183,6 @@ namespace compiler {
         }
     }
 
-    
-    // bool Env::postprocessModule(char const* module) {
-    //     auto name = createName(module);
-    //     auto this->_modules[name];
-    // }
-        
     std::vector<Token> Env::postprocessFunction(Function* ast, IdLocateEnv locateEnv) {
         assert(ast->structType() == SType::Function);
         SymbolLayout* symLayout = newSymbolLayout(SymbolLayoutType::Function);
@@ -343,13 +339,17 @@ namespace compiler {
         if(astFunc) {
             _stackFrames.pushArgBegin();
             _stackFrames.pushArgEnd();
-            auto ret = callFunction(val);
-            if(ret) {
-                rst = _stackFrames.popValue();
+            try {
+                auto ret = callFunction(val);
+                if(ret) {
+                    rst = _stackFrames.popValue();
+                }
+            } catch (DumpException& e) {
+                std::cout << e.dumpMessage() << std::endl;
             }
             _stackFrames.popToArgBegin();
         }
-        return Value();
+        return rst;
     }
 
     void Env::initializeModule(char const* module) {
@@ -390,10 +390,11 @@ namespace compiler {
 
     std::string Env::backtrace(char const* errorType) const {
         std::stringstream ss;
-        ss << errorType << std::endl;
+        ss << "[backtrace] : " << errorType << std::endl;
         for(auto it = _funcEnvs.rbegin(); it != _funcEnvs.rend(); ++it) {
             auto module = getModule(it->func->module());
             auto debugInfo = module->debugInfo().find(it->evaluingNode);
+            ss << "  ";
             ss << "[" << it->func->module().text() << "] :"; 
             ss << "" << it->func->name().stringLiteral().text() << "()";
             ss << debugInfo->second.line << ":" << debugInfo->second.column << std::endl;

@@ -13,31 +13,40 @@ namespace compiler {
 
     enum class ExecutionError {
         BinaryOpNotPermitted,
+        AssignWasNotPermitted,
+        UnsupportOperator,
+        InvalidArgument,
     };
     
     class ExecuteException : public std::exception {
     private:
         ExecutionError  _error;
         std::string     _backtrace;
-        union {
-            Token   _op;
-        };
     public:
-        ExecuteException(Token op, std::string&& backtrace)
-            : _op(op)
-            , _backtrace(std::move(backtrace))
+        ExecuteException(std::string&& backtrace)
+            : _backtrace(std::move(backtrace))
         {
         }
         ExecuteException(Token op)
-            : _op(op)
-            , _backtrace("")
+            : _backtrace("")
         {
         }
         ExecutionError error() const {
             return _error;
         }
-        Token op() const {
-            return _op;
+        std::string const& backtrace() const {
+            return _backtrace;
+        }
+    };
+
+    class DumpException : public std::exception {
+    private:
+        ExecutionError      _error;
+        std::string         _message;
+    public:
+        DumpException(Env const* env, ExecutionError error, char const* brifError = nullptr);
+        std::string const& dumpMessage() const {
+            return _message;
         }
     };
 

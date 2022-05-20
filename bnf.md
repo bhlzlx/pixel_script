@@ -3,8 +3,12 @@
 * id := [a-z_]{a-zA-Z0-9_}
 * args := expr {, expr}
 * arg_list : "("[args]")"
+* loc : "[" expr "]"
 * primary := "(" expr ")" | closure | num | string | id
-* factor := "-" primary | primary { postfix | ("." id) }
+* factor := map | array | "-" primary | primary { loc | arg_list | ("." id) }
+* array := "[" expr {, expr} "]"
+* map_item := id:expr
+* map := "{" map_item {, map_item} "}"
 * expr := factor { OP factor }
 * def_var := "var" id [= expr]
 * simple := expr
@@ -25,6 +29,26 @@
 
 
 ## 补充
+
+* primary
+
+```
+(1+val)
+(param, a, b, c) { return 0 }
+123
+"hello,world!"
+id
+```
+
+### factor
+
+```
+包含 primary
+-value
+value.attr
+value(a, b, get(c))
+value[loc]
+```
 
 factor 代表一个值或者一个可以处理完作为一个值来运算，所以
 

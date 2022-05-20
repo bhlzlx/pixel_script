@@ -14,14 +14,8 @@ namespace compiler {
 
         std::string toString(Value const& value) ;
 
-        int string_append(Env* env);
-        int string_length(Env* env);
-        int console_log(Env* env);
-
         extern UserdataLayout* stringLayout;
-
-        Value createString(Env* env, char const* str);        
-
+        extern int __append(Env* env);
         void initString(Env* env);
 
     }

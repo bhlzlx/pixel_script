@@ -38,7 +38,7 @@ namespace compiler {
             return "";
         }
 
-        int string_append(Env* env) {
+        int __append(Env* env) {
             StackFrames& stack = env->stackValues();
             size_t paramsCount = stack.topFrameSize();
             if(paramsCount < 2) {
@@ -46,26 +46,49 @@ namespace compiler {
             }
             Value first = stack.localValue(0);
             Value second = stack.localValue(1);
-            size_t name = (size_t)first.ud()->ptr();
-            Name* a = (Name*)&name;
-            name = (size_t)second.ud()->ptr();
-            Name* b = (Name*)&name;
-            std::string str = a->text();
-            str.append(b->text());
+            if(second.type() != PrimeVType::String) {
+                throw DumpException(env, ExecutionError::InvalidArgument, "append: second argument must be string");
+                return 0;
+            }
+            Name a = first.stringValue();
+            Name b = second.stringValue();
+            std::string str = a.text();
+            str.append(b.text());
             Name n = env->createName(str.c_str());
-            UserdataObject* ud = new UserdataObject((void*)(size_t)n, stringLayout);
-            Value rst = Value(ud);
+            Value rst = Value(n);
             stack.pushValue(rst);
             return 1;
         }
+
+        int __len(Env* env) {
+            StackFrames& stack = env->stackValues();
+            size_t paramsCount = stack.topFrameSize();
+            if(paramsCount < 1) {
+                return 0;
+            }
+            Value first = stack.localValue(0);
+            size_t name = (size_t)first.ud()->ptr();
+            Name* a = (Name*)&name;
+            std::string str = a->text();
+            Value rst;
+            rst.setInt64(str.size());
+            stack.pushValue(rst);
+            return 1;
+        }
+
+        BridgeFuncPair stringRegItems[] = {
+            {__append, "__plus"},
+            {__len, "__len"}
+        };
 
         void initString(Env* env) {
             if(stringLayout) {
                 return;
             }
             stringLayout = new UserdataLayout();
-            stringLayout->addBridgeFunc(env->createName("append"), string_append);
-            stringLayout->addBridgeFunc(env->createName("length"), string_length);
+            for(auto const& item: stringRegItems) {
+                stringLayout->addBridgeFunc(env->createName(item.name), item.func); 
+            }
         }
 
     }

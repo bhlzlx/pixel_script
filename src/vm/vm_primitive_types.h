@@ -4,10 +4,9 @@
 namespace compiler {
 
     class IntegerValue: public Value {
+        IntegerValue() = delete; 
+        IntegerValue(IntegerValue const&) = delete; 
     public:
-        IntegerValue(int64_t i64) {
-            setInt64(i64);
-        }
         Value Op(Env* env, Token op, Value const& other) const ;
     };
 
@@ -17,6 +16,14 @@ namespace compiler {
             setFloat64(f64);
         }
         Value Op( Env* env, Token op, Value const& other) const;
+    };
+
+    class StringValue: public Value {
+    public:
+        StringValue() {
+        }
+        Value Op(Env* env, Token op, Value const& other) const;
+        Value callMethod(Name name, Env* env);
     };
 
 }
