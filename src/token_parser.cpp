@@ -157,6 +157,10 @@ namespace compiler {
             _state = State::Op;
         } else if(ch == '"') {
             _state = State::String;
+        } else if(':' == ch) {
+            _token = Token(TokenType::Colon, lang_keywords::_none);
+            updateTokenLocation();
+            rst = true;
         } else if('.' == ch) {
             _token = Token(TokenType::Dot, lang_keywords::_none);
             updateTokenLocation();
