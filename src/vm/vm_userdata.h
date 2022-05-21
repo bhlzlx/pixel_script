@@ -39,8 +39,9 @@ namespace compiler {
         size_t              _ref;
     public:
         UserdataObject(void* ptr, UserdataLayout* layout)
-            : _data(ptr)
-            , _layout(layout)
+            : _layout(layout)
+            , _data(ptr)
+            , _ref(1) 
         {}
 
         void incRef() {
@@ -52,6 +53,10 @@ namespace compiler {
             if(_ref == 0) {
                 delete this;
             }
+        }
+
+        BridgeFunc getFunction(Name name) const {
+            return _layout->getFunction(name);
         }
 
         int callMemberMethod(Env* env, Name methodName) {
@@ -66,6 +71,9 @@ namespace compiler {
 
         void* ptr() const {
             return _data;
+        }
+        UserdataLayout const* layout() const {
+            return _layout;
         }
     };
 

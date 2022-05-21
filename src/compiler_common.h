@@ -51,6 +51,8 @@ namespace compiler {
         class Class;
         class NewOperator;
         class ReturnStmt;
+        class MapItem;
+        class IndexAccess;
     }
 
     using DebugInfoMap = std::map<ast::Node const*, ExprDebugInfo>;

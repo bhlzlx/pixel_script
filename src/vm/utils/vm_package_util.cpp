@@ -50,13 +50,13 @@ namespace compiler {
                 auto field = value[lib_keywords::___tostring];
                 if(field) {
                     Value rst;
-                    env->stackValues().pushArgBegin(); {
-                        env->stackValues().pushValue(value);
-                        env->stackValues().pushArgEnd();
+                    env->stackFrames().pushArgBegin(); {
+                        env->stackFrames().pushValue(value);
+                        env->stackFrames().pushArgEnd();
                         int ret = env->callFunction(field);
-                        rst = env->stackValues().popValue();
+                        rst = env->stackFrames().popValue();
                     }
-                    env->stackValues().popToArgBegin();
+                    env->stackFrames().popToArgBegin();
                     return valueToString(env, rst);
                 } else {
                     char buf[32] = {};
@@ -67,15 +67,15 @@ namespace compiler {
             case PrimeVType::Userdata: {
                 UserdataObject* ud = value.ud();
                 Value rst;
-                env->stackValues().pushArgBegin(); {
-                    env->stackValues().pushValue(value); // 传self
-                    env->stackValues().pushArgEnd();
+                env->stackFrames().pushArgBegin(); {
+                    env->stackFrames().pushValue(value); // 传self
+                    env->stackFrames().pushArgEnd();
                     auto ret = ud->callMemberMethod(env,lib_keywords::___tostring);
                     if(ret) {
-                        rst = env->stackValues().popValue();
+                        rst = env->stackFrames().popValue();
                     }
                 }
-                env->stackValues().popToArgBegin();
+                env->stackFrames().popToArgBegin();
                 if(rst) {
                     return valueToString(env, rst);
                 }

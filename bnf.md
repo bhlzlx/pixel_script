@@ -3,9 +3,9 @@
 * id := [a-z_]{a-zA-Z0-9_}
 * args := expr {, expr}
 * arg_list : "("[args]")"
-* loc : "[" expr "]"
+* indexer : "[" expr "]"
 * primary := "(" expr ")" | closure | num | string | id
-* factor := map | array | "-" primary | primary { loc | arg_list | ("." id) }
+* factor := map | array | "-" primary | primary { indexer | arg_list | ("." id) }
 * array := "[" expr {, expr} "]"
 * map_item := id:expr
 * map := "{" map_item {, map_item} "}"

@@ -32,7 +32,7 @@ namespace compiler {
             Value valRef = _package[loc];
             int retCount = env->callFunction(Value(node));
             assert(retCount == 1);
-            valRef = env->stackValues().popValue();
+            valRef = env->stackFrames().popValue();
             // valRef = env->stackValues().topValue();
         }
     }
@@ -106,6 +106,10 @@ namespace compiler {
                             compilerErrors.push_back(id->token());
                         }
                     } else if(parent->valueType() == VType::FunctionCall) {
+                        if(!locateIdentifier(locateEnv, id)) {
+                            compilerErrors.push_back(id->token());
+                        }
+                    } else if(parent->valueType() == VType::IndexAccess) {
                         if(!locateIdentifier(locateEnv, id)) {
                             compilerErrors.push_back(id->token());
                         }
@@ -230,6 +234,12 @@ namespace compiler {
                     callBack(ret->expr());
                     traverseAST(ret->expr(), callBack);
                 }
+                break;
+            }
+            case SType::MapItem: {
+                auto item = static_cast<MapItem const*>(ast);
+                callBack(item->value());
+                traverseAST(item->value(), callBack);
                 break;
             }
             default: {

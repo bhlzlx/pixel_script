@@ -186,13 +186,13 @@ namespace compiler {
         switch(op.type()) {
             case TokenType::Plus: {
                 if(other.type() == PrimeVType::String) {
-                    env->stackValues().pushArgBegin();
-                    env->stackValues().pushValue(*this);
-                    env->stackValues().pushValue(other);
-                    env->stackValues().pushArgEnd();
+                    env->stackFrames().pushArgBegin();
+                    env->stackFrames().pushValue(*this);
+                    env->stackFrames().pushValue(other);
+                    env->stackFrames().pushArgEnd();
                     int ret = string_impl::__append(env);
-                    rst = env->stackValues().popValue();
-                    env->stackValues().popToArgBegin();
+                    rst = env->stackFrames().popValue();
+                    env->stackFrames().popToArgBegin();
                     return rst;
                 } else {
                     throw DumpException(env, ExecutionError::BinaryOpNotPermitted, "string + other type");

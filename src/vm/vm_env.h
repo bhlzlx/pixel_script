@@ -24,19 +24,27 @@ namespace compiler {
     private:
         std::vector<Value>      _params;
         std::vector<size_t>     _frameBases; // 
-        size_t                  _argBeg;
+        std::vector<size_t>     _argBegs;
     private:
         Value* currentFrame() const {
             return const_cast<Value*>(&_params[_frameBases.back()]);
         }
+        StackFrames(StackFrames const&) = delete;
+        StackFrames(StackFrames &&) = delete;
+        StackFrames& operator=(StackFrames const&) = delete;
+        StackFrames& operator=(StackFrames &&) = delete;
     public:
         StackFrames() {
             _params.reserve(512);
         }
-        void pushValue(Value const& value) {
+        // 给栈中的临时变量压值的话（赋值，初始化），不要存ref，因为后续处理会很麻烦，而且很没必要
+        // 但是如果是存放返回值，则有可能是引用，所以这里要分两种情况！
+        void pushValue(Value const& value, bool returnValue = false) {
             if(value.type() == PrimeVType::ValueRef) {
                 Value v = value;
-                v.deref();
+                if(!returnValue) { // 返回值不要强制解除引用
+                    v.deref();
+                }
                 _params.push_back(v);
             } else {
                 _params.push_back(value);
@@ -49,11 +57,11 @@ namespace compiler {
             _params.emplace_back(std::move(value));
         }
         void pushArgBegin() {
-            _argBeg = _params.size();
+            _argBegs.push_back(_params.size());
         }
         void pushArgEnd() {
-            _frameBases.push_back(_argBeg);
-            _argBeg = ~0;
+            _frameBases.push_back(_argBegs.back());
+            _argBegs.pop_back();
         }
         void popToArgBegin() {
             while(_params.size() > _frameBases.back()) {
@@ -135,7 +143,7 @@ namespace compiler {
 
         Value root() { return _package; }
 
-        StackFrames& stackValues() {
+        StackFrames& stackFrames() {
             return _stackFrames;
         }
 

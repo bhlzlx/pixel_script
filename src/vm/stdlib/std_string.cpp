@@ -39,7 +39,7 @@ namespace compiler {
         }
 
         int __append(Env* env) {
-            StackFrames& stack = env->stackValues();
+            StackFrames& stack = env->stackFrames();
             size_t paramsCount = stack.topFrameSize();
             if(paramsCount < 2) {
                 return 0;
@@ -61,7 +61,7 @@ namespace compiler {
         }
 
         int __len(Env* env) {
-            StackFrames& stack = env->stackValues();
+            StackFrames& stack = env->stackFrames();
             size_t paramsCount = stack.topFrameSize();
             if(paramsCount < 1) {
                 return 0;
@@ -77,11 +77,11 @@ namespace compiler {
         }
 
         BridgeFuncPair stringRegItems[] = {
-            {__append, "__plus"},
-            {__len, "__len"}
+            {__append, "append"},
+            {__len, "length"}
         };
 
-        void initString(Env* env) {
+        void init(Env* env) {
             if(stringLayout) {
                 return;
             }

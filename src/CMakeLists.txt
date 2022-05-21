@@ -16,6 +16,8 @@ PRIVATE
     vm/vm_primitive_types.cpp
     vm/stdlib/std_io.cpp
     vm/stdlib/std_string.cpp
+    vm/stdlib/std_vec.cpp
+    vm/stdlib/std_map.cpp
     vm/utils/vm_package_util.cpp
 )
 

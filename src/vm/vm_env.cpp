@@ -1,5 +1,8 @@
 #include "vm_env.h"
 #include "stdlib/std_io.h"
+// #include "stdlib/std_string.h"
+#include "stdlib/std_vec.h"
+#include "stdlib/std_map.h"
 #include <sstream>
 
 #include <iostream>
@@ -11,6 +14,8 @@ namespace compiler {
         _package = Value(layout);
         compiler::lang_keywords::init(this);
         compiler::lib_keywords::init(this);
+        compiler::std_map_impl::init(this);
+        compiler::std_vec_impl::init(this);
         io::init(this);
         _stackFrames.pushArgBegin();
         _stackFrames.pushArgEnd();
@@ -292,6 +297,7 @@ namespace compiler {
         auto layout = fn->symbolLayout();  // value table
         FuncEnv fenv = { fn, nullptr, false };
         _funcEnvs.push_back(fenv);
+        int ret = 0;
         {
             auto fenv = funcEnv();
             // 补全栈空间
@@ -301,12 +307,16 @@ namespace compiler {
                     _stackFrames.pushValue(Value()); // 添加空值
                 }
             }
-            eval(fn->body()); // 代码块的返回值不应该是ref类型
+            auto evalRet = eval(fn->body()); // 代码块的返回值不应该是ref类型
+            // 现在又改了，如果检查栈大小没有显式返回值，则使用eval结果作为返回值
+            auto frameSize = _stackFrames.topFrameSize();
+            ret = frameSize - layout->size();
+            if(!ret) {
+                stackFrames().pushValue(evalRet);
+                ret = 1;
+            }
         }
         _funcEnvs.pop_back();
-        // 现在改了，返回值在栈上存着呢
-        auto frameSize = _stackFrames.topFrameSize();
-        int ret = frameSize - layout->size();
         return ret;
     }
 

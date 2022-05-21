@@ -42,8 +42,9 @@ namespace compiler {
             Extends,
             ClassBody,
             NewOperator,
-            Array,
+            Vector,
             Map,
+            IndexAccess
         };
 
 
@@ -100,9 +101,23 @@ namespace compiler {
                     return nullptr;
                 }
             }
+            MapItem* asMapItem() const {
+                if(_stype == SType::MapItem) {
+                    return (MapItem*)this;
+                } else {
+                    return nullptr;
+                }
+            }
             DotAccess* asDotAccess() const {
                 if(_vtype == VType::DotAccess) {
                     return (DotAccess*)this;
+                } else {
+                    return nullptr;
+                }
+            }
+            IndexAccess* asIndexAccess() const {
+                if(_vtype == VType::IndexAccess) {
+                    return (IndexAccess*)this;
                 } else {
                     return nullptr;
                 }
@@ -246,6 +261,15 @@ namespace compiler {
             {}
             Node* obj() const { return _first; }
             Node* field() const { return _second; }
+        };
+
+        class IndexAccess : public PairExpr {
+        public:
+            IndexAccess(Node* obj, Node* index)
+                : PairExpr(VType::IndexAccess, obj, index)
+            {}
+            Node* obj() const { return _first; }
+            Node* index() const { return _second; }
         };
 
         class Variable : public PairExpr {
@@ -644,20 +668,15 @@ namespace compiler {
             }
         };
 
-        class Array : public MultiExpr {
-        public:
-            Array()
-                : MultiExpr(VType::Array)
-            {}
-        };
-
         class MapItem : public Node {
         private:
             Name            _key;
             Node*           _value;
         public:
-            MapItem(Name key, Node* _value)
+            MapItem(Name key, Node* value)
                 : Node(SType::MapItem, VType::None)
+                , _key(key)
+                , _value(value)
             {}
             Name key() const {
                 return _key;

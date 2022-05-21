@@ -16,6 +16,11 @@ namespace compiler {
         AssignWasNotPermitted,
         UnsupportOperator,
         InvalidArgument,
+        ArgumentCountMismatch,
+        ArgumentTypeMismatch,
+        IndexOutOfRange,
+        KeyNotFound,
+        IndexANoneObject,
     };
     
     class ExecuteException : public std::exception {
@@ -61,12 +66,16 @@ namespace compiler {
         FunctionNode,
         Userdata,
         BridgeFunc,
+        Vector,
+        Map,
     };
 
     class Value {
     protected:
         PrimeVType           _type;    // type of the value
+        union {
         SymbolLayoutType     _stype;   // for only object
+        };
         union {
             int64_t         _i64;
             double          _f64;
@@ -83,8 +92,7 @@ namespace compiler {
             : _type(PrimeVType::Nil)
             , _stype(SymbolLayoutType::None)
             , _i64(0)
-        {
-        }
+        {}
 
         Value(SymbolLayout* symbolLayout);
         Value(Value const& other);
@@ -94,6 +102,7 @@ namespace compiler {
         Value(UserdataObject* ud);
         Value(BridgeFunc func);
         Value(Name name);
+        Value(uint64_t val);
 
         Value& operator = (Value const& other);
         Value& operator = (Value&& other);
@@ -129,7 +138,11 @@ namespace compiler {
 
         Value operator[](uint32_t loc) const;
 
+        Value indexAccess(Env* env) const;
+
         Value operator[](Name name) const;
+
+        bool operator < (Value const& other) const;
 
         void enumerateFunctions(std::function<void(ast::Function*)> const& func) const;
     };

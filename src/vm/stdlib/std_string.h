@@ -16,7 +16,7 @@ namespace compiler {
 
         extern UserdataLayout* stringLayout;
         extern int __append(Env* env);
-        void initString(Env* env);
+        void init(Env* env);
 
     }
 

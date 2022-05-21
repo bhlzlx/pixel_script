@@ -7,7 +7,7 @@ namespace compiler {
     namespace io { 
 
         int print(Env* env) {
-            auto& stack = env->stackValues();
+            auto& stack = env->stackFrames();
             auto argCount = stack.topFrameSize();
             for(uint32_t i = 0; i < argCount; ++i) {
                 auto value = stack.localValue(i);

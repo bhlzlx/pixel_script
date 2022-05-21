@@ -19,6 +19,7 @@ namespace compiler {
         ExprExpected,
         LeftParenExpected,
         RightParenExpected,
+        RightBracketExpected,
         NeedRightFactor,
         PrimaryMismatch,
         ExprMismatch,
@@ -83,6 +84,7 @@ namespace compiler {
         MatchResult matchClassBody();
 
         MatchResult matchArray();
+        MatchResult matchIndexAccess();
 
         MatchResult matchMapItem();
         MatchResult matchMap();
@@ -94,7 +96,7 @@ namespace compiler {
 
         void consumeCurrentToken();
 
-        void consumeCommaEol();
+        void consumeSemicolonEol();
 
         void pushConsumeState();
         void popConsumeState();

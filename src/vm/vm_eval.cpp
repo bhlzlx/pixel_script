@@ -1,5 +1,8 @@
 #include "vm_env.h"
 #include "vm_primitive_types.h"
+#include "stdlib/std_vec.h"
+#include "stdlib/std_map.h"
+#include "vm_userdata.h"
 
 namespace compiler {
 
@@ -30,8 +33,49 @@ namespace compiler {
             }
             case SType::MultiExpr: {
                 MultiExpr* multiExpr = ast->asMultiExpr();
-                for(auto expr: multiExpr->expressions()) {
-                    eval(expr);
+                switch(ast->valueType()) {
+                    case VType::Vector: {
+                        Value ret = nil;
+                        UserdataObject* vec = std_vec_impl::create(this);
+                        try {
+                            for(Node const* node : multiExpr->expressions()) {
+                                auto eleVal = eval(node);
+                                eleVal.deref();
+                                std_vec_impl::__privateAdd(vec, eleVal);
+                            }
+                        } catch(...) {
+                            vec->decRef(); // clean up the vec object
+                            throw;
+                        }
+                        ret = Value(vec);
+                        return ret;
+                    }
+                    case VType::Map: {
+                        Value ret = nil;
+                        UserdataObject* map = std_map_impl::create(this);
+                        try {
+                            for(Node const* node : multiExpr->expressions()) {
+                                MapItem* item = node->asMapItem();
+                                Value key = item->key();
+                                Value val = eval(item->value());
+                                val.deref();
+                                std_map_impl::__privateAdd(map, key, val);
+                            }
+                        } catch(...) {
+                            map->decRef(); // clean up the map object
+                            throw;
+                        }
+                        ret = Value(map);
+                        return ret;
+                    }
+                    default: {
+                        Value rst;
+                        for(auto expr: multiExpr->expressions()) {
+                            rst = eval(expr);
+                            rst.deref(); // 这里一定要注意，因为这里的rst可能是一个引用，所以要deref，如果不deref，后果严重，想想这里的逻辑！
+                        }
+                        return rst;
+                    }
                 }
                 return nil;
             }
@@ -62,7 +106,8 @@ namespace compiler {
                         auto loc = id->valueLoc();
                         Value varVtVal = _stackFrames.localValueRef(loc); // ref
                         Value varExprEvalVal = eval(var->valueExpr());
-                        varVtVal = *varExprEvalVal.ref();
+                        varExprEvalVal.deref();
+                        varVtVal = varExprEvalVal;
                         return varVtVal;
                     }
                     case VType::FunctionCall: {
@@ -76,40 +121,51 @@ namespace compiler {
                         // registed c/c++ function
                         if(val.type() == PrimeVType::BridgeFunc) { // it must be a function
                             _stackFrames.pushArgBegin();
-                            for( auto& arg : caller->args()->expressions()) {
-                                _stackFrames.pushValue(eval(arg));
+                            // 传递self对象，机智的我想到了这个办法
+                            Value self;
+                            if(methodExpr->valueType() == VType::DotAccess) {
+                                DotAccess* dotAccess = methodExpr->asDotAccess();
+                                self = *(eval(dotAccess->obj()).ref());
+                                if(self.type() == PrimeVType::Userdata) {
+                                    _stackFrames.pushValue(std::move(self));// 传递this指针！
+                                }
+                            }
+                            if(caller->args()) {
+                                for( auto& arg : caller->args()->expressions()) {
+                                    _stackFrames.pushValue(eval(arg));
+                                }
                             }
                             _stackFrames.pushArgEnd();
                             int ret = val.asBridgeFunc()(this);
-                            Value rst;
+                            Value bridgeRst;
                             if(ret) {
-                                rst = _stackFrames.popValue(); // 只取一个值
+                                bridgeRst = _stackFrames.popValue(); // 只取一个值
                             }
                             _stackFrames.popToArgBegin();
-                            return rst;
+                            return bridgeRst;
                         // function defined in script
                         } else if(val.type() == PrimeVType::FunctionNode) {
                             Node const* node = val.node();
                             if(node->structType() == SType::Function) {
-                                // 传递self对象，机智的我想到了这个办法
-                                Value self;
-                                if(methodExpr->valueType() == VType::DotAccess) {
-                                    DotAccess* dotAccess = methodExpr->asDotAccess();
-                                    self = *(eval(dotAccess->obj()).ref());
-                                }
                                 switch(node->valueType()) {
                                     case VType::None: { // 普通函数调用（全局函数以及类函数）
+                                        // 传递self对象，机智的我想到了这个办法
+                                        Value self;
+                                        if(methodExpr->valueType() == VType::DotAccess) {
+                                            DotAccess* dotAccess = methodExpr->asDotAccess();
+                                            self = *(eval(dotAccess->obj()).ref());
+                                        }
                                         _stackFrames.pushArgBegin();
-                                        if(self && self.stype() == SymbolLayoutType::Class) {
+                                        if(self.stype() == SymbolLayoutType::Class) {
                                             _stackFrames.pushValue(std::move(self));// 传递this指针！
                                         }
-                                        _stackFrames.pushArgEnd();
                                         // 传递参数
                                         if(caller->args()) {
                                             for(auto expr: caller->args()->expressions()) {
                                                 _stackFrames.pushValue(eval(expr));
                                             }
                                         }
+                                        _stackFrames.pushArgEnd();
                                         auto rstCount = callFunction(val);
                                         assert(rstCount == 1);
                                         Value rst = _stackFrames.popValue();
@@ -153,6 +209,25 @@ namespace compiler {
                         updateEvaluingNode(ast);
                         Value valPtr = (*objPtr)[fieldName]; // we should return the value's ref
                         return valPtr;
+                    }
+                    case VType::IndexAccess: {
+                        IndexAccess* indexAccess = ast->asIndexAccess();
+                        Value vec = eval(indexAccess->obj()); // object must be a ref
+                        vec.deref();
+                        if(vec.type() != PrimeVType::Userdata) {
+                            DumpException except(this,  ExecutionError::IndexANoneObject, "index a none object!");
+                            throw except;
+                        }
+                        Value index = eval(indexAccess->index());
+                        updateEvaluingNode(ast);
+                        // push args
+                        _stackFrames.pushArgBegin();
+                        _stackFrames.pushValue(vec);
+                        _stackFrames.pushValue(Value(index));
+                        _stackFrames.pushArgEnd();
+                        Value rst = vec.indexAccess(this);
+                        _stackFrames.popToArgBegin();
+                        return rst;
                     }
                     default: {
                         break;

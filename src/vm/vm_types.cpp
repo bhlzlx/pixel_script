@@ -1,6 +1,7 @@
 #include "vm_object.h"
 #include "vm_types.h"
 #include "vm_userdata.h"
+#include "stdlib/std_vec.h"
 #include "vm_env.h"
 #include <exception>
 
@@ -17,7 +18,7 @@ namespace compiler {
                 return Value(bridgeFunc);
             } else {
                 return Value();
-        }
+            }
         } else {
             return Value();
         }
@@ -28,6 +29,23 @@ namespace compiler {
             return _obj->at(loc);
         }
         return Value();
+    }
+
+    Value Value::indexAccess(Env* env) const {
+        // 参数由调用者提前压栈
+        if(this->_type == PrimeVType::Userdata) {
+            UserdataObject* obj = ud();
+            auto ret = obj->callMemberMethod(env, lib_keywords::___index);
+            if(!ret) {
+                return Value();
+            }
+            Value rst = env->stackFrames().popValue();
+            return rst;
+        } else {
+            // throw exception
+            DumpException except(env, ExecutionError::IndexANoneObject, "index access");
+            throw except;
+        }
     }
 
     Value::Value(SymbolLayout* symbolLayout) {
@@ -236,6 +254,14 @@ namespace compiler {
             return _str;
         }
         return Name();
+    }
+
+    bool Value::operator < (Value const& other) const {
+        if(_type != other._type) {
+            return _type < other._type;
+        } else {
+            return _i64 < other._i64;
+        }
     }
 
     SymbolLayoutType Value::stype() const {

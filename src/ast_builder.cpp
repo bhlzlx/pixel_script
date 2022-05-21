@@ -1,4 +1,4 @@
-#include "ast_builder.h"
+﻿#include "ast_builder.h"
 #include "token.h"
 #include "token_parser.h"
 #include "vm/vm_env.h"
@@ -47,7 +47,7 @@ namespace compiler {
     MatchResult ASTBuilder::matchPrimary() {
         ConsumeStateHelper(this, true);
         MatchResult rst = {};
-        consumeCommaEol();
+        consumeSemicolonEol();
         auto token = nextToken();
         auto startToken = *token;
         Node* operand = nullptr;
@@ -116,6 +116,29 @@ namespace compiler {
         }
     }
 
+    MatchResult ASTBuilder::matchIndexAccess() {
+        ConsumeStateHelper(this, true);
+        MatchResult rst = {};
+        auto token = nextToken();
+        if(token->type() == TokenType::LeftBracket) {
+            consumeCurrentToken();
+            auto expr = matchExpression();
+            if(!expr) {
+                return expr;
+            } else {
+                auto token = nextToken();
+                if(token->type() == TokenType::RightBracket) {
+                    consumeCurrentToken();
+                    return { expr.node, ASTParseError::None, token->line(), token->column() };
+                } else {
+                    delete expr.node;
+                    return { nullptr, ASTParseError::RightBracketExpected, token->line(), token->column() };
+                }
+            }
+        }
+        return { nullptr, ASTParseError::None, token->line(), token->column() };
+    }
+
     MatchResult ASTBuilder::matchFactor() {
         ConsumeStateHelper helper(this, true);
         MatchResult rst = {};
@@ -161,13 +184,21 @@ namespace compiler {
                     break;
                 } else {
                     token = nextToken();
-                    rst = matchDotAccess(); // 返回的是一个Leaf String
+                    rst = matchIndexAccess(); // 索引表达式
                     if(rst) {
-                        auto dotAccess = new DotAccess(node, rst.node);
-                        node = dotAccess;
-                        _addDebugInfo(dotAccess, {token->stringLiteral(), token->line(), token->column() });
+                        auto indexAccess = new IndexAccess(node, rst.node);
+                        node = indexAccess;
+                        _addDebugInfo(indexAccess, {token->stringLiteral(), token->line(), token->column() });
                     } else {
-                        break;
+                        token = nextToken();
+                        rst = matchDotAccess(); // 返回的是一个Leaf String
+                        if(rst) {
+                            auto dotAccess = new DotAccess(node, rst.node);
+                            node = dotAccess;
+                            _addDebugInfo(dotAccess, {token->stringLiteral(), token->line(), token->column() });
+                        } else {
+                            break;
+                        }
                     }
                 }
             }
@@ -471,7 +502,7 @@ namespace compiler {
      * @return MatchResult 
      */
     MatchResult ASTBuilder::matchFunctionDef() {
-        consumeCommaEol();
+        consumeSemicolonEol();
         ConsumeStateHelper helper(this, true);
         Function* func = nullptr;
         auto token = nextToken();
@@ -614,7 +645,7 @@ namespace compiler {
     }
 
     MatchResult ASTBuilder::matchDefVariable() {
-        consumeCommaEol();
+        consumeSemicolonEol();
         ConsumeStateHelper helper(this, true);
         auto token = nextToken();
         if(token->type() == TokenType::Keyword) {
@@ -651,7 +682,7 @@ namespace compiler {
 
     MatchResult ASTBuilder::matchPackage() {
         ConsumeStateHelper helper(this, true);
-        consumeCommaEol();
+        consumeSemicolonEol();
         auto token = nextToken();
         if(token->type() == TokenType::Keyword) {
             if(token->stringLiteral() == lang_keywords::_package) {
@@ -691,7 +722,7 @@ namespace compiler {
 
     MatchResult ASTBuilder::matchClassDef() {
         ConsumeStateHelper helper(this, true);
-        consumeCommaEol();
+        consumeSemicolonEol();
         auto token = nextToken();
         if(token->type() == TokenType::Keyword) {
             if(token->stringLiteral() == lang_keywords::_class) {
@@ -737,7 +768,7 @@ namespace compiler {
         consumeCurrentToken();
         MultiExpr* body = new MultiExpr(VType::ClassBody);
         while(true) {
-            consumeCommaEol();
+            consumeSemicolonEol();
             auto var = matchDefVariable();
             if(var) {
                 body->addExpr(var.node);
@@ -761,26 +792,28 @@ namespace compiler {
 
     MatchResult ASTBuilder::matchArray() {
         ConsumeStateHelper helper(this, true);
-        consumeCommaEol();
+        consumeSemicolonEol();
         auto token = nextToken();
         if(token->type() != TokenType::LeftBracket) {
             return { nullptr, ASTParseError::LeftParenExpected, token->line(), token->column() };
         }
         consumeCurrentToken();
-        MultiExpr* body = new MultiExpr(VType::Array);
-        consumeCommaEol();
-        auto expr = matchExpression();
-        if(expr) {
-            body->addExpr(expr.node);
+        MultiExpr* body = new MultiExpr(VType::Vector);
+        consumeSemicolonEol();
+        auto arrItem = matchExpression();
+        if(arrItem) {
+            body->addExpr(arrItem.node);
             while(true) {
-                consumeCommaEol();
+                consumeSemicolonEol();
                 token = nextToken();
                 if(token->type() != TokenType::Comma) {
                     break;
                 }
-                auto expr = matchExpression();
-                if(expr) {
-                    body->addExpr(expr.node);
+                consumeCurrentToken();
+                consumeSemicolonEol();
+                arrItem = matchExpression();
+                if(arrItem) {
+                    body->addExpr(arrItem.node);
                 } else {
                     break;
                 }
@@ -817,25 +850,26 @@ namespace compiler {
 
     MatchResult ASTBuilder::matchMap() {
         ConsumeStateHelper helper(this, true);
-        consumeCommaEol();
+        consumeSemicolonEol();
         auto token = nextToken();
         if(token->type() != TokenType::LeftBrace) {
             return { nullptr, ASTParseError::LeftParenExpected, token->line(), token->column() };
         }
         consumeCurrentToken();
         MultiExpr* body = new MultiExpr(VType::Map);
-        consumeCommaEol();
+        consumeSemicolonEol();
         auto item = matchMapItem();
         if(item) {
             body->addExpr(item.node);
             while(true) {
-                consumeCommaEol();
+                consumeSemicolonEol();
                 token = nextToken();
                 if(token->type() != TokenType::Comma) {
                     break;
                 }
                 consumeCurrentToken();
-                auto item = matchMapItem();
+                consumeSemicolonEol();
+                item = matchMapItem();
                 if(item) {
                     body->addExpr(item.node);
                 } else {
@@ -875,9 +909,9 @@ namespace compiler {
         _cachedTokens.pop_front();
     }
 
-    void ASTBuilder::consumeCommaEol() {
+    void ASTBuilder::consumeSemicolonEol() {
         auto token = nextToken();
-        while(token->type() == TokenType::Comma ||token->type() == TokenType::Eol ) {
+        while(token->type() == TokenType::Semicolon ||token->type() == TokenType::Eol ) {
             consumeAndGetNext();
         }
     }
