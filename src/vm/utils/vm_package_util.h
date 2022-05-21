@@ -1,5 +1,5 @@
-#include "../vm_types.h"
-#include "../vm_object.h"
+#pragma once
+#include <compiler_common.h>
 
 namespace compiler {
 

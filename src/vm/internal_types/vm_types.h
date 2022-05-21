@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <functional>
 #include <vector>
-#include "../name_pool.h"
+#include <name_pool.h>
 #include "compiler_common.h"
 
 namespace compiler {

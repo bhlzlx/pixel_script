@@ -1,5 +1,5 @@
 #pragma once
-#include "../compiler_common.h"
+#include <compiler_common.h>
 #include "vm_object.h"
 // #include "../token.h"
 #include <functional>

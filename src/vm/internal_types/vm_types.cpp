@@ -1,8 +1,8 @@
 #include "vm_object.h"
 #include "vm_types.h"
 #include "vm_userdata.h"
-#include "stdlib/std_vec.h"
-#include "vm_env.h"
+#include <vm/stdlib/std_vec.h>
+#include <vm/vm_env.h>
 #include <exception>
 
 namespace compiler {

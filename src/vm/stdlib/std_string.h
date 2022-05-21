@@ -1,8 +1,6 @@
 #pragma once
-#include "../../name_pool.h"
-#include "../vm_object.h"
-#include "../vm_types.h"
-#include "../vm_userdata.h"
+#include <name_pool.h>
+#include <vm/internal_types/vm_types.h>
 #include <initializer_list>
 #include <functional>
 #include <vector>

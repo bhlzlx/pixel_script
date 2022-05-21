@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../compiler_common.h"
-#include "../name_pool.h"
+#include <compiler_common.h>
+#include <name_pool.h>
 #include "vm_object.h"
 
 namespace compiler {

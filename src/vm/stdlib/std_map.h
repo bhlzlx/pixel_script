@@ -1,6 +1,5 @@
 #pragma once
-#include "../../compiler_common.h"
-#include "../vm_userdata.h"
+#include <compiler_common.h>
 
 namespace compiler {
 

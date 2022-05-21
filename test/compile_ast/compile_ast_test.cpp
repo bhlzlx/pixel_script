@@ -3,7 +3,7 @@
 #include <map>
 
 #include <ast_node.h>
-#include <vm/vm_object.h>
+// #include <vm/vm_object.h>
 #include <vm/vm_env.h>
 
 #include <fstream>

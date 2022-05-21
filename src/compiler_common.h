@@ -81,4 +81,6 @@ namespace compiler {
         Function,
     };
 
+    class UserdataLayout;
+
 }

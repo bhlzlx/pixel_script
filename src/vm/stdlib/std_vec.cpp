@@ -1,6 +1,6 @@
 #include "std_vec.h"
-#include "../vm_userdata.h"
-#include "../vm_env.h"
+#include <vm/internal_types/vm_userdata.h>
+#include <vm/vm_env.h>
 
 namespace compiler {
 

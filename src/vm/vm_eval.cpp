@@ -1,8 +1,8 @@
 #include "vm_env.h"
-#include "vm_primitive_types.h"
+#include <vm/internal_types/vm_primitive_types.h>
+#include <vm/internal_types/vm_userdata.h>
 #include "stdlib/std_vec.h"
 #include "stdlib/std_map.h"
-#include "vm_userdata.h"
 
 namespace compiler {
 

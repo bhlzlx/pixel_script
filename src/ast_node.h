@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include <vector>
-#include "vm/vm_types.h"
+#include <vm/internal_types/vm_types.h>
 
 namespace compiler {
 

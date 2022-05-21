@@ -1,6 +1,5 @@
 ﻿# pragma once
-
-#include "../ast_node.h"
+#include <ast_node.h>
 #include <unordered_map>
 #include "vm_types.h"
 #include "vm_symbol.h"

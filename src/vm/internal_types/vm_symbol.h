@@ -1,5 +1,5 @@
 #pragma once
-#include "../ast_node.h"
+#include <ast_node.h>
 #include "vm_types.h"
 
 namespace compiler {

@@ -6,14 +6,14 @@ PRIVATE
     token_parser.cpp
     ast_builder.cpp
     ast_node.cpp
-    vm/vm_object.cpp
-    vm/vm_types.cpp
-    vm/vm_symbol.cpp
-    vm/vm_module.cpp
     vm/vm_env.cpp
     vm/vm_eval.cpp
-    vm/vm_userdata.cpp
-    vm/vm_primitive_types.cpp
+    vm/internal_types/vm_object.cpp
+    vm/internal_types/vm_types.cpp
+    vm/internal_types/vm_symbol.cpp
+    vm/internal_types/vm_module.cpp
+    vm/internal_types/vm_primitive_types.cpp
+    vm/internal_types/vm_userdata.cpp
     vm/stdlib/std_io.cpp
     vm/stdlib/std_string.cpp
     vm/stdlib/std_vec.cpp

@@ -1,6 +1,6 @@
 #include "vm_package_util.h"
-#include "../vm_env.h"
-#include "../vm_userdata.h"
+#include <vm/vm_env.h>
+#include <vm/internal_types/vm_userdata.h>
 
 namespace compiler {
 

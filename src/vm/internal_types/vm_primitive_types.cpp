@@ -1,6 +1,6 @@
 #include "vm_primitive_types.h"
-#include "vm_env.h"
-#include "stdlib/std_string.h"
+#include <vm/vm_env.h>
+#include <vm/stdlib/std_string.h>
 #include <iostream>
 
 namespace compiler {

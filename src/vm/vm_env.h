@@ -1,7 +1,7 @@
 #pragma once
-#include "vm_object.h"
-#include "vm_module.h"
-#include "../name_pool.h"
+#include "internal_types/vm_object.h"
+#include "internal_types/vm_module.h"
+#include <name_pool.h>
 #include <functional>
 #include <map>
 #include <type_traits>

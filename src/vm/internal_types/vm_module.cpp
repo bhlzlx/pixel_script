@@ -1,6 +1,6 @@
 #include "vm_module.h"
-#include "vm_env.h"
 #include "vm_object.h"
+#include <vm/vm_env.h>
 
 
 namespace compiler {

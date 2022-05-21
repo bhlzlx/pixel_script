@@ -1,5 +1,7 @@
 #include "std_string.h"
-#include "../vm_env.h"
+#include <vm/vm_env.h>
+#include <vm/internal_types/vm_object.h>
+#include <vm/internal_types/vm_userdata.h>
 
 namespace compiler {
 
