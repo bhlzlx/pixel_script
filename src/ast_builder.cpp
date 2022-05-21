@@ -1,4 +1,4 @@
-﻿#include "ast_builder.h"
+#include "ast_builder.h"
 #include "token.h"
 #include "token_parser.h"
 #include "vm/vm_env.h"
@@ -223,9 +223,9 @@ namespace compiler {
                 if(opStack.size()) {
                     auto top = opStack.top();
                     if(token->type() >= top.type()) {
-                        auto factor1 = factorStack.top(); factorStack.pop();
-                        auto factor2 = factorStack.top(); factorStack.pop();
-                        auto binExpr = new BinaryOpExpr(factor1, factor2, top.type());
+                        auto right = factorStack.top(); factorStack.pop();
+                        auto left = factorStack.top(); factorStack.pop();
+                        auto binExpr = new BinaryOpExpr(left, right, top.type());
                         _addDebugInfo(binExpr, {top.stringLiteral(), top.line(), top.column()});
                         opStack.pop();
                         factorStack.push(binExpr);
