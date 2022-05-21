@@ -10,8 +10,15 @@ namespace compiler {
         if(this->_type == PrimeVType::Object) {
             Object* obj = (Object*)_ud;
             return obj->operator[](name);
+        } else if(this->_type == PrimeVType::Userdata) {
+            UserdataObject* ud = (UserdataObject*)_ud;
+            auto bridgeFunc = ud->getFunction(name);
+            if(bridgeFunc) {
+                return Value(bridgeFunc);
+            } else {
+                return Value();
         }
-        else {
+        } else {
             return Value();
         }
     }
@@ -33,9 +40,7 @@ namespace compiler {
         _obj = other._obj;
         _type = other._type;
         _stype = other._stype;
-        if(_type == PrimeVType::Object) {
-            _obj->incRef();
-        }
+        incRef();
     }
 
     Value::Value(Value* ref) {
@@ -56,6 +61,11 @@ namespace compiler {
         assert(node->structType() == SType::Function);
     }
 
+    Value::Value(UserdataObject* ud)
+        : _type(PrimeVType::Userdata)
+        , _ud(ud)
+    {}
+
     Value::Value( Value&& other) {
         _obj = other._obj;
         _type = other._type;
@@ -67,6 +77,12 @@ namespace compiler {
     Value::Value(Name name) {
         _str = name;
         _type = PrimeVType::String;
+    }
+
+
+    Value::Value(uint64_t val) {
+        _i64 = val;
+        _type = PrimeVType::Int64;
     }
 
     Value& Value::operator = (Value const& other) {
@@ -101,6 +117,8 @@ namespace compiler {
     void Value::incRef() {
         if(_type == PrimeVType::Object) {
             _obj->incRef();
+        } else if(_type == PrimeVType::Userdata) {
+            _ud->incRef();
         }
     }
 
@@ -123,6 +141,7 @@ namespace compiler {
         if(_type == PrimeVType::ValueRef) {
             auto ref = _ref;
             new(this)Value(*ref);
+            incRef();
         }
     }
 
