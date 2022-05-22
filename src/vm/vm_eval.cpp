@@ -13,6 +13,111 @@ namespace compiler {
             return Value();
         }
         switch(ast->structType()) {
+            case SType::Scope: {
+                auto scope = ast->asScope();
+                switch(scope->scopeType()) {
+                    case IdentifierType::ClassMember: {
+                        return stackFrames().localValue(0);
+                    }
+                    case IdentifierType::CurrentPackage: {
+                        return funcEnv()->package;
+                    }
+                    case IdentifierType::Global: {
+                        return this->_package;
+                    }
+                    default:
+                        assert(false);
+                        break;
+                }
+                return Value();
+            }
+            case SType::Triple: {
+                auto valueType = ast->valueType();
+                switch(valueType) {
+                    case VType::NewOperator: {
+                        FunctionCall* caller = ast->asFunctionCall();
+                        Value val = eval(caller->self()); // class object
+                        if(val.type() == PrimeVType::Object) {
+                            auto obj = val.asObject();
+                            Value inst(obj->symbolLayout());
+                            // 参数还没用，没完全实现，传个参调一下就行了，不过不急，以后再写
+                            return inst;
+                        }
+                        throw DumpException(this, ExecutionError::InvalidClassObject, "new a non-class object");
+                    }
+                    case VType::FunctionCall: {
+                        FunctionCall* caller = ast->asFunctionCall();
+                        Value self;
+                        if(caller->self()) {
+                            self = eval(caller->self());
+                            self.deref();
+                        }
+                        Value funcObj;
+                        if(self) {
+                            auto field = caller->second()->asLeaf();
+                            funcObj = self[field->token().stringLiteral()];
+                        } else {
+                            funcObj = eval(caller->second());
+                        }
+                        updateEvaluingNode(ast); // 调试问题
+                        assert(funcObj.type() == PrimeVType::FunctionNode || funcObj.type() == PrimeVType::BridgeFunc);
+                        // registed c/c++ function
+                        if(funcObj.type() == PrimeVType::BridgeFunc) { // it must be a function
+                            _stackFrames.pushArgBegin();
+                            // 传递self对象，机智的我想到了这个办法
+                            if(self.type() == PrimeVType::Userdata) {
+                                _stackFrames.pushValue(std::move(self));// 传递this指针！
+                            }
+                            if(caller->args()) {
+                                for( auto& arg : caller->args()->asMultiExpr()->expressions()) {
+                                    _stackFrames.pushValue(eval(arg));
+                                }
+                            }
+                            _stackFrames.pushArgEnd();
+                            int ret = funcObj.asBridgeFunc()(this);
+                            Value bridgeRst;
+                            if(ret) {
+                                bridgeRst = _stackFrames.popValue(); // 只取一个值
+                            }
+                            _stackFrames.popToArgBegin();
+                            return bridgeRst;
+                        // function defined in script
+                        } else if(funcObj.type() == PrimeVType::FunctionNode) {
+                            auto funcNode = funcObj.asFunc();
+                            switch(funcNode->valueType()) {
+                                case VType::None: { // 普通函数调用（全局函数以及类函数）
+                                    // 传递self对象，机智的我想到了这个办法
+                                    _stackFrames.pushArgBegin();
+                                    if(self && self.stype() == SymbolLayoutType::Class) {
+                                        _stackFrames.pushValue(std::move(self));
+                                    }
+                                    // 传递参数
+                                    if(caller->args()) {
+                                        for(auto expr: caller->args()->asMultiExpr()->expressions()) {
+                                            _stackFrames.pushValue(eval(expr));
+                                        }
+                                    }
+                                    _stackFrames.pushArgEnd();
+                                    auto rstCount = callFunction(funcObj);
+                                    assert(rstCount == 1);
+                                    Value rst = _stackFrames.popValue();
+                                    _stackFrames.popToArgBegin();
+                                    return rst;
+                                }
+                                default: {
+                                    assert(false);
+                                }
+                            }
+                        } else {
+                            return Value();
+                        }
+                    }
+                    default: {
+                        assert(false);
+                        break;
+                    }
+                }
+            }
             case SType::BinaryOp: {
                 BinaryOpExpr* binExpr = ast->asBinaryExpr();
                 Value left = eval(binExpr->left());
@@ -110,85 +215,7 @@ namespace compiler {
                         varVtVal = varExprEvalVal;
                         return varVtVal;
                     }
-                    case VType::FunctionCall: {
-                        Value argsItems[16];
-                        FunctionCall* caller = ast->asFunctionCall();
-                        Value val = eval(caller->methodExpr());
-                        updateEvaluingNode(ast);
-                        assert(val.type() == PrimeVType::FunctionNode || val.type() == PrimeVType::BridgeFunc);
-                        val = *val.ref();
-                        Node* methodExpr = caller->methodExpr();
-                        // registed c/c++ function
-                        if(val.type() == PrimeVType::BridgeFunc) { // it must be a function
-                            _stackFrames.pushArgBegin();
-                            // 传递self对象，机智的我想到了这个办法
-                            Value self;
-                            if(methodExpr->valueType() == VType::DotAccess) {
-                                DotAccess* dotAccess = methodExpr->asDotAccess();
-                                self = *(eval(dotAccess->obj()).ref());
-                                if(self.type() == PrimeVType::Userdata) {
-                                    _stackFrames.pushValue(std::move(self));// 传递this指针！
-                                }
-                            }
-                            if(caller->args()) {
-                                for( auto& arg : caller->args()->expressions()) {
-                                    _stackFrames.pushValue(eval(arg));
-                                }
-                            }
-                            _stackFrames.pushArgEnd();
-                            int ret = val.asBridgeFunc()(this);
-                            Value bridgeRst;
-                            if(ret) {
-                                bridgeRst = _stackFrames.popValue(); // 只取一个值
-                            }
-                            _stackFrames.popToArgBegin();
-                            return bridgeRst;
-                        // function defined in script
-                        } else if(val.type() == PrimeVType::FunctionNode) {
-                            Node const* node = val.node();
-                            if(node->structType() == SType::Function) {
-                                switch(node->valueType()) {
-                                    case VType::None: { // 普通函数调用（全局函数以及类函数）
-                                        // 传递self对象，机智的我想到了这个办法
-                                        Value self;
-                                        if(methodExpr->valueType() == VType::DotAccess) {
-                                            DotAccess* dotAccess = methodExpr->asDotAccess();
-                                            self = *(eval(dotAccess->obj()).ref());
-                                        }
-                                        _stackFrames.pushArgBegin();
-                                        if(self.stype() == SymbolLayoutType::Class) {
-                                            _stackFrames.pushValue(std::move(self));// 传递this指针！
-                                        }
-                                        // 传递参数
-                                        if(caller->args()) {
-                                            for(auto expr: caller->args()->expressions()) {
-                                                _stackFrames.pushValue(eval(expr));
-                                            }
-                                        }
-                                        _stackFrames.pushArgEnd();
-                                        auto rstCount = callFunction(val);
-                                        assert(rstCount == 1);
-                                        Value rst = _stackFrames.popValue();
-                                        _stackFrames.popToArgBegin();
-                                        return rst;
-                                    }
-                                    case VType::NewOperator: {
-                                        NewOperator* newOp = node->asNew();
-                                        // create a new object value with the layout
-                                        Value val = Value(newOp->symbolLayout());
-                                        return val;
-                                    }
-                                    default: {
-                                        assert(false);
-                                    }
-                                }
-                            } else {
-                                return Value();
-                            }
-                        } else {
-                            return Value();
-                        }
-                    }
+
                     case VType::WhileStmt: {
                         Value rst;
                         WhileStmt* whileExpr = ast->asWhile();
@@ -204,7 +231,7 @@ namespace compiler {
                         Value obj = eval(dotAccess->obj()); // object must be a ref
                         Value* objPtr = obj.ref();
                         auto fieldLeaf = dotAccess->field()->asLeaf();
-                        assert(fieldLeaf); assert(fieldLeaf->valueType() == VType::String);
+                        assert(fieldLeaf); assert(fieldLeaf->valueType() == VType::Field);
                         Name fieldName = fieldLeaf->token().stringLiteral();
                         updateEvaluingNode(ast);
                         Value valPtr = (*objPtr)[fieldName]; // we should return the value's ref

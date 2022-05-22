@@ -178,7 +178,43 @@ namespace compiler {
                 // 补充一下，虽然匹配args会返回空，并不意味着失败，参数量为0时也会返回空，所以再判断下error code，
                 // 如果error code没有错误，则说明匹配成功，只是没有参数
                 if(rst || rst.error == ASTParseError::None) {
-                    auto funcCall = new FunctionCall(node, rst.node ? rst.node->asMultiExpr() : nullptr); 
+                    // global_func(e,f,g)
+                    // a.b.c.d(e,f,g)，现在匹配括号部分了，看上级，也就是c.d
+                    // 实际上，这个全局的函数调用看似没有点语法，实际是有一个隐匿的全局包/this对象
+                    // function object expr
+                    /*
+                    1. 点语法
+                    2. 函数返回值
+                    3. 作用域内（全局，包内，类内）
+                    */
+                    // 所以我们不妨在这里判断下这个节点的类型，并作断言
+                    auto args = rst;
+                    FunctionCall* funcCall = nullptr;
+                    // 现在我拿到的是这个factor的语法节点的顶节点，然后我们就可以针对不同情况做特殊处理，
+                    switch(node->valueType()) {
+                        case VType::DotAccess: { 
+                            // 这个是可以处理得非常直接的，原本是一个dot access，现在我们要把这个节点删除掉
+                            // 改成函数调用，而不是作为新节点的子节点
+                            auto dotAccess = node->asDotAccess();
+                            funcCall = FunctionCall::fromDotAccess(dotAccess, args.node);
+                            delete dotAccess;
+                            break;
+                        }
+                        case VType::FunctionCall: { // 基操，这种函数调用，没有self，它就是个自由函数
+                            funcCall = new FunctionCall(nullptr, node, args.node); // no function name break;
+                            break;
+                        }
+                        case VType::Id: { 
+                            // 这种还是有可能不是包内全局函数的，如果是成员函数
+                            // 前边是不用加self的，但是语法树这里还是判断不了的，需要做后处理
+                            funcCall = new FunctionCall(nullptr, node, args.node); // no function name break;
+                            break;
+                        }
+                        default: {
+                            assert(false);
+                        }
+                    }
+                    // 出于教学目的的话，这里帮助大家理解一些，实际上，这里完全没必要处理，因为在后处理时会处理这些东西
                     _addDebugInfo(funcCall, { token->stringLiteral(), token->line(), token->column() });
                     node = funcCall;
                     break;
@@ -610,11 +646,12 @@ namespace compiler {
         } else {
             consumeCurrentToken();
             token = nextToken();
-            if(token->type() != TokenType::Identifier && token->type() != TokenType::Keyword) {
-                return MatchResult { nullptr, ASTParseError::IdentifierExpected, token->line(), token->column() };
-            } else {
+            // 这里强制为Field
+            if(token->type() == TokenType::Identifier || token->type() == TokenType::Keyword) {
                 consumeCurrentToken();
-                return { new Leaf(VType::String, *token), ASTParseError::None, startToken.line(), startToken.column() };
+                return { new Leaf(VType::Field, *token), ASTParseError::None, startToken.line(), startToken.column() };
+            } else {
+                return MatchResult { nullptr, ASTParseError::IdentifierExpected, token->line(), token->column() };
             }
         }
     }

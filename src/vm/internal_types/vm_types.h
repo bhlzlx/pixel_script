@@ -21,6 +21,7 @@ namespace compiler {
         IndexOutOfRange,
         KeyNotFound,
         IndexANoneObject,
+        InvalidClassObject,
     };
     
     class ExecuteException : public std::exception {

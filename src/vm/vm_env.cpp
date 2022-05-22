@@ -164,8 +164,6 @@ namespace compiler {
                                 }
                             }
                             clazzLayout->reorderSymbols(); // 类需要重新排序
-                            auto newOperator = new ast::NewOperator(clazzLayout);
-                            clazzObj->addSymbol(lang_keywords::_new, SymbolType::NewOperator, Value(newOperator), moduleName);
                             // 将class信息添加到包里
                             packObj->addSymbol(clazz->name(), SymbolType::Class, clazzValue, moduleName);
                             module->addClass(clazzValue);
@@ -295,7 +293,7 @@ namespace compiler {
         }
         auto params = fn->params();
         auto layout = fn->symbolLayout();  // value table
-        FuncEnv fenv = { fn, nullptr, false };
+        FuncEnv fenv = { fn, stackFrames().localValue(0), fn->hostPackage(), nullptr, false };
         _funcEnvs.push_back(fenv);
         int ret = 0;
         {

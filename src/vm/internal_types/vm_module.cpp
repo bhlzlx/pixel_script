@@ -89,48 +89,70 @@ namespace compiler {
          *   * id在右边如果二元操作符是dot，不是变量否则是变量引用
          * 3. Primary的operand如果是id，则是变量引用
          */
+
+        /**
+         * @brief 
+         *   现在我们又有了新的后处理需求，需要看函数调用引用的self对象，如果是成员函数，则需要给FunctionCall添加self节点
+         */
+
         TraverseCallBack processor = [&](compiler::Node const* node) {
-            Identifier* id = node->asId();
-            if(!id) {
-                return;
-            }
-            // IdLocateEnv locateEnv = {symLayout, func->hostPackage().asObject()->symbolLayout()};
-            auto parent = node->parent();
-            switch(parent->structType()) {
-                case SType::Pair: { // define variable        
-                    if(parent->valueType() == VType::Variable) {
-                        auto regRst = symLayout->regSymbol(id->token().stringLiteral(), SymbolType::Variable, Value(), func->module());
-                        id->setValue(IdentifierType::FunctionLocal, regRst.loc);
-                    } else if(parent->valueType() == VType::DotAccess) {
+            auto valueType = node->valueType();
+            if(VType::Id == valueType) {
+                auto id = node->asId();
+                // IdLocateEnv locateEnv = {symLayout, func->hostPackage().asObject()->symbolLayout()};
+                auto parent = node->parent();
+                switch(parent->structType()) {
+                    case SType::Pair: { // define variable        
+                        if(parent->valueType() == VType::Variable) {
+                            auto regRst = symLayout->regSymbol(id->token().stringLiteral(), SymbolType::Variable, Value(), func->module());
+                            id->setValue(IdentifierType::FunctionLocal, regRst.loc);
+                        } else if(parent->valueType() == VType::DotAccess) {
+                            if(!locateIdentifier(locateEnv, id)) {
+                                compilerErrors.push_back(id->token());
+                            }
+                        } else if(parent->valueType() == VType::FunctionCall) {
+                            if(!locateIdentifier(locateEnv, id)) {
+                                compilerErrors.push_back(id->token());
+                            }
+                        } else if(parent->valueType() == VType::IndexAccess) {
+                            if(!locateIdentifier(locateEnv, id)) {
+                                compilerErrors.push_back(id->token());
+                            }
+                        }
+                        return;
+                    }
+                    case SType::BinaryOp: {
+                        auto binOp = parent->asBinaryExpr();
+                        if(binOp->op() == TokenType::Dot) {
+                            if(node == binOp->right()) {
+                                return;
+                            }
+                        }
                         if(!locateIdentifier(locateEnv, id)) {
                             compilerErrors.push_back(id->token());
                         }
-                    } else if(parent->valueType() == VType::FunctionCall) {
-                        if(!locateIdentifier(locateEnv, id)) {
-                            compilerErrors.push_back(id->token());
-                        }
-                    } else if(parent->valueType() == VType::IndexAccess) {
+                        return;
+                    }
+                    default: {
                         if(!locateIdentifier(locateEnv, id)) {
                             compilerErrors.push_back(id->token());
                         }
                     }
-                    return;
                 }
-                case SType::BinaryOp: {
-                    auto binOp = parent->asBinaryExpr();
-                    if(binOp->op() == TokenType::Dot) {
-                        if(node == binOp->right()) {
-                            return;
+            } else if(VType::FunctionCall == valueType) {
+                auto funcCall = node->asFunctionCall();
+                auto self = funcCall->self();
+                if(!self) { // 如果没有self，且id是类成员函数，则需要添加self对象
+                    auto funcExpr = funcCall->funcExpr();
+                    if(funcExpr->valueType() == VType::Id) {
+                        auto id = funcExpr->asId();
+                        if(!locateIdentifier(locateEnv, id)) {
+                            compilerErrors.push_back(id->token());
                         }
-                    }
-                    if(!locateIdentifier(locateEnv, id)) {
-                        compilerErrors.push_back(id->token());
-                    }
-                    return;
-                }
-                default: {
-                    if(!locateIdentifier(locateEnv, id)) {
-                        compilerErrors.push_back(id->token());
+                        if(id->type() == IdentifierType::ClassMember) {
+                            auto selfNode = new ScopeNode(IdentifierType::ClassMember);
+                            funcCall->setSelf(selfNode);
+                        }
                     }
                 }
             }
@@ -240,6 +262,35 @@ namespace compiler {
                 auto item = static_cast<MapItem const*>(ast);
                 callBack(item->value());
                 traverseAST(item->value(), callBack);
+                break;
+            }
+            case SType::Triple: {
+                auto triple = static_cast<TripleExpr const*>(ast);
+                if(triple->first()) {
+                    callBack(triple->first());
+                    traverseAST(triple->first(), callBack);
+                }
+                auto valueType = ast->valueType();
+                switch (valueType)
+                {
+                    case VType::FunctionCall: {
+                        break;
+                    }
+                    default: {
+                        if(triple->second()) {
+                            callBack(triple->second());
+                            traverseAST(triple->second(), callBack);
+                        }
+                        break;
+                    }
+                }
+                if(triple->third()) {
+                    callBack(triple->third());
+                    traverseAST(triple->third(), callBack);
+                }
+                break;
+            }
+            case SType::Scope: {
                 break;
             }
             default: {

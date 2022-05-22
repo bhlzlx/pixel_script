@@ -110,6 +110,8 @@ namespace compiler {
     private:
         struct FuncEnv {
             Function*           func;   // function ast node
+            Value               package; // current package
+            Value               self;
             Node const*         evaluingNode;
             bool                retNow;
         };

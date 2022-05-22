@@ -14,11 +14,13 @@ namespace compiler {
             Leaf,
             NegtiveOp,
             Pair,
+            Triple,
             Function,
             StringList,
             Class,
             Return,
             MapItem,
+            Scope,
             None,
         };
 
@@ -26,21 +28,23 @@ namespace compiler {
             None,
             Int,
             String,
+            Field,
             Float,
             Bool,
             Closure,
             Id,
+            Keyword,
             Variable,
             Block,
             Module,
             Args, // 实参，表达式列表
             DotAccess,
-            FunctionCall,
             WhileStmt,
             Params, // 形参，id列表
             Package,
             Extends,
             ClassBody,
+            FunctionCall,
             NewOperator,
             Vector,
             Map,
@@ -164,13 +168,13 @@ namespace compiler {
                 return _stype == SType::Leaf ? (Leaf*)this : nullptr;
             }
             FunctionCall* asFunctionCall() const {
-                return _vtype == VType::FunctionCall ? (FunctionCall*)this : nullptr;
-            }
-            NewOperator* asNew() const {
-                return _vtype == VType::NewOperator ? (NewOperator*)this : nullptr;
+                return (_vtype == VType::FunctionCall || _vtype == VType::NewOperator) ? (FunctionCall*)this : nullptr;
             }
             ReturnStmt* asReturn() const {
                 return _stype == SType::Return ? (ReturnStmt*)this : nullptr;
+            }
+            ScopeNode* asScope() const {
+                return _stype == SType::Scope ? (ScopeNode*)this : nullptr;
             }
         };
 
@@ -245,22 +249,74 @@ namespace compiler {
             }
         };
 
-        class FunctionCall : public PairExpr {
+        class TripleExpr : public Node {
+        protected:
+            Node* _first;
+            Node* _second;
+            Node* _third;
         public:
-            FunctionCall(Node* methodExpr, MultiExpr* args)
-                : PairExpr(VType::FunctionCall, methodExpr, (Node*)args)
-            {}
-            Node* methodExpr() const { return _first; }
-            MultiExpr* args() const { return _second ? _second->asMultiExpr() : nullptr; }
+            TripleExpr(VType vtype, Node* first, Node* second, Node* third)
+                : Node(SType::Triple, vtype)
+                , _first(first)
+                , _second(second)
+                , _third(third)
+            {
+                if(first) {
+                    _first = first;
+                    first->setParent(this);
+                }
+                if(second) {
+                    second->setParent(this);
+                }
+                if(third) {
+                    third->setParent(this);
+                }
+            }
+            Node* first() const {
+                return _first;
+            }
+            Node* second() const {
+                return _second;
+            }
+            Node* third() const {
+                return _third;
+            }
+            ~TripleExpr() {
+                if(_first) {
+                    delete _first;
+                }
+                if(_second) {
+                    delete _second;
+                }
+                if(_third) {
+                    delete _third;
+                }
+            }
         };
 
         class DotAccess : public PairExpr {
+            friend class FunctionCall;
         public:
             DotAccess(Node* obj, Node* field)
                 : PairExpr(VType::DotAccess, obj, field)
             {}
             Node* obj() const { return _first; }
             Node* field() const { return _second; }
+        };
+
+        class ScopeNode : public Node { // current scope : global pack/ current pack/ self ref
+        private:
+            IdentifierType _scopeType; // 近似表达下吧
+        public:
+            ScopeNode(IdentifierType type)
+                : Node(SType::Scope, VType::None)
+                , _scopeType(type)
+            {}
+            IdentifierType scopeType() const {
+                assert(_scopeType != IdentifierType::Null);
+                assert(_scopeType != IdentifierType::FunctionLocal);
+                return _scopeType;
+            }
         };
 
         class IndexAccess : public PairExpr {
@@ -376,6 +432,45 @@ namespace compiler {
 
             uint32_t valueLoc() const {
                 return _value;
+            }
+        };
+
+        /**
+         * @brief 
+         *     语法树形式上的函数调用，但实际可能是多种情况
+         * 1. script 定义的函数的调用
+         * 2. userdata bridge 定义的函数的调用
+         * 3. 特殊的函数调用，如 Type.new()
+         * 具体是哪种，要看funcExpr返回的节点是什么节点
+         */
+        class FunctionCall : public TripleExpr {
+        public: // self is the object calls the funcExpr with args
+            FunctionCall(Node* self, Node* funcExpr, Node* args)
+                : TripleExpr(VType::FunctionCall, self, funcExpr, args)
+            {
+                if(funcExpr->valueType() == VType::Field) {
+                    auto id = funcExpr->asLeaf();
+                    if(id->token().stringLiteral() == lang_keywords::_new) {
+                        _vtype = VType::NewOperator;
+                        delete _second;
+                        _second = nullptr;
+                    }
+                }
+            }
+            Node* self() const { return first(); }
+            Node* funcExpr() const { return second(); }
+            Node* args() const { return third(); }
+            void setSelf(Node* self) {
+                _first = self;
+                if(self) {
+                    self->setParent(this);
+                }
+            }
+            static FunctionCall* fromDotAccess(DotAccess* dotAccess, Node* args) {
+                auto ret = new FunctionCall(dotAccess->obj(), dotAccess->field(), args);
+                dotAccess->_first = nullptr;
+                dotAccess->_second = nullptr;
+                return ret;
             }
         };
 
@@ -644,27 +739,6 @@ namespace compiler {
 
             MultiExpr* body() {
                 return _body;
-            }
-        };
-
-        class NewOperator : public Function {
-        private:
-            SymbolLayout*   _classSymbol;
-        public:
-            NewOperator(SymbolLayout* layout)
-                : Function(VType::NewOperator)
-                , _classSymbol(layout)
-            {
-                _compiled = 1;
-                _valid = 1;
-            }
-
-            void setSymbolLayout(SymbolLayout* layout) {
-                _classSymbol = layout;
-            }
-
-            SymbolLayout* symbolLayout() {
-                return _classSymbol;
             }
         };
 

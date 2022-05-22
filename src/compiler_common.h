@@ -49,10 +49,10 @@ namespace compiler {
         class FunctionCall;
         class DotAccess;
         class Class;
-        class NewOperator;
         class ReturnStmt;
         class MapItem;
         class IndexAccess;
+        class ScopeNode;
     }
 
     using DebugInfoMap = std::map<ast::Node const*, ExprDebugInfo>;
