@@ -39,7 +39,8 @@ namespace compiler {
             if(!ret) {
                 return Value();
             }
-            Value rst = env->stackFrames().popValue();
+            Value rst = env->stackFrames().topLocalRef(0);
+            env->stackFrames().pop();
             return rst;
         } else {
             // throw exception
@@ -97,10 +98,23 @@ namespace compiler {
         _type = PrimeVType::String;
     }
 
+    void Value::nilIt() {
+        if(_type == PrimeVType::ValueRef) {
+            _type = PrimeVType::Nil;
+        }
+    }
 
     Value::Value(uint64_t val) {
         _i64 = val;
         _type = PrimeVType::Int64;
+    }
+    Value::Value(double val) {
+        _f64 = val;
+        _type = PrimeVType::Float64;
+    }
+    Value::Value(BytecodeFunction* func) {
+        _type = PrimeVType::BytecodeFunction;
+        _bytecodeFunc = func;
     }
 
     Value& Value::operator = (Value const& other) {
@@ -181,32 +195,35 @@ namespace compiler {
         return _obj;
     }
 
-    Function* Value::asFunc() const {
-        if(_type != PrimeVType::FunctionNode) {
+
+    // BytecodeFunction const* Value::asBytecodeFunc() const {
+    //     if(_type != PrimeVType::BytecodeFunction) {
+    //         return nullptr;
+    //     }
+    //     return _bytecodeFunc;
+    // }
+    BytecodeFunction* Value::asBytecodeFunc() {
+        if(_type != PrimeVType::BytecodeFunction) {
             return nullptr;
         }
-        if(_node->structType() != SType::Function) {
-            return nullptr;
-        }
-        return (Function*)_node;
+        return _bytecodeFunc;
     }
+
+    // Function* Value::asFunc() const {
+    //     if(_type != PrimeVType::FunctionNode) {
+    //         return nullptr;
+    //     }
+    //     if(_node->structType() != SType::Function) {
+    //         return nullptr;
+    //     }
+    //     return (Function*)_node;
+    // }
     
     BridgeFunc Value::asBridgeFunc() const {
         if(_type != PrimeVType::BridgeFunc) {
             return nullptr;
         }
         return _bridgeFunc;
-    }
-
-    void Value::enumerateFunctions(std::function<void(ast::Function*)> const& func) const {
-        if(_type == PrimeVType::Object) {
-            auto symlayout = this->asObject()->symbolLayout();
-            for(auto const& sym : symlayout->symbols()) {
-                if(sym.symbol.type() == SymbolType::Function) {
-                    func((ast::Function*)sym.value.asFunc());
-                }
-            }
-        }
     }
 
     Value::~Value() {
@@ -278,6 +295,11 @@ namespace compiler {
         : _error(error)
         , _message(env->backtrace(brifErr)) 
     {
+    }
+
+    void BytecodeFunction::setSymbolLayout(SymbolLayout* symbolLayout) {
+        _symbolLayout = symbolLayout;
+        _localSize = _symbolLayout->size() - _argc;
     }
 
 } // namespace compiler

@@ -5,6 +5,7 @@
 #include <functional>
 #include <map>
 #include <type_traits>
+#include "vm_bytecode.h"
 
 namespace compiler {
     using Name = ksgw::Name;
@@ -21,87 +22,132 @@ namespace compiler {
      */
 
     class StackFrames {
-    private:
-        std::vector<Value>      _params;
-        std::vector<size_t>     _frameBases; // 
-        std::vector<size_t>     _argBegs;
-    private:
-        Value* currentFrame() const {
-            return const_cast<Value*>(&_params[_frameBases.back()]);
-        }
+        struct FrameInfo {
+            size_t                  fp;             // 函数栈底位
+            size_t                  ap;             // 参数栈顶位
+            size_t                  lp;             // 局部变量栈顶位
+            size_t                  sp;             // 当前栈顶位  
+            size_t                  ip;             // 当前指令位
+            Value                   package;        // 当前包
+            Value                   self;           // self对象
+            Instruction const*      instr;          // 当前指令块起始地址
+            Value const*            constants;      // 静态常量区
+            BytecodeFunction const* func;           // 当前函数 可能一般用不到
+        };
+        // delete default assign constructor
         StackFrames(StackFrames const&) = delete;
         StackFrames(StackFrames &&) = delete;
         StackFrames& operator=(StackFrames const&) = delete;
         StackFrames& operator=(StackFrames &&) = delete;
+    private:
+        FrameInfo                   _frame;
+        std::vector<FrameInfo>      _frameInfos;
+        std::vector<Value>          _values;
     public:
-        StackFrames() {
-            _params.reserve(512);
+        StackFrames()
+            : _frameInfos()
+            , _values(2048)
+        {
+            FrameInfo fi = {
+                0, 0, 0, 0, 0, Value(), Value(), nullptr, nullptr, nullptr
+            };
+            _frameInfos.push_back(fi);
+            _frame = fi;
+        } 
+        void push(Value&& value, bool deref = false) {
+            _values[_frame.sp] = std::move(value);
+            if(deref) {
+                _values[_frame.sp].deref();
+            }
+            ++_frame.sp;
         }
-        // 给栈中的临时变量压值的话（赋值，初始化），不要存ref，因为后续处理会很麻烦，而且很没必要
-        // 但是如果是存放返回值，则有可能是引用，所以这里要分两种情况！
-        void pushValue(Value const& value, bool returnValue = false) {
-            if(value.type() == PrimeVType::ValueRef) {
-                Value v = value;
-                if(!returnValue) { // 返回值不要强制解除引用
-                    v.deref();
-                }
-                _params.push_back(v);
-            } else {
-                _params.push_back(value);
+        void push(Value const& value, bool deref = false) {
+            _values[_frame.sp] = value;
+            if(deref) {
+                _values[_frame.sp].deref();
+            }
+            ++_frame.sp;
+        }
+        void pop() { 
+            if(_frame.sp > _frame.ap) {
+                --_frame.sp;
+                _values[_frame.sp].nilIt();
             }
         }
-        void pushValue(Value&& value) {
-            if(value.type() == PrimeVType::ValueRef) {
-                value.deref();
-            }
-            _params.emplace_back(std::move(value));
-        }
-        void pushArgBegin() {
-            _argBegs.push_back(_params.size());
-        }
-        void pushArgEnd() {
-            _frameBases.push_back(_argBegs.back());
-            _argBegs.pop_back();
-        }
-        void popToArgBegin() {
-            while(_params.size() > _frameBases.back()) {
-                _params.pop_back();
-            }
-            _frameBases.pop_back();
-        }
-        size_t topFrameSize() const {
-            if(_params.size() == 0) {
-                return 0;
-            } else {
-                return _params.size() - _frameBases.back();
+        void popFrame() {
+            if(_frameInfos.size()) {
+                _frame = _frameInfos.back();
+                _frameInfos.pop_back();
             }
         }
-        // 在vm里更新栈内值的时候，使用localValueRef
-        Value localValueRef(size_t index) const {
-            size_t frameSize = topFrameSize();
-            if(index >= frameSize) {
-                return Value();
-            } else {
-                return Value(currentFrame() + index);
+        void pushFrame() {
+            _frameInfos.push_back(_frame);
+            auto const& last = _frameInfos.back();
+            _frame.sp = _frame.ap = _frame.fp = last.sp;
+        }
+        // 强制设置栈顶位置
+        void precall(BytecodeFunction const* func) {
+            _frame.ap = _frame.sp;
+            _frame.ip = func->ip();
+            _frame.package = func->package();
+            _frame.instr = func->instruction();
+            _frame.constants = func->module()->constants();
+            _frame.func = func;
+            _frame.lp = _frame.sp += func->localSize();
+        }
+        size_t argCount() const {
+            return _frame.ap - _frame.fp;
+        }
+        void reserveValues(size_t count) {
+            assert(count + _frame.sp <= _values.size());
+            _frame.sp += count;
+        }
+        void popN(size_t n) {
+            while(n && _frame.sp > _frame.ap) {
+                --_frame.sp;
+                _values[_frame.sp].nilIt();
+                --n;
             }
         }
-        // 获取栈上的参数的时候，使用localValue
-        Value localValue(size_t index) const {
-            size_t frameSize = topFrameSize();
-            if(index >= frameSize) {
-                return Value();
-            } else {
-                return Value(currentFrame()[index]);
-            }
+        Value local(uint32_t index) {
+            assert(index <= _frame.lp - _frame.fp);
+            return Value(&_values[_frame.fp + index]); // return a reference
         }
-        Value popValue() {
-            if(_params.size() > _frameBases.back()) {
-                Value rst(std::move(_params.back()));
-                _params.pop_back();
-                return rst;
-            } else {
-                return Value();
+        // 用于运算，有写回的必要
+        Value& topLocalRef(uint32_t index) {
+            assert(index < _frame.sp - _frame.ap);
+            return _values[_frame.sp - index - 1];
+            // Value* val = &_values[_frame.sp - index - 1];
+            // Value rst;
+            // if(val->type() == PrimeVType::ValueRef) {
+            //     return *val;
+            // } else {
+            //     rst = val;
+            // }
+            // return rst;
+        }
+        Value topLocal(uint32_t index) {
+            assert(index < _frame.sp - _frame.ap);
+            Value val = _values[_frame.sp - index - 1];
+            if(val.type() == PrimeVType::ValueRef) {
+                val.deref();
             }
+            return val;
+        }
+        Value package() {
+            return _frame.package;
+        }
+        Value self() {
+            return _frame.self;
+        }
+        Value const* constants() const {
+            return _frame.constants;
+        }
+        Instruction const* instr() {
+            return _frame.instr + _frame.ip;
+        }
+        void peekIP() {
+            ++_frame.ip;
         }
     };
 
@@ -122,6 +168,8 @@ namespace compiler {
         std::vector<FuncEnv>                    _funcEnvs;
         std::vector<SymbolLayout*>              _symbolLayouts;
         std::map<Name, Module*, Name::FastLess> _modules;
+
+
     private:
         // utility functions
         FuncEnv const* funcEnv() { return &_funcEnvs.back(); }
@@ -134,13 +182,12 @@ namespace compiler {
         bool locateIdentifier(IdLocateEnv env, Identifier const* id);
         void traverseAST(Node const* ast, TraverseCallBack& callBack);
         void updateEvaluingNode(Node const* ast);
-        std::vector<Token> postprocessFunction(Function* ast, IdLocateEnv env);
+        // std::vector<Token> postprocessFunction(Function* ast, IdLocateEnv env);
     public:
 
         Env();
 
         ~Env() {
-            _stackFrames.popToArgBegin();
         }
 
         Value root() { return _package; }
@@ -169,8 +216,9 @@ namespace compiler {
          */
         bool compileCodeChunk(char const* module, Node* ast, DebugInfoMap* debugInfoMap = nullptr);
         bool postprocessModule(char const* module);
+        void compilerBytecode();
         void initializeModule(char const* module);
-        int callFunction(Value const& func);
+        int callBytecodeFunc();
 
         /**
          * @brief only for test
@@ -180,26 +228,31 @@ namespace compiler {
          */
         Value callFuncWithPath(std::string func);
 
-        /**
-         * @brief 计算一个节点的值
-        **/
-        Value eval(Node const* ast);
+        void execute();
 
-        /**
-         * @brief 
-         *   二元表达式有点特殊，它是少数直接跟值打交道的，所以单独拿出来实现了
-         * @param op 
-         * @return Value 
-         */
-        Value evalBinaryOp(Token op, Value a, Value b);
+        Value _valueInScope( ScopeType scope, uint32_t loc);
+        // void exeInstr(Instruction const* instr);
 
-        /**
-         * @brief 
-         *   计算一个标识符的值，是某个已经存在的于变量表里的变量引用
-         * @param id 
-         * @return Value 
-         */
-        Value evalIdentifier(Identifier const* id);
+        // /**
+        //  * @brief 计算一个节点的值
+        // **/
+        // Value eval(Node const* ast);
+
+        // /**
+        //  * @brief 
+        //  *   二元表达式有点特殊，它是少数直接跟值打交道的，所以单独拿出来实现了
+        //  * @param op 
+        //  * @return Value 
+        //  */
+        // Value evalBinaryOp(Token op, Value a, Value b);
+
+        // /**
+        //  * @brief 
+        //  *   计算一个标识符的值，是某个已经存在的于变量表里的变量引用
+        //  * @param id 
+        //  * @return Value 
+        //  */
+        // Value evalIdentifier(Identifier const* id);
 
     };
 }

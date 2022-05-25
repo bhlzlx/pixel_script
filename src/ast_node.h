@@ -459,7 +459,7 @@ namespace compiler {
             }
             Node* self() const { return first(); }
             Node* funcExpr() const { return second(); }
-            Node* args() const { return third(); }
+            MultiExpr* args() const { return third()->asMultiExpr(); }
             void setSelf(Node* self) {
                 _first = self;
                 if(self) {
@@ -700,13 +700,6 @@ namespace compiler {
                 } else {
                     return empty;
                 }
-            }
-
-            void addSelfParam() {
-                if(!_params) {
-                    _params = new StringList(VType::Params);
-                }
-                _params->pushFront(Token(TokenType::Identifier, lang_keywords::_self));
             }
 
             ~Function() {

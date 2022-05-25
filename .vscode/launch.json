@@ -24,6 +24,16 @@
             "cwd": "${fileDirname}",
             "environment": [],
             "console": "externalTerminal"
+        }, {
+            "name": "bytecode test",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/Windows_64_Debug/genbytecode.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "console": "externalTerminal"
         }
     ]
 }

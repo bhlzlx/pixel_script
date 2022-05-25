@@ -46,7 +46,7 @@ namespace compiler {
     }
 
     SymbolLayout::QueryResult Object::addSymbol(Name name, SymbolType type, Value value, Name moduleName) {
-        auto rst = _symbolLayout->regSymbol(name, type, value, Name());
+        auto rst = _symbolLayout->regSymbol(name, type, value, moduleName);
         if(type == SymbolType::Variable) {
             _members.push_back(value);
         }

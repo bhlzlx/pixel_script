@@ -42,12 +42,12 @@ namespace compiler {
 
         int __append(Env* env) {
             StackFrames& stack = env->stackFrames();
-            size_t paramsCount = stack.topFrameSize();
+            size_t paramsCount = stack.argCount();
             if(paramsCount < 2) {
                 return 0;
             }
-            Value first = stack.localValue(0);
-            Value second = stack.localValue(1);
+            Value first = stack.local(0);
+            Value second = stack.local(1);
             if(second.type() != PrimeVType::String) {
                 throw DumpException(env, ExecutionError::InvalidArgument, "append: second argument must be string");
                 return 0;
@@ -58,23 +58,23 @@ namespace compiler {
             str.append(b.text());
             Name n = env->createName(str.c_str());
             Value rst = Value(n);
-            stack.pushValue(rst);
+            stack.push(rst);
             return 1;
         }
 
         int __len(Env* env) {
             StackFrames& stack = env->stackFrames();
-            size_t paramsCount = stack.topFrameSize();
+            size_t paramsCount = stack.argCount();
             if(paramsCount < 1) {
                 return 0;
             }
-            Value first = stack.localValue(0);
+            Value first = stack.local(0);
             size_t name = (size_t)first.ud()->ptr();
             Name* a = (Name*)&name;
             std::string str = a->text();
             Value rst;
             rst.setInt64(str.size());
-            stack.pushValue(rst);
+            stack.push(rst);
             return 1;
         }
 

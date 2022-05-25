@@ -8,11 +8,11 @@ namespace compiler {
 
         int print(Env* env) {
             auto& stack = env->stackFrames();
-            auto argCount = stack.topFrameSize();
+            auto argCount = stack.argCount();
             for(uint32_t i = 0; i < argCount; ++i) {
-                auto value = stack.localValue(i);
-                auto str = valueToString(env, value);
-                printf("%s", str.c_str());
+                auto value = stack.local(i);
+                // auto str = valueToString(env, value);
+                // printf("%s", str.c_str());
             }
             return 0;
         }

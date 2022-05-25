@@ -3,6 +3,7 @@
 // #include "stdlib/std_string.h"
 #include "stdlib/std_vec.h"
 #include "stdlib/std_map.h"
+#include "internal_types/vm_primitive_types.h"
 #include <sstream>
 
 #include <iostream>
@@ -17,9 +18,6 @@ namespace compiler {
         compiler::std_map_impl::init(this);
         compiler::std_vec_impl::init(this);
         io::init(this);
-        _stackFrames.pushArgBegin();
-        _stackFrames.pushArgEnd();
-        _stackFrames.pushValue(_package);
     }
 
     Name Env::createName(char const* str) {
@@ -100,160 +98,87 @@ namespace compiler {
     bool Env::compileCodeChunk(char const* mod, Node* ast, DebugInfoMap* debugInfoMap)  {
         if(ast->structType() == SType::MultiExpr) {
             MultiExpr* exprs = (MultiExpr*)ast;
+            if(!exprs->expressions().size()) {
+                return false;
+            }
             auto iter = exprs->expressions().begin();
-            if(iter != exprs->expressions().end()) {
-                Node* expr = *iter;
-                if(expr->valueType() == VType::Package) {
-                    auto package = preparePackage(expr);
-                    auto packObj = package.asObject();
-                    auto moduleName = createName(mod);
-                    auto module = getModule(moduleName);
-                    module->setHostPackage(package);
-                    module->setDebugInfo(std::move(*debugInfoMap));
-                    //
-                    ++iter;
-                    while(iter != exprs->expressions().end()) {
-                        auto expr = *iter;
+            Node* expr = *iter;
+            if(expr->valueType() != VType::Package) {
+                return false;
+            }
+            auto package = preparePackage(expr);
+            auto packObj = package.asObject();
+            auto moduleName = createName(mod);
+            auto module = getModule(moduleName);
+            module->setAst(ast);
+            module->setHostPackage(package);
+            module->setDebugInfo(std::move(*debugInfoMap));
+            //
+            ++iter;
+            while(iter != exprs->expressions().end()) {
+                auto expr = *iter;
+                if(expr->structType() == SType::Function) {
+                    Function* func = (Function*)expr;
+                    BytecodeFunction* bcFunc = new BytecodeFunction(func->name().stringLiteral(), package, module);
+                    auto rst = packObj->addSymbol(func->name().stringLiteral(), SymbolType::Function, Value(bcFunc), moduleName);
+                    // func->setHostPackage(package);
+                    // func->setModule(moduleName);
+                    if(!rst.item) {
+                        assert(false);
+                        return false;
+                    }
+                } else if(expr->valueType() == VType::Variable ) {
+                    Variable* var = (Variable*)expr;
+                    // 注意这个地方，value不是ast节点，而是实际给了一个空值，占位。
+                    auto rst = packObj->addSymbol(var->name().stringLiteral(), SymbolType::Variable, Value(), moduleName);
+                    assert(rst.item);
+                    if(var->valueExpr()) { // 创建一个特别的function，给var初始化，方便代码重用，处理
+                        MultiExpr* funcBody = new MultiExpr(VType::Block);
+                        funcBody->addExpr(var->valueExpr());
+                        Function* func = new Function(VType::Closure);
+                        func->setBody(funcBody);
+                        func->setHostPackage(package);
+                        func->setModule(moduleName);
+                        module->addInitliaze(rst.loc, func); // 添加变量到初始化列表
+                    }
+                } else if(expr->structType() == SType::Class) { // 对 Class 节点处理
+                    Class* clazz = (Class*)expr; 
+                    auto clazzLayout = new SymbolLayout(SymbolLayoutType::Class);
+                    auto clazzValue = Value(clazzLayout);
+                    auto clazzObj = clazzValue.asObject();
+                    for(auto expr : clazz->body()->expressions()) {
                         if(expr->structType() == SType::Function) {
                             Function* func = (Function*)expr;
-                            auto rst = packObj->addSymbol(func->name().stringLiteral(), SymbolType::Function, Value(func), moduleName);
+                            auto rst = clazzObj->addSymbol(func->name().stringLiteral(), SymbolType::Function, Value(func), moduleName);
                             func->setHostPackage(package);
                             func->setModule(moduleName);
                             if(!rst.item) {
                                 assert(false);
                                 return false;
                             }
-                            module->addFunction(func);
-                        } else if( expr->valueType() == VType::Variable ) {
+                        } else if(expr->valueType() == VType::Variable) {
                             Variable* var = (Variable*)expr;
-                            // 注意这个地方，value不是ast节点，而是实际给了一个空值，占位。
-                            auto rst = packObj->addSymbol(var->name().stringLiteral(), SymbolType::Variable, Value(), moduleName);
-                            assert(rst.item);
-                            if(var->valueExpr()) { // 创建一个特别的function，给var初始化，方便代码重用，处理
-                                MultiExpr* funcBody = new MultiExpr(VType::Block);
-                                funcBody->addExpr(var->valueExpr());
-                                Function* func = new Function(VType::Closure);
-                                func->setBody(funcBody);
-                                func->setHostPackage(package);
-                                func->setModule(moduleName);
-                                module->addInitliaze(rst.loc, func); // 添加变量到初始化列表
+                            // 不支持默认值
+                            auto rst = clazzObj->addSymbol(var->name().stringLiteral(), SymbolType::Variable, Value(), moduleName);
+                            if(!rst.item) {
+                                assert(false && "add symbol failed!");
+                                return false;
                             }
-                        } else if(expr->structType() == SType::Class) { // 对 Class 节点处理
-                            Class* clazz = (Class*)expr; 
-                            auto clazzLayout = new SymbolLayout(SymbolLayoutType::Class);
-                            auto clazzValue = Value(clazzLayout);
-                            auto clazzObj = clazzValue.asObject();
-                            for(auto expr : clazz->body()->expressions()) {
-                                if(expr->structType() == SType::Function) {
-                                    Function* func = (Function*)expr;
-                                    auto rst = clazzObj->addSymbol(func->name().stringLiteral(), SymbolType::Function, Value(func), moduleName);
-                                    func->setHostPackage(package);
-                                    func->setModule(moduleName);
-                                    if(!rst.item) {
-                                        assert(false);
-                                        return false;
-                                    }
-                                } else if(expr->valueType() == VType::Variable) {
-                                    Variable* var = (Variable*)expr;
-                                    // 不支持默认值
-                                    auto rst = clazzObj->addSymbol(var->name().stringLiteral(), SymbolType::Variable, Value(), moduleName);
-                                    if(!rst.item) {
-                                        assert(false && "add symbol failed!");
-                                        return false;
-                                    }
-                                }
-                            }
-                            clazzLayout->reorderSymbols(); // 类需要重新排序
-                            // 将class信息添加到包里
-                            packObj->addSymbol(clazz->name(), SymbolType::Class, clazzValue, moduleName);
-                            module->addClass(clazzValue);
-                        }else {
-                            assert(false && "only function & variable can be defined in package");
-                            return false;
                         }
-                        ++iter;
                     }
-                    return true;
-                } else {
+                    clazzLayout->reorderSymbols(); // 类需要重新排序
+                    // 将class信息添加到包里
+                    packObj->addSymbol(clazz->name(), SymbolType::Class, clazzValue, moduleName);
+                }else {
+                    assert(false && "only function & variable can be defined in package");
                     return false;
                 }
-            } else {
-                return false;
+                ++iter;
             }
-        }
-        else {
+            return true;
+        } else {
             return false;
         }
-    }
-
-    std::vector<Token> Env::postprocessFunction(Function* ast, IdLocateEnv locateEnv) {
-        assert(ast->structType() == SType::Function);
-        SymbolLayout* symLayout = newSymbolLayout(SymbolLayoutType::Function);
-        std::vector<Token> compilerErrors;
-        Function* func = (Function*)ast;
-        func->setSymbolLayout(symLayout);
-        for(auto param: func->params()) {
-            auto rst = symLayout->regSymbol(param.stringLiteral(), SymbolType::Variable, Value(), func->module());
-            if(!rst.item) {
-                compilerErrors.push_back(param);
-            }
-        }
-        // the callback
-        // 我们关心特定的节点，这些节点代表变量定义与引用
-        /**
-         * @brief 
-         * 1. Variable 变量定义
-         * 2. 二元操作符里的Id
-         *   * id在左边一定是变量引用
-         *   * id在右边如果二元操作符是dot，不是变量否则是变量引用
-         * 3. Primary的operand如果是id，则是变量引用
-         */
-        TraverseCallBack processor = [&](compiler::Node const* node) {
-            Identifier* id = node->asId();
-            if(!id) {
-                return;
-            }
-            // IdLocateEnv locateEnv = {symLayout, func->hostPackage().asObject()->symbolLayout()};
-            auto parent = node->parent();
-            switch(parent->structType()) {
-                case SType::Pair: { // define variable        
-                    if(parent->valueType() == VType::Variable) {
-                        auto regRst = symLayout->regSymbol(id->token().stringLiteral(), SymbolType::Variable, Value(), func->module());
-                        id->setValue(IdentifierType::FunctionLocal, regRst.loc);
-                    } else if(parent->valueType() == VType::DotAccess) {
-                        if(!locateIdentifier(locateEnv, id)) {
-                            compilerErrors.push_back(id->token());
-                        }
-                    }
-                    return;
-                }
-                case SType::BinaryOp: {
-                    auto binOp = parent->asBinaryExpr();
-                    if(binOp->op() == TokenType::Dot) {
-                        if(node == binOp->right()) {
-                            return;
-                        }
-                    }
-                    if(!locateIdentifier(locateEnv, id)) {
-                        compilerErrors.push_back(id->token());
-                    }
-                    return;
-                }
-                default: {
-                    if(!locateIdentifier(locateEnv, id)) {
-                        compilerErrors.push_back(id->token());
-                    }
-                }
-            }
-        };
-        // traverse the ast
-        traverseAST(ast, processor);
-        if(!compilerErrors.size()) {
-            Function* func = static_cast<Function*>(ast);
-        }
-        func->_valid = !compilerErrors.size();
-        func->_compiled = true;
-        return compilerErrors;
     }
 
     bool Env::locateIdentifier(IdLocateEnv env, Identifier const* id) {
@@ -286,38 +211,6 @@ namespace compiler {
         return false;
     }
 
-    int Env::callFunction(Value const& func) {
-        Function* fn = (Function*)func.node();
-        if(!fn->compiled() || !fn->valid()){
-            return 0;
-        }
-        auto params = fn->params();
-        auto layout = fn->symbolLayout();  // value table
-        FuncEnv fenv = { fn, stackFrames().localValue(0), fn->hostPackage(), nullptr, false };
-        _funcEnvs.push_back(fenv);
-        int ret = 0;
-        {
-            auto fenv = funcEnv();
-            // 补全栈空间
-            if(layout->size() > _stackFrames.topFrameSize()) {
-                auto appendSize = layout->size() - _stackFrames.topFrameSize();
-                for(size_t i = 0; i<appendSize; ++i) {
-                    _stackFrames.pushValue(Value()); // 添加空值
-                }
-            }
-            auto evalRet = eval(fn->body()); // 代码块的返回值不应该是ref类型
-            // 现在又改了，如果检查栈大小没有显式返回值，则使用eval结果作为返回值
-            auto frameSize = _stackFrames.topFrameSize();
-            ret = frameSize - layout->size();
-            if(!ret) {
-                stackFrames().pushValue(evalRet);
-                ret = 1;
-            }
-        }
-        _funcEnvs.pop_back();
-        return ret;
-    }
-
     Value Env::callFuncWithPath(std::string func) {
         std::string id;
         size_t last =0;
@@ -342,22 +235,161 @@ namespace compiler {
             }
             last = pos + 1;
         } while(true);
-        auto astFunc = val.asFunc();
+        BytecodeFunction* byteFunc = val.asBytecodeFunc();
         Value rst;
-        if(astFunc) {
-            _stackFrames.pushArgBegin();
-            _stackFrames.pushArgEnd();
+        if(byteFunc) {
+            auto& stack = stackFrames();
+            stack.pushFrame();
+            stack.push(val);
+            stack.pop();
+            stack.precall(byteFunc);
             try {
-                auto ret = callFunction(val);
-                if(ret) {
-                    rst = _stackFrames.popValue();
-                }
+                execute();
             } catch (DumpException& e) {
                 std::cout << e.dumpMessage() << std::endl;
             }
-            _stackFrames.popToArgBegin();
+            rst = stack.topLocalRef(0);
+            stack.popFrame();
         }
         return rst;
+    }
+
+
+    Value Env::_valueInScope( ScopeType scope, uint32_t loc) {
+        Value rst;
+        switch(scope) {
+            case ScopeType::Local: {
+                rst = stackFrames().local(loc);
+                break;
+            }
+            case ScopeType::Global: {
+                rst = _package[loc];
+                break;
+            }
+            case ScopeType::Member: {
+                auto self = stackFrames().local(0);
+                rst = self[loc];
+                break;
+            }
+            case ScopeType::Package: {
+                auto pack = stackFrames().package();
+                rst = pack[loc];
+                break;
+            }
+            case ScopeType::Register: {
+                rst = stackFrames().topLocalRef(loc);
+                break;
+            }
+            case ScopeType::Constant: { 
+                rst = stackFrames().constants()[loc];
+                break;
+            }
+            case ScopeType::Self: {
+                return stackFrames().self();
+            }
+            default: {
+                assert(false);
+                break;
+            }
+        }
+        return rst;
+    }
+
+    void Env::execute() {
+        auto& frames = stackFrames();
+        while(true) {
+            auto const& instr = *frames.instr();
+            Opcode code = (Opcode)instr.opcode;
+            switch(code) {
+                case Opcode::Nop: {
+                    break;
+                }
+                case Opcode::Push: {
+                    Value val = _valueInScope((ScopeType)instr.srcType, instr.src);
+                    frames.push(val);
+                    break;
+                }
+                case Opcode::Pop: {
+                    frames.popN(instr.src);
+                    break;
+                }
+                case Opcode::Add:
+                case Opcode::Mul:
+                case Opcode::Div:
+                case Opcode::Sub: {
+                    auto op = (Opcode)instr.opcode;
+                    Value& left = stackFrames().topLocalRef(1);
+                    Value* leftRef = left.ref();
+                    Value& right = stackFrames().topLocalRef(0);
+                    right.deref();
+                    if(leftRef->type() == PrimeVType::Int64) {
+                        IntegerValue* ival = (IntegerValue*)leftRef;
+                        ival->Op(this, op, right);
+                    } else if(left.type() == PrimeVType::Float64) {
+                        // FloatValue const* fval = (FloatValue const*)&left;
+                        // return fval->Op(this, op, right);
+                    } else if(left.type() == PrimeVType::String) {
+                        // StringValue* sval = (StringValue*)ap;
+                        // return sval->Op(this, op, *bp);
+                    }
+                    else {
+                        assert(false && "unsupported type");
+                    }
+                    left.deref();
+                    stackFrames().pop();
+                    break;
+                }
+                case Opcode::Move: {
+                    ScopeType dstType = (ScopeType)instr.dstType;
+                    Value dst = _valueInScope(dstType, instr.dst);
+                    assert(dst.type() == PrimeVType::ValueRef);
+                    ScopeType srcType = (ScopeType)instr.srcType;
+                    Value src = _valueInScope(srcType, instr.src);
+                    src.deref();
+                    dst = src;
+                    if(instr.pop) {
+                        stackFrames().pop();
+                    }
+                    break;
+                }
+                case Opcode::PushFrame: {
+                    stackFrames().pushFrame();
+                    break;
+                }
+                case Opcode::Call: {
+                    // auto func = _valueInScope((ScopeType)instr.srcType, instr.src);
+                    auto func = stackFrames().topLocalRef(instr.src);
+                    stackFrames().pop();
+                    BytecodeFunction const* bcFunc = func.asBytecodeFunc();
+                    stackFrames().precall(bcFunc); // setup stack frame
+                    if(bcFunc) { // is a bytecode function
+                        break; // fetch next instruction & execute!
+                    }
+                    // bridge function calling
+                    BridgeFunc bridgeFunc = func.asBridgeFunc();
+                    int rst = bridgeFunc(this);
+                    Value ret = stackFrames().topLocalRef(0);
+                    stackFrames().popFrame();
+                    stackFrames().push(ret);
+                    break;
+                }
+                case Opcode::Return: {
+                    Value rst = stackFrames().topLocal(0);
+                    stackFrames().popFrame();
+                    stackFrames().push(rst);
+                    if(!stackFrames().instr()) {
+                        return;
+                    }
+                    break;
+                }
+                default: {
+                    assert(false && "unsupported instruction");
+                    break;
+                }
+            }
+            frames.peekIP();
+        }
+
     }
 
     void Env::initializeModule(char const* module) {

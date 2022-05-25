@@ -65,6 +65,7 @@ namespace compiler {
         Object,
         ValueRef,
         FunctionNode,
+        BytecodeFunction,
         Userdata,
         BridgeFunc,
         Vector,
@@ -87,6 +88,7 @@ namespace compiler {
             Node const*     _node;
             UserdataObject* _ud;
             BridgeFunc      _bridgeFunc;
+            BytecodeFunction* _bytecodeFunc;
         };
     public:
         Value() 
@@ -104,19 +106,25 @@ namespace compiler {
         Value(BridgeFunc func);
         Value(Name name);
         Value(uint64_t val);
+        Value(double val);
+        Value(BytecodeFunction* func);
 
         Value& operator = (Value const& other);
         Value& operator = (Value&& other);
         Node const* node() const;
         operator bool () const;
         Object* asObject() const;
-        Function* asFunc() const;
+        // Function* asFunc() const;
         BridgeFunc asBridgeFunc() const;
+        // BytecodeFunction const* asBytecodeFunc() const;
+        BytecodeFunction* asBytecodeFunc();
 
-        void decRef() ;
-        void incRef() ;
+        void decRef();
+        void incRef();
         Value* ref();
         void deref();
+
+        void nilIt();
 
         ~Value();
 
@@ -144,8 +152,74 @@ namespace compiler {
         Value operator[](Name name) const;
 
         bool operator < (Value const& other) const;
-
-        void enumerateFunctions(std::function<void(ast::Function*)> const& func) const;
+    
     };
+
+    class BytecodeFunction {
+    private:
+        Name                    _name;
+        Value                   _package;
+        Module*                 _module;
+        SymbolLayout*           _symbolLayout;
+        Instruction const*      _entry;
+        Instruction const*      _end;
+        uint32_t                _ip;
+        uint32_t                _argc;
+        uint32_t                _localSize;
+        // 需要再加
+    public:
+        BytecodeFunction(Name name, Value package, Module* module)
+            : _name(name)
+            , _package(package)
+            , _module(module)
+            , _symbolLayout(nullptr)
+            , _entry(nullptr)
+            , _end(nullptr)
+            , _ip(0)
+            , _localSize(0)
+        {}
+
+        void setInstructionRange(Instruction const* entry, Instruction const* end) {
+            _entry = entry;
+            _end = end;
+        }
+
+        void setArgc(uint32_t argc) {
+            _argc = argc;
+        }
+
+        void setSymbolLayout(SymbolLayout* symbolLayout);
+
+        uint32_t localSize() const {
+            return _localSize;
+        }
+
+        SymbolLayout const* symbolLayout() {
+            return _symbolLayout;
+        }
+
+        Value package() const {
+            return _package;
+        }
+
+        Module* module() const {
+            return _module;
+        }
+
+        Instruction const* instruction() const {
+            return _entry;
+        }
+
+        void setInstruction(Instruction const* instr) {
+            _entry = instr;
+            _ip = 0;
+        }
+
+        size_t ip() const {
+            return _ip;
+        }
+        
+    };
+
 
 } // namespace name

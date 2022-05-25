@@ -14,6 +14,8 @@ namespace compiler {
     class Object;
     class UserdataObject;
     class Env;
+    class BytecodeFunction;
+    class Instruction;
     class Module;
 
     // debug 时候给调试器提供执行的位置信息
@@ -63,6 +65,7 @@ namespace compiler {
         Global,
         CurrentPackage,
         ClassMember, // package/namespace/object oriented
+        Self,// this value
     };
 
     enum class SymbolType : uint8_t {

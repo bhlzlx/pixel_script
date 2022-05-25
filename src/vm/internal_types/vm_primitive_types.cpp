@@ -5,174 +5,85 @@
 
 namespace compiler {
     
-    Value IntegerValue::Op(Env* env, Token op, Value const& other) const {
+    void IntegerValue::Op(Env* env, Opcode op, Value const& other) {
         Value rst;
-        switch(op.type()) {
-            case TokenType::Plus: {
+        switch(op) {
+            case Opcode::Add: {
                 if(other.type() == PrimeVType::Int64) {
-                    rst.setInt64(intValue() + other.intValue());
-                    return rst;
+                    _i64 += other.intValue();
                 }
                 else if(other.type() == PrimeVType::Float64) {
-                    rst.setInt64(intValue() + other.floatValue());
-                    return rst;
+                    _i64 += other.floatValue();
                 } else {
                     throw DumpException(env, ExecutionError::BinaryOpNotPermitted, "integer op with non-integer type");
                 }
+                break;
             }
-            case TokenType::Minus: {
+            case Opcode::Sub: {
                 if(other.type() == PrimeVType::Int64) {
-                    rst.setInt64(intValue() - other.intValue());
-                    return rst;
+                    _i64 -= other.intValue();
                 }
                 else if(other.type() == PrimeVType::Float64) {
-                    rst.setInt64(intValue() - other.floatValue());
-                    return rst;
+                    _i64 -= other.floatValue();
                 } else {
-                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
+                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted, "integer op with non-integer type");
                 }
+                break;
             }
-            case TokenType::Star: {
+            case Opcode::Mul: {
                 if(other.type() == PrimeVType::Int64) {
-                    rst.setInt64(intValue() * other.intValue());
-                    return rst;
+                    _i64 *= other.intValue();
                 }
                 else if(other.type() == PrimeVType::Float64) {
-                    rst.setInt64(intValue() * other.floatValue());
-                    return rst;
+                    _i64 *= other.floatValue();
                 } else {
-                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
+                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted, "integer op with non-integer type");
                 }
+                break;
             }
-            case TokenType::Slash: {
+            case Opcode::Div: {
                 if(other.type() == PrimeVType::Int64) {
-                    rst.setInt64(intValue() / other.intValue());
-                    return rst;
+                    _i64 /= other.intValue();
                 }
                 else if(other.type() == PrimeVType::Float64) {
-                    rst.setInt64(intValue() / other.floatValue());
-                    return rst;
+                    _i64 /= other.floatValue();
                 } else {
-                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
+                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted, "integer op with non-integer type");
                 }
+                break;
             }
-            case TokenType::Assign: {
-                auto v = const_cast<IntegerValue*>(this);
+            case Opcode::Assign: {
                 if(other.type() == PrimeVType::Int64) {
-                    v->setInt64(other.intValue());
-                    return *this;
-                } else if(other.type() == PrimeVType::Float64) {
-                    v->setFloat64(other.floatValue());
-                    return *this;
-                } else {
-                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
-                }
-            }
-            case TokenType::Less: {
-                if(other.type() == PrimeVType::Int64) {
-                    rst.setBool(intValue() < other.intValue());
-                    return rst;
+                    _i64 = other.intValue();
                 }
                 else if(other.type() == PrimeVType::Float64) {
-                    rst.setBool(intValue() < other.floatValue());
-                    return rst;
+                    _i64 = other.floatValue();
                 } else {
-                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
+                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted, "integer op with non-integer type");
                 }
+                break;
             }
-            case TokenType::Greater: {
+            case Opcode::Less: {
                 if(other.type() == PrimeVType::Int64) {
-                    rst.setBool(intValue() > other.intValue());
-                    return rst;
+                    this->setBool(_i64 < other.intValue());
                 }
                 else if(other.type() == PrimeVType::Float64) {
-                    rst.setBool(intValue() > other.floatValue());
-                    return rst;
+                    this->setBool(_i64 < other.floatValue());
                 } else {
-                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
+                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted, "integer op with non-integer type");
                 }
+                break;
             }
-            default: {
-                throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
-            }
-        }
-        return Value();
-    }
-
-    Value FloatValue::Op(Env* env, Token op, Value const& other) const {
-        Value rst;
-        switch(op.type()) {
-            case TokenType::Plus: {
+            case Opcode::Greater: {
                 if(other.type() == PrimeVType::Int64) {
-                    rst.setFloat64(floatValue() + other.intValue());
-                    return rst;
+                    this->setBool(_i64 > other.intValue());
                 }
                 else if(other.type() == PrimeVType::Float64) {
-                    rst.setFloat64(floatValue() + other.floatValue());
-                    return rst;
+                    this->setBool(_i64 > other.floatValue());
                 } else {
-                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
+                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted, "integer op with non-integer type");
                 }
-            }
-            case TokenType::Minus: {
-                if(other.type() == PrimeVType::Int64) {
-                    rst.setFloat64(floatValue() - other.intValue());
-                    return rst;
-                }
-                else if(other.type() == PrimeVType::Float64) {
-                    rst.setFloat64(floatValue() - other.floatValue());
-                    return rst;
-                } else {
-                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
-                }
-            }
-            case TokenType::Star: {
-                if(other.type() == PrimeVType::Int64) {
-                    rst.setFloat64(floatValue() * other.intValue());
-                    return rst;
-                }
-                else if(other.type() == PrimeVType::Float64) {
-                    rst.setFloat64(floatValue() * other.floatValue());
-                    return rst;
-                } else {
-                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
-                }
-            }
-            case TokenType::Slash: {
-                if(other.type() == PrimeVType::Int64) {
-                    rst.setFloat64(floatValue() / other.intValue());
-                    return rst;
-                }
-                else if(other.type() == PrimeVType::Float64) {
-                    rst.setFloat64(floatValue() / other.floatValue());
-                    return rst;
-                } else {
-                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
-                }
-            }
-            case TokenType::Assign: {
-                auto v = const_cast<FloatValue*>(this);
-                if(other.type() == PrimeVType::Int64) {
-                    v->setInt64(other.intValue());
-                    return *this;
-                } else if(other.type() == PrimeVType::Float64) {
-                    v->setFloat64(other.floatValue());
-                    return *this;
-                } else {
-                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
-                }
-            }
-            case TokenType::Less: {
-                if(other.type() == PrimeVType::Int64) {
-                    rst.setFloat64(floatValue() < other.intValue());
-                    return rst;
-                }
-                else if(other.type() == PrimeVType::Float64) {
-                    rst.setFloat64(floatValue() < other.floatValue());
-                    return rst;
-                } else {
-                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
-                }
+                break;
             }
             default: {
                 throw DumpException(env, ExecutionError::BinaryOpNotPermitted);
@@ -180,36 +91,4 @@ namespace compiler {
         }
     }
 
-
-    Value StringValue::Op(Env* env, Token op, Value const& other) const {
-        Value rst;
-        switch(op.type()) {
-            case TokenType::Plus: {
-                if(other.type() == PrimeVType::String) {
-                    env->stackFrames().pushArgBegin();
-                    env->stackFrames().pushValue(*this);
-                    env->stackFrames().pushValue(other);
-                    env->stackFrames().pushArgEnd();
-                    int ret = string_impl::__append(env);
-                    rst = env->stackFrames().popValue();
-                    env->stackFrames().popToArgBegin();
-                    return rst;
-                } else {
-                    throw DumpException(env, ExecutionError::BinaryOpNotPermitted, "string + other type");
-                }
-            }
-            case TokenType::Assign: {
-                auto v = const_cast<StringValue*>(this);
-                if(other.type() == PrimeVType::String) {
-                    v->setString(other.stringValue());
-                    return *this;
-                } else {
-                    throw DumpException(env, ExecutionError::AssignWasNotPermitted);
-                }
-            }
-            default: {
-                throw DumpException(env, ExecutionError::UnsupportOperator);
-            }
-        }
-    }
 }

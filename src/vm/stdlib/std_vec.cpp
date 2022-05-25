@@ -12,14 +12,14 @@ namespace compiler {
 
         int __push_back(Env* env) {
             auto& stackFrames = env->stackFrames();
-            auto argCount = stackFrames.topFrameSize();
+            auto argCount = stackFrames.argCount();
             if(argCount != 2) {
                 DumpException except(env, ExecutionError::ArgumentCountMismatch, "push_back");
                 throw except;
             }
-            UserdataObject* self = (UserdataObject*)stackFrames.localValue(0).ud();
+            UserdataObject* self = (UserdataObject*)stackFrames.local(0).ud();
             StdVector* vec = (StdVector*)self->ptr();
-            Value val = stackFrames.localValue(1);
+            Value val = stackFrames.local(1);
             val.deref();
             vec->push_back(val);
             return 0;
@@ -27,14 +27,14 @@ namespace compiler {
 
         int __at(Env* env) {
             auto& stackFrames = env->stackFrames();
-            auto argCount = stackFrames.topFrameSize();
+            auto argCount = stackFrames.argCount();
             if(argCount != 2) {
                 DumpException except(env, ExecutionError::ArgumentCountMismatch, "at");
                 throw except;
             }
-            UserdataObject* self = (UserdataObject*)stackFrames.localValue(0).ud();
+            UserdataObject* self = (UserdataObject*)stackFrames.local(0).ud();
             StdVector* vec = (StdVector*)self->ptr();
-            Value val = stackFrames.localValue(1);
+            Value val = stackFrames.local(1);
             val.deref();
             if(val.type() != PrimeVType::Int64) {
                 DumpException except(env, ExecutionError::ArgumentTypeMismatch, "at");
@@ -46,20 +46,20 @@ namespace compiler {
                 throw except;
             }
             Value ret = &vec->at(index); // 返回引用，这样就能进行赋值了！细节细节！
-            stackFrames.pushValue(ret, true);
+            stackFrames.push(ret);
             return 1;
         }
 
         int __erase(Env* env) {
             auto& stackFrames = env->stackFrames();
-            auto argCount = stackFrames.topFrameSize();
+            auto argCount = stackFrames.argCount();
             if(argCount != 2) {
                 DumpException except(env, ExecutionError::ArgumentCountMismatch, "erase");
                 throw except;
             }
-            UserdataObject* self = (UserdataObject*)stackFrames.localValue(0).ud();
+            UserdataObject* self = (UserdataObject*)stackFrames.local(0).ud();
             StdVector* vec = (StdVector*)self->ptr();
-            Value val = stackFrames.localValue(1);
+            Value val = stackFrames.local(1);
             val.deref();
             if(val.type() != PrimeVType::Int64) {
                 DumpException except(env, ExecutionError::ArgumentTypeMismatch, "erase");
@@ -72,20 +72,20 @@ namespace compiler {
             }
             vec->erase(vec->begin() + index);
             Value ret(vec->size());
-            stackFrames.pushValue(ret);
+            stackFrames.push(ret);
             return 1;
         }
 
         int __size(Env* env) {
             auto& stackFrames = env->stackFrames();
-            auto argCount = stackFrames.topFrameSize();
+            auto argCount = stackFrames.argCount();
             if(argCount != 1) {
                 DumpException except(env, ExecutionError::ArgumentCountMismatch, "size");
                 throw except;
             }
-            UserdataObject* self = (UserdataObject*)stackFrames.localValue(0).ud();
+            UserdataObject* self = (UserdataObject*)stackFrames.local(0).ud();
             StdVector* vec = (StdVector*)self->ptr();
-            stackFrames.pushValue(Value(vec->size()));
+            stackFrames.push(Value(vec->size()));
             return 1;
         }
 

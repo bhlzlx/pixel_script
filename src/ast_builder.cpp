@@ -812,7 +812,6 @@ namespace compiler {
             } else {
                 auto fun = matchFunctionDef();
                 if(fun) {
-                    fun.node->asFunction()->addSelfParam(); // convert to member function
                     body->addExpr(fun.node);
                 } else {
                     break;
