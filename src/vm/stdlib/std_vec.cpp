@@ -71,7 +71,7 @@ namespace compiler {
                 throw except;
             }
             vec->erase(vec->begin() + index);
-            Value ret(vec->size());
+            Value ret((int64_t)vec->size());
             stackFrames.push(ret);
             return 1;
         }
@@ -85,7 +85,7 @@ namespace compiler {
             }
             UserdataObject* self = (UserdataObject*)stackFrames.local(0).ud();
             StdVector* vec = (StdVector*)self->ptr();
-            stackFrames.push(Value(vec->size()));
+            stackFrames.push((int64_t)vec->size());
             return 1;
         }
 

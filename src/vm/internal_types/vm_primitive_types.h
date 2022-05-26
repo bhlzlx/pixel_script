@@ -8,7 +8,7 @@ namespace compiler {
         IntegerValue() = delete; 
         IntegerValue(IntegerValue const&) = delete; 
     public:
-        void Op(Env* env, Opcode op, Value const& other);
+        Value Op(Env* env, Opcode op, Value const& other);
     };
 
     // class FloatValue: public Value {

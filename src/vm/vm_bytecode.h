@@ -31,6 +31,9 @@ namespace compiler {
         PushFrame,
         PopFrame,
         GetField,
+        GetIndexed,
+        JumpZero,
+        Jump,
         Swap,
         Nop,
     };
@@ -49,13 +52,30 @@ namespace compiler {
         None
     };
 
+    struct JumpInstruction {
+        union {
+            uint32_t opaque;
+            struct {
+                uint32_t opcode: OpcodeBit;
+                uint32_t pos: 20;
+                uint32_t pop:1;
+            };
+        };
+    };
+
     struct Instruction {
-        uint64_t opcode: OpcodeBit;
-        uint64_t srcType: 3; // value type
-        uint64_t dstType: 3;
-        uint64_t src: 10; // 最多1024个成员
-        uint64_t dst: 10; // 存的目的数很小，存的
-        uint64_t pop:1; // pop top value???
+        union {
+            struct {
+                uint32_t opcode: OpcodeBit;
+                uint32_t srcType: 3; // value type
+                uint32_t dstType: 3;
+                uint32_t src: 10; // 最多1024个成员
+                uint32_t dst: 9; // 存的目的数很小, 512
+                uint32_t pop:2; // pop count? 1,2,3 
+            };
+            JumpInstruction jump;
+        };
+
     };
 
     class Bytecode {
@@ -82,7 +102,7 @@ namespace compiler {
         void pushInstr(Instruction&& instr) {
             _instr.push_back(std::move(instr));
         }
-        Instruction const& getInstr(size_t index) const {
+        Instruction& getInstr(size_t index) {
             return _instr[index];
         }
         size_t size() const {

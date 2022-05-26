@@ -5,15 +5,15 @@
 
 namespace compiler {
     
-    void IntegerValue::Op(Env* env, Opcode op, Value const& other) {
+    Value IntegerValue::Op(Env* env, Opcode op, Value const& other) {
         Value rst;
         switch(op) {
             case Opcode::Add: {
                 if(other.type() == PrimeVType::Int64) {
-                    _i64 += other.intValue();
+                    return Value(_i64 + other.intValue());
                 }
                 else if(other.type() == PrimeVType::Float64) {
-                    _i64 += other.floatValue();
+                    return Value(_i64 + other.floatValue());
                 } else {
                     throw DumpException(env, ExecutionError::BinaryOpNotPermitted, "integer op with non-integer type");
                 }
@@ -21,10 +21,10 @@ namespace compiler {
             }
             case Opcode::Sub: {
                 if(other.type() == PrimeVType::Int64) {
-                    _i64 -= other.intValue();
+                    return Value(_i64 - other.intValue());
                 }
                 else if(other.type() == PrimeVType::Float64) {
-                    _i64 -= other.floatValue();
+                    return Value(_i64 - other.floatValue());
                 } else {
                     throw DumpException(env, ExecutionError::BinaryOpNotPermitted, "integer op with non-integer type");
                 }
@@ -32,10 +32,10 @@ namespace compiler {
             }
             case Opcode::Mul: {
                 if(other.type() == PrimeVType::Int64) {
-                    _i64 *= other.intValue();
+                    return Value(_i64 * other.intValue());
                 }
                 else if(other.type() == PrimeVType::Float64) {
-                    _i64 *= other.floatValue();
+                    return Value(_i64 * other.floatValue());
                 } else {
                     throw DumpException(env, ExecutionError::BinaryOpNotPermitted, "integer op with non-integer type");
                 }
@@ -43,10 +43,10 @@ namespace compiler {
             }
             case Opcode::Div: {
                 if(other.type() == PrimeVType::Int64) {
-                    _i64 /= other.intValue();
+                    return Value(_i64 / other.intValue());
                 }
                 else if(other.type() == PrimeVType::Float64) {
-                    _i64 /= other.floatValue();
+                    return Value(_i64 / other.floatValue());
                 } else {
                     throw DumpException(env, ExecutionError::BinaryOpNotPermitted, "integer op with non-integer type");
                 }
@@ -61,14 +61,15 @@ namespace compiler {
                 } else {
                     throw DumpException(env, ExecutionError::BinaryOpNotPermitted, "integer op with non-integer type");
                 }
+                return *this;
                 break;
             }
             case Opcode::Less: {
                 if(other.type() == PrimeVType::Int64) {
-                    this->setBool(_i64 < other.intValue());
+                    return Value(_i64 < other.intValue());
                 }
                 else if(other.type() == PrimeVType::Float64) {
-                    this->setBool(_i64 < other.floatValue());
+                    return Value(_i64 < other.floatValue());
                 } else {
                     throw DumpException(env, ExecutionError::BinaryOpNotPermitted, "integer op with non-integer type");
                 }
@@ -76,10 +77,10 @@ namespace compiler {
             }
             case Opcode::Greater: {
                 if(other.type() == PrimeVType::Int64) {
-                    this->setBool(_i64 > other.intValue());
+                    return Value(_i64 > other.intValue());
                 }
                 else if(other.type() == PrimeVType::Float64) {
-                    this->setBool(_i64 > other.floatValue());
+                    return Value(_i64 > other.floatValue());
                 } else {
                     throw DumpException(env, ExecutionError::BinaryOpNotPermitted, "integer op with non-integer type");
                 }

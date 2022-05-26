@@ -80,8 +80,10 @@ namespace compiler {
                 _frameInfos.pop_back();
             }
         }
-        void pushFrame() {
+        void pushFrame(uint32_t ipOffset) {
+            // _frame.ip += ipOffset;
             _frameInfos.push_back(_frame);
+            _frameInfos.back().ip += ipOffset;
             auto const& last = _frameInfos.back();
             _frame.sp = _frame.ap = _frame.fp = last.sp;
         }
@@ -134,17 +136,31 @@ namespace compiler {
             }
             return val;
         }
+        Value retVal() const {
+            if(_frame.sp > _frame.lp) {
+                Value val = _values[_frame.sp - 1];
+                if(val.type() == PrimeVType::ValueRef) {
+                    val.deref();
+                }
+                return val;
+            } else {
+                return Value();
+            }
+        }
         Value package() {
             return _frame.package;
         }
         Value self() {
-            return _frame.self;
+            return &_frame.self;
         }
         Value const* constants() const {
             return _frame.constants;
         }
         Instruction const* instr() {
             return _frame.instr + _frame.ip;
+        }
+        void jump(size_t pos) {
+            _frame.ip = pos;
         }
         void peekIP() {
             ++_frame.ip;
@@ -228,6 +244,7 @@ namespace compiler {
          */
         Value callFuncWithPath(std::string func);
 
+        void _executeBinaryOp(Opcode op);
         void execute();
 
         Value _valueInScope( ScopeType scope, uint32_t loc);

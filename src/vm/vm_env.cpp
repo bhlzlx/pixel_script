@@ -239,7 +239,7 @@ namespace compiler {
         Value rst;
         if(byteFunc) {
             auto& stack = stackFrames();
-            stack.pushFrame();
+            stack.pushFrame(0);
             stack.push(val);
             stack.pop();
             stack.precall(byteFunc);
@@ -248,12 +248,12 @@ namespace compiler {
             } catch (DumpException& e) {
                 std::cout << e.dumpMessage() << std::endl;
             }
-            rst = stack.topLocalRef(0);
+            rst = stack.retVal();
+            rst.deref();
             stack.popFrame();
         }
         return rst;
     }
-
 
     Value Env::_valueInScope( ScopeType scope, uint32_t loc) {
         Value rst;
@@ -295,6 +295,30 @@ namespace compiler {
         return rst;
     }
 
+    void Env::_executeBinaryOp(Opcode op) {
+        Value& left = stackFrames().topLocalRef(1);
+        Value* leftRef = left.ref();
+        Value& right = stackFrames().topLocalRef(0);
+        right.deref();
+        Value rst;
+        if(leftRef->type() == PrimeVType::Int64) {
+            IntegerValue* ival = (IntegerValue*)leftRef;
+            rst = ival->Op(this, op, right);
+        } else if(left.type() == PrimeVType::Float64) {
+            // FloatValue const* fval = (FloatValue const*)&left;
+            // return fval->Op(this, op, right);
+        } else if(left.type() == PrimeVType::String) {
+            // StringValue* sval = (StringValue*)ap;
+            // return sval->Op(this, op, *bp);
+        }
+        else {
+            assert(false && "unsupported type");
+        }
+        left.deref();
+        left = rst;
+        stackFrames().pop();
+    }
+
     void Env::execute() {
         auto& frames = stackFrames();
         while(true) {
@@ -302,6 +326,21 @@ namespace compiler {
             Opcode code = (Opcode)instr.opcode;
             switch(code) {
                 case Opcode::Nop: {
+                    break;
+                }
+                case Opcode::Jump: {
+                    frames.jump(instr.jump.pos);
+                    continue;
+                }
+                case Opcode::JumpZero: {
+                    auto val = frames.topLocal(0);
+                    if(instr.jump.pop) {
+                        frames.pop();
+                    }
+                    if(!val) {
+                        frames.jump(instr.jump.pos);
+                        continue;
+                    }
                     break;
                 }
                 case Opcode::Push: {
@@ -316,27 +355,10 @@ namespace compiler {
                 case Opcode::Add:
                 case Opcode::Mul:
                 case Opcode::Div:
+                case Opcode::Less:
+                case Opcode::Assign:
                 case Opcode::Sub: {
-                    auto op = (Opcode)instr.opcode;
-                    Value& left = stackFrames().topLocalRef(1);
-                    Value* leftRef = left.ref();
-                    Value& right = stackFrames().topLocalRef(0);
-                    right.deref();
-                    if(leftRef->type() == PrimeVType::Int64) {
-                        IntegerValue* ival = (IntegerValue*)leftRef;
-                        ival->Op(this, op, right);
-                    } else if(left.type() == PrimeVType::Float64) {
-                        // FloatValue const* fval = (FloatValue const*)&left;
-                        // return fval->Op(this, op, right);
-                    } else if(left.type() == PrimeVType::String) {
-                        // StringValue* sval = (StringValue*)ap;
-                        // return sval->Op(this, op, *bp);
-                    }
-                    else {
-                        assert(false && "unsupported type");
-                    }
-                    left.deref();
-                    stackFrames().pop();
+                    _executeBinaryOp(code);
                     break;
                 }
                 case Opcode::Move: {
@@ -353,17 +375,18 @@ namespace compiler {
                     break;
                 }
                 case Opcode::PushFrame: {
-                    stackFrames().pushFrame();
+                    stackFrames().pushFrame(instr.src);
                     break;
                 }
                 case Opcode::Call: {
                     // auto func = _valueInScope((ScopeType)instr.srcType, instr.src);
-                    auto func = stackFrames().topLocalRef(instr.src);
+                    auto func = stackFrames().topLocal(0);
+                    func.deref();
                     stackFrames().pop();
                     BytecodeFunction const* bcFunc = func.asBytecodeFunc();
                     stackFrames().precall(bcFunc); // setup stack frame
                     if(bcFunc) { // is a bytecode function
-                        break; // fetch next instruction & execute!
+                        continue; // fetch next instruction & execute!
                     }
                     // bridge function calling
                     BridgeFunc bridgeFunc = func.asBridgeFunc();
@@ -374,12 +397,71 @@ namespace compiler {
                     break;
                 }
                 case Opcode::Return: {
-                    Value rst = stackFrames().topLocal(0);
+                    Value rst = stackFrames().retVal();
+                    rst.decRef();
                     stackFrames().popFrame();
                     stackFrames().push(rst);
                     if(!stackFrames().instr()) {
                         return;
                     }
+                    break;
+                }
+                case Opcode::GetIndexed: {
+                    Value obj = stackFrames().topLocal(1);
+                    obj.deref();
+                    if(
+                        obj.type() != PrimeVType::Object ||
+                        obj.type() != PrimeVType::Userdata
+                    ) {
+                        assert(false);
+                        // throw RuntimeError("indexed operator can only be applied to object");
+                    }
+                    Value field = stackFrames().topLocal(0);
+                    if(field.type() != PrimeVType::Int64) {
+                        assert(false);
+                        // throw RuntimeError("indexed operator can only be applied to string");
+                    }
+                    stackFrames().popN(2);
+                    stackFrames().push(obj[field.intValue()]);
+                    break;
+                }
+                case Opcode::GetField: {
+                    Value obj;
+                    if(instr.srcType == (uint32_t)ScopeType::Register) {
+                        obj = stackFrames().topLocal(instr.src);
+                        obj.deref();
+                    } else if(instr.srcType == (uint32_t)ScopeType::Self) {
+                        obj = stackFrames().self();
+                        obj.deref();
+                    } else {
+                        assert(false);
+                    }
+                    Value field;
+                    if(instr.dstType == (uint32_t)ScopeType::Register) {
+                        field = stackFrames().topLocal(instr.dst);
+                        field.deref();
+                    } else if(instr.dstType == (uint32_t)ScopeType::Constant) {
+                        field = stackFrames().constants()[instr.dst];
+                        field.deref();
+                    } else {
+                        assert(false);
+                    }
+                    if(
+                        obj.type() != PrimeVType::Object &&
+                        obj.type() != PrimeVType::Userdata
+                    ) {
+                        assert(false);
+                        // throw RuntimeError("indexed operator can only be applied to object");
+                    }
+                    // Value field = stackFrames().topLocal(0);
+                    if(field.type() != PrimeVType::String) {
+                        assert(false);
+                        // throw RuntimeError("indexed operator can only be applied to string");
+                    }
+                    if(instr.pop) {
+                        stackFrames().popN(instr.pop);
+                    }
+                    stackFrames().push(obj[field.stringValue()]);
                     break;
                 }
                 default: {

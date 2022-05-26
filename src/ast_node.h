@@ -459,7 +459,7 @@ namespace compiler {
             }
             Node* self() const { return first(); }
             Node* funcExpr() const { return second(); }
-            MultiExpr* args() const { return third()->asMultiExpr(); }
+            MultiExpr* args() const { return _third ? _third->asMultiExpr() : nullptr; }
             void setSelf(Node* self) {
                 _first = self;
                 if(self) {

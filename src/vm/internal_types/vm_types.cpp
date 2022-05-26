@@ -56,6 +56,9 @@ namespace compiler {
     }
 
     Value::Value(Value const& other) {
+        if(this == &other) {
+            return;
+        }
         _obj = other._obj;
         _type = other._type;
         _stype = other._stype;
@@ -86,6 +89,9 @@ namespace compiler {
     {}
 
     Value::Value( Value&& other) {
+        if(this == &other) {
+            return;
+        }
         _obj = other._obj;
         _type = other._type;
         _stype = other._stype;
@@ -104,7 +110,12 @@ namespace compiler {
         }
     }
 
-    Value::Value(uint64_t val) {
+    Value::Value(bool val) {
+        _i64 = val ? 1 : 0;
+        _type = PrimeVType::Boolean;
+    }
+
+    Value::Value(int64_t val) {
         _i64 = val;
         _type = PrimeVType::Int64;
     }
@@ -118,6 +129,9 @@ namespace compiler {
     }
 
     Value& Value::operator = (Value const& other) {
+        if(this == &other) {
+            return *this;
+        }
         if(_type == PrimeVType::ValueRef) { // 把other的值，赋值给自己在的ref
             *_ref = other;
         } else {
@@ -131,6 +145,9 @@ namespace compiler {
     }
 
     Value& Value::operator = (Value&& other) {
+        if(this == &other) {
+            return *this;
+        }
         if(_type == PrimeVType::ValueRef) {
             *_ref = other;
             other._ref = nullptr;
@@ -193,6 +210,16 @@ namespace compiler {
             return nullptr;
         }
         return _obj;
+    }
+
+    bool Value::operator == (Value const& other) const {
+        if(_type != other._type) {
+            return false;
+        }
+        if(_i64 != other._i64) {
+            return false;
+        }
+        return true;
     }
 
 

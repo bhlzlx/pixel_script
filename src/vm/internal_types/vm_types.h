@@ -68,8 +68,8 @@ namespace compiler {
         BytecodeFunction,
         Userdata,
         BridgeFunc,
-        Vector,
-        Map,
+        // Vector,
+        // Map,
     };
 
     class Value {
@@ -105,8 +105,9 @@ namespace compiler {
         Value(UserdataObject* ud);
         Value(BridgeFunc func);
         Value(Name name);
-        Value(uint64_t val);
+        Value(int64_t val);
         Value(double val);
+        Value(bool val);
         Value(BytecodeFunction* func);
 
         Value& operator = (Value const& other);
@@ -152,6 +153,8 @@ namespace compiler {
         Value operator[](Name name) const;
 
         bool operator < (Value const& other) const;
+
+        bool operator == (Value const& other) const;
     
     };
 

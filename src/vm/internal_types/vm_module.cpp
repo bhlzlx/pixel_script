@@ -389,6 +389,54 @@ namespace compiler {
         }
     }
 
+    bool needPopInstr(ast::Node const* node) {
+        switch(node->structType()) {
+            // 不需要pop的语句
+            case SType::If:
+            case SType::Return:
+            // 需要pop的语句
+            case SType::Leaf:
+            case SType::NegtiveOp:
+            case SType::BinaryOp: {
+                return true;
+            }
+            case SType::Pair: {
+                switch(node->valueType()) {
+                    // 不需要pop
+                    case VType::Variable:
+                    case VType::WhileStmt: {
+                        return false;
+                    }
+                    // 需要pop
+                    case VType::DotAccess:
+                    case VType::IndexAccess:
+                    case VType::FunctionCall: {
+                        return true;
+                    }
+                    default: {
+                        assert(false && "unhandled");
+                        return false;
+                    }
+                }
+            }
+            case SType::Triple: {
+                switch(node->valueType()) {
+                    case VType::FunctionCall: {
+                        return true;
+                    }
+                    default: {
+                        assert(false && "unhandled");
+                        return false;
+                    }
+                }
+            }
+            default: {
+                assert(false && "unhandled");
+                return false;
+            }
+        }
+    }
+
     void Module::compileNode(ast::Node const* node, Bytecode* bytecode) {
         switch(node->structType()) {
             case SType::Function: {
@@ -403,7 +451,9 @@ namespace compiler {
                     Instruction pop = {};
                     pop.opcode = (uint32_t)Opcode::Pop;
                     pop.src = 1;
-                    bytecode->pushInstr(pop); // pop the result of the last expression
+                    if(needPopInstr(expr)) {
+                        bytecode->pushInstr(pop);// pop the result of the last expression
+                    }
                 }
                 break;
             }
@@ -420,7 +470,7 @@ namespace compiler {
                 auto leaf = node->asLeaf();
                 Instruction instr = {};
                 instr.opcode = (uint32_t)Opcode::Push; // push specific value to top
-                if(leaf->token().type() == TokenType::Identifier) {
+                if(leaf->valueType() == VType::Id) {
                     auto id = leaf->asId();
                     instr.src = id->valueLoc();
                     switch(id->type()) {
@@ -437,7 +487,7 @@ namespace compiler {
                             break;
                         }
                         case IdentifierType::Global: {
-                            instr.srcType = (uint8_t)ScopeType::Package;
+                            instr.srcType = (uint8_t)ScopeType::Global;
                             break;
                         }
                         default: {
@@ -448,10 +498,16 @@ namespace compiler {
                 } else { 
                     uint32_t constLoc = 0;
                     if(leaf->token().type() == TokenType::Integer) {
-                        constLoc = bytecode->getConstant(Value((uint64_t)leaf->token().integerLiteral()));
+                        constLoc = bytecode->getConstant(Value((int64_t)leaf->token().integerLiteral()));
                     } else if(leaf->token().type() == TokenType::Float) {
                         constLoc = bytecode->getConstant(Value(leaf->token().floatLiteral()));
                     } else if(leaf->token().type() == TokenType::String) {
+                        constLoc = bytecode->getConstant(Value(leaf->token().stringLiteral()));
+                    } else if(leaf->token().type() == TokenType::True) {
+                        constLoc = bytecode->getConstant(Value(true));
+                    } else if(leaf->token().type() == TokenType::False) {
+                        constLoc = bytecode->getConstant(Value(false));
+                    } else if(leaf->valueType() == VType::Field) {
                         constLoc = bytecode->getConstant(Value(leaf->token().stringLiteral()));
                     } else {
                         assert(false);
@@ -489,8 +545,52 @@ namespace compiler {
                             instr.dstType = (uint8_t)ScopeType::Register;
                             instr.pop = true;
                             bytecode->pushInstr(instr); 
+                            Instruction pop;
+                            pop.opcode = (uint32_t)Opcode::Pop;
+                            pop.src = 1;
+                            bytecode->pushInstr(pop);
                             // pop??
                         }
+                        break;
+                    }
+                    case VType::WhileStmt: {
+                        auto whileStmt = node->asWhile();
+                        uint32_t jumpBackPos = bytecode->size();
+                        compileNode(whileStmt->condition(), bytecode);
+                        Instruction jz = {};
+                        jz.jump.opcode = (uint32_t)Opcode::JumpZero;
+                        jz.jump.pop = 1; // pop the condition result
+                        bytecode->pushInstr(jz); // 跳转位置一会才能计算出来
+                        size_t jzIdx = bytecode->size()-1;
+                        compileNode(whileStmt->body(), bytecode);
+                        Instruction jmpToCond = {};
+                        jmpToCond.jump.opcode = (uint32_t)Opcode::Jump;
+                        jmpToCond.jump.pos = jumpBackPos;
+                        bytecode->pushInstr(jmpToCond);
+                        bytecode->getInstr(jzIdx).jump.pos = bytecode->size();
+                        break;
+                    }
+                    case VType::DotAccess: {
+                        auto dotAccess = node->asDotAccess();
+                        compileNode(dotAccess->obj(), bytecode);
+                        compileNode(dotAccess->field(), bytecode);
+                        Instruction instr;
+                        instr.opcode = (uint32_t)Opcode::GetField;
+                        instr.src = 1;
+                        instr.srcType = (uint8_t)ScopeType::Register;
+                        instr.dst = 0;
+                        instr.dstType = (uint8_t)ScopeType::Register;
+                        instr.pop = 2;
+                        bytecode->pushInstr(instr);
+                        break;
+                    }
+                    case VType::IndexAccess: {
+                        auto indexAccess = node->asIndexAccess();
+                        compileNode(indexAccess->obj(), bytecode);
+                        compileNode(indexAccess->index(), bytecode);
+                        Instruction instr;
+                        instr.opcode = (uint32_t)Opcode::GetIndexed;
+                        bytecode->pushInstr(instr);
                         break;
                     }
                     default: {
@@ -508,6 +608,7 @@ namespace compiler {
                         // 参数起始位置标记，让参数从self后开始
                         Instruction pushFrame = {(uint32_t)Opcode::PushFrame};
                         bytecode->pushInstr(pushFrame); // 保存现场
+                        auto instrPos = bytecode->size();
                         auto call = node->asFunctionCall();
                         if(call->self()) {
                             compileNode(call->self(), bytecode); // push self on stack
@@ -548,6 +649,8 @@ namespace compiler {
                         Instruction callFunc;
                         callFunc.opcode = (uint32_t)Opcode::Call;
                         bytecode->pushInstr(callFunc);
+                        // 函数调用完，ip的偏移量
+                        bytecode->getInstr(instrPos-1).src = bytecode->size() - instrPos; 
                         // 调用指令里会执行弹栈操作，执行完会变成压参前的状态，再加一个返回值，那返回值没人接收怎么办？
                         // 也有办法，语句块，是multiexpr的结构，遇到这种结构每执行一个语句，就会弹一次，就算没人接收参数也无所谓
                         break;
@@ -555,6 +658,21 @@ namespace compiler {
                     default: {
                         assert(false);
                     }
+                }
+                break;
+            }
+            case SType::If: {
+                auto ifStmt = node->asIf();
+                compileNode(ifStmt->condition(), bytecode);
+                Instruction jz = {};
+                jz.jump.opcode = (uint32_t)Opcode::JumpZero;
+                jz.jump.pop = 1; // pop the condition result
+                bytecode->pushInstr(jz);
+                auto jzIdx = bytecode->size()-1;
+                compileNode(ifStmt->thenBranch(), bytecode);
+                bytecode->getInstr(jzIdx).jump.pos = bytecode->size();
+                if(ifStmt->elseBranch()) {
+                    compileNode(ifStmt->elseBranch(), bytecode);
                 }
             }
             case SType::StringList: {

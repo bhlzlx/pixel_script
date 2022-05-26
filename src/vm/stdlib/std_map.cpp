@@ -60,7 +60,7 @@ namespace compiler {
             }
             UserdataObject* self = (UserdataObject*)stackFrames.local(0).ud();
             StdMap* map = (StdMap*)self->ptr();
-            Value ret(map->size());
+            Value ret((int64_t)map->size());
             stackFrames.push(ret);
             return 1;
         }
