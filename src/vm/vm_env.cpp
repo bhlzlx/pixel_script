@@ -209,7 +209,25 @@ namespace compiler {
         return false;
     }
 
-    Value Env::callFuncWithPath(std::string func) {
+
+    int Env::call(int argc) {
+        auto fn = stackFrames().topLocal(0).asBytecodeFunc();
+        stackFrames().pop();
+        stackFrames().precall(fn,argc);
+        try {
+            execute();
+        } catch (DumpException& e) {
+            std::cout << e.dumpMessage() << std::endl;
+            return 0;
+        }
+        auto rst = stackFrames().retVal();
+        rst.deref();
+        stackFrames().popFrame();
+        stackFrames().push(rst);
+        return 1;
+    }
+
+    Value Env::callFuncWithPath(std::string const& func) {
         std::string id;
         size_t last =0;
         size_t pos;
@@ -237,17 +255,11 @@ namespace compiler {
         Value rst;
         if(byteFunc) {
             auto& stack = stackFrames();
-            // stack.push(Value());
-            stack.push(val);
-            stack.precall(byteFunc);
-            try {
-                execute();
-            } catch (DumpException& e) {
-                std::cout << e.dumpMessage() << std::endl;
-            }
+            stack.push(Value()); // push self (nil)
+            stack.push(val); // push function
+            call(0);
             rst = stack.retVal();
-            rst.deref();
-            stack.popFrame();
+            stack.pop();
         }
         return rst;
     }
@@ -389,12 +401,13 @@ namespace compiler {
                 }
                 case Opcode::Call: {
                     // auto func = _valueInScope((ScopeType)instr.srcType, instr.src);
+                    // 先不支持不定参了
                     auto argCount = instr.src; // 知道参数个数，要重新设置fp,ap,lp的位置
                     auto func = stackFrames().topLocal(0);
                     func.deref();
                     stackFrames().pop();
                     BytecodeFunction const* bcFunc = func.asBytecodeFunc();
-                    stackFrames().precall(bcFunc); // setup stack frame
+                    stackFrames().precall(bcFunc, argCount); // setup stack frame
                     if(bcFunc) { // is a bytecode function
                         continue; // fetch next instruction & execute!
                     }

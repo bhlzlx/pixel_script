@@ -31,9 +31,13 @@ namespace compiler {
         void push(Value const& value, bool deref = false);
         void pop();
         void popFrame();
-        void pushFrame(uint32_t ipOffset);
-        // 强制设置栈顶位置
-        void precall(BytecodeFunction const* func);
+        void pushFrame();
+        /**
+         * @brief 
+         *   保证先压入参数，后压入self（如果有必要）
+         * @param func 
+         */
+        void precall(BytecodeFunction const* func, int argc);
         size_t argCount() const;
         void reserveValues(size_t count);
         void popN(size_t n);

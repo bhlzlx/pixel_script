@@ -40,26 +40,29 @@ namespace compiler {
             _frameInfos.pop_back();
         }
     }
-    void StackFrames::pushFrame(uint32_t ipOffset) {
-        // _frame.ip += ipOffset;
+    void StackFrames::pushFrame(){
         _frameInfos.push_back(_frame);
-        _frameInfos.back().ip += ipOffset;
         auto const& last = _frameInfos.back();
         _frame.sp = _frame.ap = _frame.fp = last.sp;
     }
-    // 强制设置栈顶位置
-    void StackFrames::precall(BytecodeFunction const* func) {
+
+    // 预处理一下栈状态
+    void StackFrames::precall(BytecodeFunction const* func, int argc ) {
         // self拿来存一下
         auto self = _values[_frame.sp-1];
         self.deref();
         pop();
-        //
+        // 传参里不可能有值引用类型
+        for(int i = 0; i < argc; ++i) {
+            _values[_frame.sp-1-i].deref();
+        }
         _frameInfos.push_back(_frame); // 返回后的栈情况需要再调整
         // 调整
-        _frameInfos.back().sp -= func->argCount();  // 函数调用压参前蝗栈顶位置
+        _frameInfos.back().sp -= argc;  // 函数调用压参前蝗栈顶位置，参数数量可能比函数定的多，多的直接扔了它
         // 设置当前帧的状态
         _frame.self = self;
-        _frame.fp = _frame.sp - func->argCount();   // 
+        _frame.fp = _frame.sp - argc;   // 
+        _frame.sp += _frame.fp + func->argCount();  // 扔了多余的
         _frame.ap = _frame.sp;                      // 参数位置调整
         _frame.lp = _frame.sp += func->localSize(); // 局部变量空间调整
         _frame.ip = func->ip();

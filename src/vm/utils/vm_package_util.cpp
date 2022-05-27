@@ -32,68 +32,68 @@ namespace compiler {
     }
 
 
-    // std::string valueToString( Env* env, Value const& value ) {
-    //     switch(value.type()) {
-    //         case PrimeVType::Nil:
-    //             return "{nil}";
-    //         case PrimeVType::Boolean:
-    //             return value.booleanValue() ? "true" : "false";
-    //         case PrimeVType::Int64:
-    //             return std::to_string(value.intValue());
-    //         case PrimeVType::Float64:
-    //             return std::to_string(value.floatValue());
-    //         case PrimeVType::String: {
-    //             return value.stringValue().text();
-    //         }
-    //         case PrimeVType::Object: {
-    //             Object* obj = value.asObject();
-    //             auto field = value[lib_keywords::___tostring];
-    //             if(field) {
-    //                 Value rst;
-    //                 auto& stackFrames = env->stackFrames();
-    //                 stackFrames.pushFrame();
-    //                 stackFrames.push(value);
-    //                 stackFrames.markArgCount(1);
-    //                 int ret = env->callFunction(field);
-                    
-    //                 env->stackFrames().pushArgBegin(); {
-    //                     env->stackFrames().pushValue(value);
-    //                     env->stackFrames().pushArgEnd();
-    //                     int ret = env->callFunction(field);
-    //                     rst = env->stackFrames().popValue();
-    //                 }
-    //                 env->stackFrames().popToArgBegin();
-    //                 return valueToString(env, rst);
-    //             } else {
-    //                 char buf[32] = {};
-    //                 sprintf(buf, "{ object: %p }", value.asObject());
-    //                 return buf;
-    //             }
-    //         }
-    //         case PrimeVType::Userdata: {
-    //             UserdataObject* ud = value.ud();
-    //             Value rst;
-    //             env->stackFrames().pushArgBegin(); {
-    //                 env->stackFrames().pushValue(value); // 传self
-    //                 env->stackFrames().pushArgEnd();
-    //                 auto ret = ud->callMemberMethod(env,lib_keywords::___tostring);
-    //                 if(ret) {
-    //                     rst = env->stackFrames().popValue();
-    //                 }
-    //             }
-    //             env->stackFrames().popToArgBegin();
-    //             if(rst) {
-    //                 return valueToString(env, rst);
-    //             }
-    //             char buf[32] = {};
-    //             sprintf(buf, "{ userdata: %p }", value.ud());
-    //             return buf;
-    //         }
-    //         default: {
-    //             break;
-    //         }
-    //     }
-    //     return "";
-    // }
+    std::string valueToString( Env* env, Value const& value ) {
+        switch(value.type()) {
+            case PrimeVType::Nil:
+                return "{nil}";
+            case PrimeVType::Boolean:
+                return value.booleanValue() ? "true" : "false";
+            case PrimeVType::Int64:
+                return std::to_string(value.intValue());
+            case PrimeVType::Float64:
+                return std::to_string(value.floatValue());
+            case PrimeVType::String: {
+                return value.stringValue().text();
+            }
+            case PrimeVType::Object: {
+                Object* obj = value.asObject();
+                auto field = value[lib_keywords::___tostring];
+                if(field) {
+                    Value rst;
+                    auto& stackFrames = env->stackFrames();
+                    stackFrames.pushFrame();
+                    // 没有参数，所以只压一个self
+                    stackFrames.push(value);
+                    auto func = value[field];
+                    auto bridgeFunc = func.asBytecodeFunc();
+                    // auto ret = byteFunc(env, 0);
+                    // if(ret) {
+                    //     rst = stackFrames.topLocal(0);
+                    // } else {
+                    //     rst = Value();
+                    // }
+                    stackFrames.popFrame();
+                    return valueToString(env, rst);
+                } else {
+                    char buf[32] = {};
+                    sprintf(buf, "{ object: %p }", value.asObject());
+                    return buf;
+                }
+            }
+            case PrimeVType::Userdata: {
+                UserdataObject* ud = value.ud();
+                Value rst;
+                // env->stackFrames().pushArgBegin(); {
+                //     env->stackFrames().pushValue(value); // 传self
+                //     env->stackFrames().pushArgEnd();
+                //     auto ret = ud->callMemberMethod(env,lib_keywords::___tostring);
+                //     if(ret) {
+                //         rst = env->stackFrames().popValue();
+                //     }
+                // }
+                // env->stackFrames().popToArgBegin();
+                if(rst) {
+                    return valueToString(env, rst);
+                }
+                char buf[32] = {};
+                sprintf(buf, "{ userdata: %p }", value.ud());
+                return buf;
+            }
+            default: {
+                break;
+            }
+        }
+        return "";
+    }
 
 }

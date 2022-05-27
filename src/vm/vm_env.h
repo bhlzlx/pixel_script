@@ -93,7 +93,8 @@ namespace compiler {
          * @param func 
          * @return Value 
          */
-        Value callFuncWithPath(std::string func);
+        int call(int argc);
+        Value callFuncWithPath(std::string const& func);
 
         void _executeBinaryOp(Opcode op);
         void execute();
