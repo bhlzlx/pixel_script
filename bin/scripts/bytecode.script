@@ -1,0 +1,33 @@
+package game.test
+
+class Point {
+    var x
+    var y
+    func set(xx, yy) {
+        x = xx
+        y = yy
+    }
+    func size() {
+        return x*y
+    }
+}
+
+func entry() {
+    var point = Point.new()
+    point.set(2,4)
+    var a = point.size()
+    var b = 1
+    if true {
+        while a<10 {
+            b = b*2
+            a = a+1
+        }
+        return b
+    } else {
+        return a + game.test.get_constant()
+    }
+}
+
+func get_constant() {
+    return 64
+}

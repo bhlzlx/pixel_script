@@ -1,0 +1,20 @@
+package game.test
+
+var fib_n = 4+2
+
+func helloworld() {
+    fib(fib_n)
+}
+
+func fib(n) {
+    var counter = 0
+    var rst = 1
+    var last = 1
+    while counter<n { 
+        var backup = rst
+        rst = rst + last
+        last = backup
+        counter = counter + 1
+    }
+    rst
+}

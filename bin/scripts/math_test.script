@@ -1,0 +1,9 @@
+
+package game.test
+
+func entry() {
+    var i = 4
+    var j = 6
+    var k = 8
+    return i-j-k
+}
