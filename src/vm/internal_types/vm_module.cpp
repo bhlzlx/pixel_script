@@ -55,12 +55,12 @@ namespace compiler {
         MultiExpr* multiExpr = _ast->asMultiExpr();
         // 处理所有的全局函数与类成员函数
         for(auto const& expr :multiExpr->expressions()) {
-            auto func = expr->asFunction();
-            if(func) {
+            auto globalFunc = expr->asFunction();
+            if(globalFunc) {
                 // 全局函数 
-                auto name = func->name().stringLiteral();
+                auto name = globalFunc->name().stringLiteral();
                 auto byteFunc = _package[name].asBytecodeFunc();
-                compileNode(func, &bytecode);
+                compileNode(globalFunc, &bytecode);
                 _funcInstrs.emplace_back();
                 bytecode.exportInstr(_funcInstrs.back());
                 if(_funcInstrs.back().back().opcode != (uint32_t)Opcode::Return) {
@@ -68,19 +68,22 @@ namespace compiler {
                     instr.opcode = (uint32_t)Opcode::Return;
                     _funcInstrs.back().push_back(instr);
                 }
-                byteFunc->setArgc(func->params().size());
-                byteFunc->setSymbolLayout(func->symbolLayout());
+                byteFunc->setArgc(globalFunc->params().size());
+                byteFunc->setSymbolLayout(globalFunc->symbolLayout());
                 byteFunc->setInstruction(_funcInstrs.back().data());
             } else {
                 auto clazz = expr->asClass();
                 if(clazz) {
                     auto body = clazz->body();
                     for(auto const& stmt : body->expressions()) {
-                        auto func = stmt->asFunction();
-                        if(func) {
-                            // 全局函数 
-                            auto bytecodeFunc = _package[clazz->name()].asBytecodeFunc();
-                            compileNode(func, &bytecode);
+                        auto memFunc = stmt->asFunction();
+                        if(memFunc) {
+                            Name className = clazz->name();
+                            auto classObject = _package[className];
+                            auto memFuncValue = classObject[memFunc->name().stringLiteral()];
+                            auto bytecodeFunc = memFuncValue.asBytecodeFunc();
+                            assert(bytecodeFunc);
+                            compileNode(memFunc, &bytecode);
                             _funcInstrs.emplace_back();
                             bytecode.exportInstr(_funcInstrs.back());
                             if(_funcInstrs.back().back().opcode != (uint32_t)Opcode::Return) {
@@ -88,8 +91,8 @@ namespace compiler {
                                 instr.opcode = (uint32_t)Opcode::Return;
                                 _funcInstrs.back().push_back(instr);
                             }
-                            bytecodeFunc->setArgc(func->params().size());
-                            bytecodeFunc->setSymbolLayout(func->symbolLayout());
+                            bytecodeFunc->setArgc(memFunc->params().size());
+                            bytecodeFunc->setSymbolLayout(memFunc->symbolLayout());
                             bytecodeFunc->setInstruction(_funcInstrs.back().data());
                         }
                     }
@@ -130,6 +133,7 @@ namespace compiler {
             } else {
                 auto clazz = expr->asClass();
                 if(clazz) {
+                    locateEnv.classLayout = _package[clazz->name()].asObject()->symbolLayout();
                     auto body = clazz->body();
                     for(auto const& stmt : body->expressions()) {
                         auto func = stmt->asFunction();
@@ -389,6 +393,17 @@ namespace compiler {
         }
     }
 
+    /**
+     * @brief 
+     *      函数内的语句块，有可能有压栈的效果，比如一个函数执行完，没有变量接收，
+     * 或者只写了一个变量，这样并没有语法错误的，但是还是会有一个压栈的效果，所以我们需要判断这个语句有没有压栈的效果
+     * 如果有压栈的效果，则手动给它一个弹栈的操作。
+     * 
+     * @param node 
+     * @return true 
+     * @return false 
+     */
+
     bool needPopInstr(ast::Node const* node) {
         switch(node->structType()) {
             // 不需要pop的语句
@@ -409,8 +424,7 @@ namespace compiler {
                     }
                     // 需要pop
                     case VType::DotAccess:
-                    case VType::IndexAccess:
-                    case VType::FunctionCall: {
+                    case VType::IndexAccess: {
                         return true;
                     }
                     default: {
@@ -450,7 +464,7 @@ namespace compiler {
                     compileNode(expr, bytecode);
                     Instruction pop = {};
                     pop.opcode = (uint32_t)Opcode::Pop;
-                    pop.src = 1;
+                    pop.pop = 1;
                     if(needPopInstr(expr)) {
                         bytecode->pushInstr(pop);// pop the result of the last expression
                     }
@@ -461,9 +475,20 @@ namespace compiler {
                 auto binOp = node->asBinaryExpr();
                 compileNode(binOp->left(), bytecode);
                 compileNode(binOp->right(), bytecode);
-                Instruction instr;
-                instr.opcode = (uint32_t)tokenToBinaryOpcode(binOp->op());
-                bytecode->pushInstr(instr);
+                if(binOp->op() == TokenType::Assign) {
+                    Instruction assign = {};
+                    assign.opcode = (uint32_t)Opcode::Move;
+                    assign.srcType = (uint32_t)ScopeType::Register;
+                    assign.src = 0;
+                    assign.dstType = (uint32_t)ScopeType::Register;
+                    assign.dst = 1;
+                    assign.pop = 1;
+                    bytecode->pushInstr(assign);
+                } else {
+                    Instruction instr;
+                    instr.opcode = (uint32_t)tokenToBinaryOpcode(binOp->op());
+                    bytecode->pushInstr(instr);
+                }
                 break;
             }
             case SType::Leaf: {
@@ -543,11 +568,11 @@ namespace compiler {
                             instr.srcType = (uint8_t)ScopeType::Register;
                             instr.dst = 1;
                             instr.dstType = (uint8_t)ScopeType::Register;
-                            instr.pop = true;
+                            instr.pop = 1;
                             bytecode->pushInstr(instr); 
                             Instruction pop;
                             pop.opcode = (uint32_t)Opcode::Pop;
-                            pop.src = 1;
+                            pop.pop = 1;
                             bytecode->pushInstr(pop);
                             // pop??
                         }
@@ -603,30 +628,24 @@ namespace compiler {
             case SType::Triple: {
                 switch(node->valueType()) {
                     case VType::FunctionCall: {
-                        // 我们不能保证这是个成员函数或者是一个自由函数，所以这个self参数，我们要提前传过去，确定不存在
-                        // 传个nil，然后在执行的时候看这个对象是什么类型，如果是class，就让函数多这个参数，如果不是，调整
-                        // 参数起始位置标记，让参数从self后开始
-                        Instruction pushFrame = {(uint32_t)Opcode::PushFrame};
-                        bytecode->pushInstr(pushFrame); // 保存现场
-                        auto instrPos = bytecode->size();
+                        // 注意这里，我们要先计算参数值，压栈，然后再把self压栈，然后压函数，执行调用
                         auto call = node->asFunctionCall();
-                        if(call->self()) {
-                            compileNode(call->self(), bytecode); // push self on stack
-                            Instruction toself; // copy top value to `self` && pop the value
-                            toself.opcode = (uint32_t)Opcode::Move;
-                            toself.srcType = (uint8_t)ScopeType::Register;
-                            toself.src = 0;
-                            toself.dstType = (uint8_t)ScopeType::Self;
-                            toself.dst = 0; // move to self & pop top value
-                            toself.pop = 1;
-                            bytecode->pushInstr(toself);
-                        }
-                        // push all args to stack
+                        // 计算并压入所有的参数
                         auto args = call->args();
                         if(args) {
                             for(auto& arg : args->expressions()) {
                                 compileNode(arg, bytecode);
                             }
+                        }
+                        // 设置self寄存器
+                        if(call->self()) {
+                            compileNode(call->self(), bytecode); // push self on stack
+                        } else {
+                            Instruction instr;
+                            instr.opcode = (uint32_t)Opcode::Push;
+                            instr.src = bytecode->getConstant(Value());
+                            instr.srcType = (uint8_t)ScopeType::Constant;
+                            bytecode->pushInstr(instr);
                         }
                         // 压入函数对象
                         if(call->self()) { 
@@ -635,8 +654,8 @@ namespace compiler {
                             compileNode(call->funcExpr(), bytecode); // 这里的funcExpr应该是一个field，字符串
                             Instruction getField = {};
                             getField.opcode = (uint32_t)Opcode::GetField;
-                            getField.src = 0; // self的位置
-                            getField.srcType = (uint8_t)ScopeType::Self;
+                            getField.src = 1; // self的位置
+                            getField.srcType = (uint8_t)ScopeType::Register;
                             getField.dst = 0; // field 位置
                             getField.dstType = (uint8_t)ScopeType::Register;
                             getField.pop = 1; // pop field
@@ -648,11 +667,24 @@ namespace compiler {
                         // 这样，栈上的状态是 args|method object，然后我们再去调用这个函数
                         Instruction callFunc;
                         callFunc.opcode = (uint32_t)Opcode::Call;
+                        callFunc.src = args ? args->expressions().size() : 0;
                         bytecode->pushInstr(callFunc);
                         // 函数调用完，ip的偏移量
-                        bytecode->getInstr(instrPos-1).src = bytecode->size() - instrPos; 
-                        // 调用指令里会执行弹栈操作，执行完会变成压参前的状态，再加一个返回值，那返回值没人接收怎么办？
-                        // 也有办法，语句块，是multiexpr的结构，遇到这种结构每执行一个语句，就会弹一次，就算没人接收参数也无所谓
+                        // 函数调用完之后，返回到上一个函数栈的状态，但是ip需要重定位到调用函数后的指令上
+                        // 所以就需要这个偏移量
+                        break;
+                    }
+                    case VType::NewOperator: {
+                        auto newOp = node->asFunctionCall();
+                        compileNode(newOp->self(), bytecode);
+                        Instruction newObj = {};
+                        newObj.opcode = (uint32_t)Opcode::New;
+                        newObj.src = 0;
+                        newObj.srcType = (uint8_t)ScopeType::Register;
+                        newObj.dst = 0;
+                        newObj.dstType = (uint8_t)ScopeType::Register;
+                        newObj.pop = 1;
+                        bytecode->pushInstr(newObj);
                         break;
                     }
                     default: {

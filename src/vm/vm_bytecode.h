@@ -35,6 +35,7 @@ namespace compiler {
         JumpZero,
         Jump,
         Swap,
+        New,
         Nop,
     };
     constexpr uint32_t OpcodeBit = 5;
@@ -77,6 +78,7 @@ namespace compiler {
         };
 
     };
+    static_assert(sizeof(Instruction) == 4, "instruction 32 bit max");
 
     class Bytecode {
     private:

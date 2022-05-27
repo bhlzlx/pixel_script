@@ -7,6 +7,7 @@
 namespace compiler {
 
     using Name = ksgw::Name;
+    using NamePool = ksgw::NamePool;
 
     class Token;
     class SymbolLayout;

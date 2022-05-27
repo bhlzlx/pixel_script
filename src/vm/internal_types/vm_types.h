@@ -221,6 +221,10 @@ namespace compiler {
         size_t ip() const {
             return _ip;
         }
+
+        size_t argCount() const {
+            return _argc;
+        }
         
     };
 

@@ -1,3 +1,4 @@
+#include <cassert>
 #include "vm_env.h"
 #include "stdlib/std_io.h"
 // #include "stdlib/std_string.h"
@@ -121,8 +122,6 @@ namespace compiler {
                     Function* func = (Function*)expr;
                     BytecodeFunction* bcFunc = new BytecodeFunction(func->name().stringLiteral(), package, module);
                     auto rst = packObj->addSymbol(func->name().stringLiteral(), SymbolType::Function, Value(bcFunc), moduleName);
-                    // func->setHostPackage(package);
-                    // func->setModule(moduleName);
                     if(!rst.item) {
                         assert(false);
                         return false;
@@ -149,9 +148,8 @@ namespace compiler {
                     for(auto expr : clazz->body()->expressions()) {
                         if(expr->structType() == SType::Function) {
                             Function* func = (Function*)expr;
-                            auto rst = clazzObj->addSymbol(func->name().stringLiteral(), SymbolType::Function, Value(func), moduleName);
-                            func->setHostPackage(package);
-                            func->setModule(moduleName);
+                            BytecodeFunction* bcFunc = new BytecodeFunction(func->name().stringLiteral(), package, module);
+                            auto rst = clazzObj->addSymbol(func->name().stringLiteral(), SymbolType::Function, Value(bcFunc), moduleName);
                             if(!rst.item) {
                                 assert(false);
                                 return false;
@@ -239,9 +237,8 @@ namespace compiler {
         Value rst;
         if(byteFunc) {
             auto& stack = stackFrames();
-            stack.pushFrame(0);
+            // stack.push(Value());
             stack.push(val);
-            stack.pop();
             stack.precall(byteFunc);
             try {
                 execute();
@@ -267,7 +264,8 @@ namespace compiler {
                 break;
             }
             case ScopeType::Member: {
-                auto self = stackFrames().local(0);
+                auto self = stackFrames().self();
+                self.deref();
                 rst = self[loc];
                 break;
             }
@@ -324,8 +322,18 @@ namespace compiler {
         while(true) {
             auto const& instr = *frames.instr();
             Opcode code = (Opcode)instr.opcode;
+            Value obj;
+            Value field;
+            Value val;
             switch(code) {
                 case Opcode::Nop: {
+                    break;
+                }
+                case Opcode::New: {
+                    auto& self = frames.topLocalRef(0);
+                    assert(self.type() == PrimeVType::Object && "");
+                    val = Value(self.asObject()->symbolLayout());
+                    self = val;
                     break;
                 }
                 case Opcode::Jump: {
@@ -333,7 +341,7 @@ namespace compiler {
                     continue;
                 }
                 case Opcode::JumpZero: {
-                    auto val = frames.topLocal(0);
+                    val = frames.topLocal(0);
                     if(instr.jump.pop) {
                         frames.pop();
                     }
@@ -344,12 +352,12 @@ namespace compiler {
                     break;
                 }
                 case Opcode::Push: {
-                    Value val = _valueInScope((ScopeType)instr.srcType, instr.src);
+                    val = _valueInScope((ScopeType)instr.srcType, instr.src);
                     frames.push(val);
                     break;
                 }
                 case Opcode::Pop: {
-                    frames.popN(instr.src);
+                    frames.popN(instr.pop);
                     break;
                 }
                 case Opcode::Add:
@@ -370,16 +378,18 @@ namespace compiler {
                     src.deref();
                     dst = src;
                     if(instr.pop) {
-                        stackFrames().pop();
+                        stackFrames().popN(instr.pop);
                     }
                     break;
                 }
                 case Opcode::PushFrame: {
-                    stackFrames().pushFrame(instr.src);
+                    assert(false); // 现在没有了
+                    // stackFrames().pushFrame(instr.src);
                     break;
                 }
                 case Opcode::Call: {
                     // auto func = _valueInScope((ScopeType)instr.srcType, instr.src);
+                    auto argCount = instr.src; // 知道参数个数，要重新设置fp,ap,lp的位置
                     auto func = stackFrames().topLocal(0);
                     func.deref();
                     stackFrames().pop();
@@ -391,23 +401,23 @@ namespace compiler {
                     // bridge function calling
                     BridgeFunc bridgeFunc = func.asBridgeFunc();
                     int rst = bridgeFunc(this);
-                    Value ret = stackFrames().topLocalRef(0);
+                    auto topRef = stackFrames().topLocalRef(0);
                     stackFrames().popFrame();
-                    stackFrames().push(ret);
+                    stackFrames().push(topRef);
                     break;
                 }
                 case Opcode::Return: {
-                    Value rst = stackFrames().retVal();
-                    rst.decRef();
+                    val = stackFrames().retVal();
+                    val.decRef();
                     stackFrames().popFrame();
-                    stackFrames().push(rst);
+                    stackFrames().push(val);
                     if(!stackFrames().instr()) {
                         return;
                     }
                     break;
                 }
                 case Opcode::GetIndexed: {
-                    Value obj = stackFrames().topLocal(1);
+                    obj = stackFrames().topLocal(1);
                     obj.deref();
                     if(
                         obj.type() != PrimeVType::Object ||
@@ -416,7 +426,7 @@ namespace compiler {
                         assert(false);
                         // throw RuntimeError("indexed operator can only be applied to object");
                     }
-                    Value field = stackFrames().topLocal(0);
+                    field = stackFrames().topLocal(0);
                     if(field.type() != PrimeVType::Int64) {
                         assert(false);
                         // throw RuntimeError("indexed operator can only be applied to string");
@@ -426,7 +436,6 @@ namespace compiler {
                     break;
                 }
                 case Opcode::GetField: {
-                    Value obj;
                     if(instr.srcType == (uint32_t)ScopeType::Register) {
                         obj = stackFrames().topLocal(instr.src);
                         obj.deref();
@@ -436,7 +445,6 @@ namespace compiler {
                     } else {
                         assert(false);
                     }
-                    Value field;
                     if(instr.dstType == (uint32_t)ScopeType::Register) {
                         field = stackFrames().topLocal(instr.dst);
                         field.deref();

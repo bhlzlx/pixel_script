@@ -7,6 +7,7 @@ PRIVATE
     ast_builder.cpp
     ast_node.cpp
     vm/vm_env.cpp
+    vm/vm_register.cpp
     vm/vm_eval.cpp
     vm/internal_types/vm_object.cpp
     vm/internal_types/vm_types.cpp
