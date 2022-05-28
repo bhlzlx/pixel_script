@@ -11,6 +11,7 @@ namespace compiler {
             auto argCount = stack.argCount();
             for(uint32_t i = 0; i < argCount; ++i) {
                 auto value = stack.local(i);
+                value.deref();
                 auto str = valueToString(env, value);
                 printf("%s", str.c_str());
             }

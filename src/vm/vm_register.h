@@ -14,7 +14,10 @@ namespace compiler {
             Value                   self;           // self对象
             Instruction const*      instr;          // 当前指令块起始地址
             Value const*            constants;      // 静态常量区
-            BytecodeFunction const* func;           // 当前函数 可能一般用不到
+            union {
+                BytecodeFunction const* func;           // 当前函数 可能一般用不到
+                BridgeFunc bridgeFunc;
+            };
         };
         // delete default assign constructor
         StackFrames(StackFrames const&) = delete;
@@ -38,6 +41,8 @@ namespace compiler {
          * @param func 
          */
         void precall(BytecodeFunction const* func, int argc);
+        void precall(BridgeFunc func, int argc);
+        // void precall(int argc);
         size_t argCount() const;
         void reserveValues(size_t count);
         void popN(size_t n);

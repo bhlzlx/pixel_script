@@ -46,48 +46,40 @@ namespace compiler {
                 return value.stringValue().text();
             }
             case PrimeVType::Object: {
-                Object* obj = value.asObject();
                 auto field = value[lib_keywords::___tostring];
                 if(field) {
-                    Value rst;
                     auto& stackFrames = env->stackFrames();
-                    stackFrames.pushFrame();
                     // 没有参数，所以只压一个self
                     stackFrames.push(value);
-                    auto func = value[field];
-                    auto bridgeFunc = func.asBytecodeFunc();
-                    // auto ret = byteFunc(env, 0);
-                    // if(ret) {
-                    //     rst = stackFrames.topLocal(0);
-                    // } else {
-                    //     rst = Value();
-                    // }
-                    stackFrames.popFrame();
+                    stackFrames.push(field);
+                    env->call(0);
+                    auto rst = stackFrames.retVal();
+                    stackFrames.pop();
                     return valueToString(env, rst);
                 } else {
+                    Object* obj = value.asObject();
                     char buf[32] = {};
                     sprintf(buf, "{ object: %p }", value.asObject());
                     return buf;
                 }
             }
             case PrimeVType::Userdata: {
-                UserdataObject* ud = value.ud();
-                Value rst;
-                // env->stackFrames().pushArgBegin(); {
-                //     env->stackFrames().pushValue(value); // 传self
-                //     env->stackFrames().pushArgEnd();
-                //     auto ret = ud->callMemberMethod(env,lib_keywords::___tostring);
-                //     if(ret) {
-                //         rst = env->stackFrames().popValue();
-                //     }
-                // }
-                // env->stackFrames().popToArgBegin();
-                if(rst) {
+                auto field = value[lib_keywords::___tostring];
+                if(field) {
+                    auto& stackFrames = env->stackFrames();
+                    // 没有参数，所以只压一个self
+                    stackFrames.push(value);
+                    stackFrames.push(field);
+                    env->call(0);
+                    auto rst = stackFrames.retVal();
+                    stackFrames.pop();
                     return valueToString(env, rst);
+                } else {
+                    UserdataObject* ud = value.ud();
+                    char buf[32] = {};
+                    sprintf(buf, "{ userdata: %p }", value.ud());
+                    return buf;
                 }
-                char buf[32] = {};
-                sprintf(buf, "{ userdata: %p }", value.ud());
-                return buf;
             }
             default: {
                 break;

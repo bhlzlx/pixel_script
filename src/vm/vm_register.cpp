@@ -57,20 +57,40 @@ namespace compiler {
             _values[_frame.sp-1-i].deref();
         }
         _frameInfos.push_back(_frame); // 返回后的栈情况需要再调整
-        // 调整
+        // 调整(函数执行完，回去的时候，sp的原位置)
         _frameInfos.back().sp -= argc;  // 函数调用压参前蝗栈顶位置，参数数量可能比函数定的多，多的直接扔了它
         // 设置当前帧的状态
         _frame.self = self;
-        _frame.fp = _frame.sp - argc;   // 
-        _frame.sp += _frame.fp + func->argCount();  // 扔了多余的
-        _frame.ap = _frame.sp;                      // 参数位置调整
-        _frame.lp = _frame.sp += func->localSize(); // 局部变量空间调整
+        _frame.fp = _frameInfos.back().sp;   // 
+        _frame.ap = _frame.fp + func->argCount();  // 扔了多余的
+        _frame.lp = _frame.sp = _frame.ap + func->localSize(); // 局部变量空间调整
         _frame.ip = func->ip();
         _frame.package = func->package();
         _frame.instr = func->instruction();
         _frame.constants = func->module()->constants();
         _frame.func = func;
     }
+
+    void StackFrames::precall(BridgeFunc func, int argc) {
+        auto self = _values[_frame.sp-1];
+        self.deref();
+        pop();
+        // 传参里不可能有值引用类型
+        for(int i = 0; i < argc; ++i) {
+            _values[_frame.sp-1-i].deref();
+        }
+        _frameInfos.push_back(_frame);
+        _frameInfos.back().sp -= argc;
+        _frame.self = self;
+        _frame.fp = _frameInfos.back().sp;   // 
+        _frame.lp = _frame.ap = _frame.fp + argc;  // 扔了多余的
+        _frame.ip = 0; // bridge func 没有ip
+        _frame.package = Value(); // bridge func没有包
+        _frame.instr = nullptr;
+        _frame.constants = nullptr;
+        _frame.bridgeFunc = func;
+    }
+
     size_t StackFrames::argCount() const {
         return _frame.ap - _frame.fp;
     }

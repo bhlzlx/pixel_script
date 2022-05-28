@@ -406,17 +406,23 @@ namespace compiler {
                     auto func = stackFrames().topLocal(0);
                     func.deref();
                     stackFrames().pop();
-                    BytecodeFunction const* bcFunc = func.asBytecodeFunc();
-                    stackFrames().precall(bcFunc, argCount); // setup stack frame
-                    if(bcFunc) { // is a bytecode function
-                        continue; // fetch next instruction & execute!
+                    switch(func.type()) {
+                        case PrimeVType::BytecodeFunction: {
+                            BytecodeFunction const* bytecode = func.asBytecodeFunc();
+                            stackFrames().precall(bytecode, argCount); // setup stack frame
+                            continue;
+                            break;
+                        }
+                        case PrimeVType::BridgeFunc: {
+                            BridgeFunc bridgeFunc = func.asBridgeFunc();
+                            stackFrames().precall(bridgeFunc, argCount);
+                            int rst = bridgeFunc(this);
+                            auto bridgeRet = stackFrames().retVal();
+                            stackFrames().popFrame();
+                            stackFrames().push(bridgeRet);
+                            break;
+                        }
                     }
-                    // bridge function calling
-                    BridgeFunc bridgeFunc = func.asBridgeFunc();
-                    int rst = bridgeFunc(this);
-                    auto topRef = stackFrames().topLocalRef(0);
-                    stackFrames().popFrame();
-                    stackFrames().push(topRef);
                     break;
                 }
                 case Opcode::Return: {
