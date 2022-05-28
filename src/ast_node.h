@@ -20,7 +20,7 @@ namespace compiler {
             Class,
             Return,
             MapItem,
-            Scope,
+            // Scope,
             None,
         };
 
@@ -173,9 +173,9 @@ namespace compiler {
             ReturnStmt* asReturn() const {
                 return _stype == SType::Return ? (ReturnStmt*)this : nullptr;
             }
-            ScopeNode* asScope() const {
-                return _stype == SType::Scope ? (ScopeNode*)this : nullptr;
-            }
+            // ScopeNode* asScope() const {
+            //     return _stype == SType::Scope ? (ScopeNode*)this : nullptr;
+            // }
         };
 
         class StringList : public Node {
@@ -304,20 +304,20 @@ namespace compiler {
             Node* field() const { return _second; }
         };
 
-        class ScopeNode : public Node { // current scope : global pack/ current pack/ self ref
-        private:
-            IdentifierType _scopeType; // 近似表达下吧
-        public:
-            ScopeNode(IdentifierType type)
-                : Node(SType::Scope, VType::None)
-                , _scopeType(type)
-            {}
-            IdentifierType scopeType() const {
-                assert(_scopeType != IdentifierType::Null);
-                assert(_scopeType != IdentifierType::FunctionLocal);
-                return _scopeType;
-            }
-        };
+        // class ScopeNode : public Node { // current scope : global pack/ current pack/ self ref
+        // private:
+        //     IdentifierType _scopeType; // 近似表达下吧
+        // public:
+        //     ScopeNode(IdentifierType type)
+        //         : Node(SType::Scope, VType::None)
+        //         , _scopeType(type)
+        //     {}
+        //     IdentifierType scopeType() const {
+        //         assert(_scopeType != IdentifierType::Null);
+        //         assert(_scopeType != IdentifierType::FunctionLocal);
+        //         return _scopeType;
+        //     }
+        // };
 
         class IndexAccess : public PairExpr {
         public:

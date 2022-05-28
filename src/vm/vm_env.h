@@ -99,9 +99,7 @@ namespace compiler {
         void _executeBinaryOp(Opcode op);
         void execute();
 
-        Value _valueInScope( ScopeType scope, uint32_t loc);
-        // void exeInstr(Instruction const* instr);
-
+        Value _valueInScope( ScopeType scope, uint32_t loc, bool readonly = false);
         // /**
         //  * @brief 计算一个节点的值
         // **/

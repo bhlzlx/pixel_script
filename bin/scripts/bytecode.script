@@ -3,10 +3,17 @@ package game.test
 class Point {
     var x
     var y
+
+    func  _xx(b) {
+        x = x*b
+    }
+
     func set(xx, yy) {
         x = xx
         y = yy
+        _xx(2)
     }
+
     func size() {
         return x*y
     }
@@ -19,10 +26,11 @@ func entry() {
     std.io.print(a)
     var b = 1
     if true {
-        while a<10 {
+        while a<18 {
             b = b*2
             a = a+1
         }
+        std.io.print(b)
         return b
     } else {
         return a + game.test.get_constant()

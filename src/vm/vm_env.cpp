@@ -264,7 +264,7 @@ namespace compiler {
         return rst;
     }
 
-    Value Env::_valueInScope( ScopeType scope, uint32_t loc) {
+    Value Env::_valueInScope( ScopeType scope, uint32_t loc, bool readonly) {
         Value rst;
         switch(scope) {
             case ScopeType::Local: {
@@ -295,12 +295,16 @@ namespace compiler {
                 break;
             }
             case ScopeType::Self: {
-                return stackFrames().self();
+                rst = stackFrames().self();
+                break;
             }
             default: {
                 assert(false);
                 break;
             }
+        }
+        if(readonly) {
+            rst.deref();
         }
         return rst;
     }
@@ -364,7 +368,8 @@ namespace compiler {
                     break;
                 }
                 case Opcode::Push: {
-                    val = _valueInScope((ScopeType)instr.srcType, instr.src);
+                    auto type = (ScopeType)instr.srcType;
+                    val = _valueInScope(type, instr.src, !!instr.dst);
                     frames.push(val);
                     break;
                 }
@@ -421,6 +426,10 @@ namespace compiler {
                             stackFrames().popFrame();
                             stackFrames().push(bridgeRet);
                             break;
+                        }
+                        default: {
+                            assert(false);
+                            break;;
                         }
                     }
                     break;

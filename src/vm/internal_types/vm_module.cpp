@@ -238,10 +238,10 @@ namespace compiler {
                             assert(false);
                             compilerErrors.push_back(id->token());
                         }
-                        if(id->type() == IdentifierType::ClassMember) {
-                            auto selfNode = new ScopeNode(IdentifierType::ClassMember);
-                            funcCall->setSelf(selfNode);
-                        }
+                        // if(id->type() == IdentifierType::ClassMember) {
+                        //     auto selfNode = new ScopeNode(IdentifierType::ClassMember);
+                        //     funcCall->setSelf(selfNode);
+                        // }
                     }
                 }
             }
@@ -383,9 +383,9 @@ namespace compiler {
                 }
                 break;
             }
-            case SType::Scope: {
-                break;
-            }
+            // case SType::Scope: {
+            //     break;
+            // }
             default: {
                 assert(false);
                 break;
@@ -641,10 +641,12 @@ namespace compiler {
                         if(call->self()) {
                             compileNode(call->self(), bytecode); // push self on stack
                         } else {
-                            Instruction instr;
+                            // 直接拿当前的self传
+                            Instruction instr = {};
                             instr.opcode = (uint32_t)Opcode::Push;
-                            instr.src = bytecode->getConstant(Value());
-                            instr.srcType = (uint8_t)ScopeType::Constant;
+                            instr.src = 0; 
+                            instr.srcType = (uint8_t)ScopeType::Self;
+                            instr.dst = 1; // readonly
                             bytecode->pushInstr(instr);
                         }
                         // 压入函数对象
