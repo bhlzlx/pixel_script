@@ -18,14 +18,14 @@ namespace compiler {
         int __insert(Env* env) {
             auto& stackFrames = env->stackFrames();
             auto argCount = stackFrames.argCount();
-            if(argCount != 3) {
+            if(argCount != 1) {
                 DumpException except(env, ExecutionError::ArgumentCountMismatch, "insert");
                 throw except;
             }
-            UserdataObject* self = (UserdataObject*)stackFrames.local(0).ud();
+            UserdataObject* self = stackFrames.self().ud();
             StdMap* map = (StdMap*)self->ptr();
-            Value key = stackFrames.local(1);
-            Value val = stackFrames.local(2);
+            Value key = stackFrames.local(0);
+            Value val = stackFrames.local(1);
             key.deref();
             val.deref();
             map->insert(std::make_pair(key, val));
@@ -35,13 +35,13 @@ namespace compiler {
         int __erase(Env* env) {
             auto& stackFrames = env->stackFrames();
             auto argCount = stackFrames.argCount();
-            if(argCount != 2) {
+            if(argCount != 1) {
                 DumpException except(env, ExecutionError::ArgumentCountMismatch, "erase");
                 throw except;
             }
-            UserdataObject* self = (UserdataObject*)stackFrames.local(0).ud();
+            UserdataObject* self = (UserdataObject*)stackFrames.self().ud();
             StdMap* map = (StdMap*)self->ptr();
-            Value key = stackFrames.local(1);
+            Value key = stackFrames.local(0);
             key.deref();
             auto it = map->find(key);
             if(it == map->end()) {
@@ -54,11 +54,11 @@ namespace compiler {
         int __size(Env* env) {
             auto& stackFrames = env->stackFrames();
             auto argCount = stackFrames.argCount();
-            if(argCount != 1) {
+            if(argCount != 0) {
                 DumpException except(env, ExecutionError::ArgumentCountMismatch, "size");
                 throw except;
             }
-            UserdataObject* self = (UserdataObject*)stackFrames.local(0).ud();
+            UserdataObject* self = (UserdataObject*)stackFrames.self().ud();
             StdMap* map = (StdMap*)self->ptr();
             Value ret((int64_t)map->size());
             stackFrames.push(ret);
@@ -72,7 +72,7 @@ namespace compiler {
                 DumpException except(env, ExecutionError::ArgumentCountMismatch, "clear");
                 throw except;
             }
-            UserdataObject* self = (UserdataObject*)stackFrames.local(0).ud();
+            UserdataObject* self = (UserdataObject*)stackFrames.self().ud();
             StdMap* map = (StdMap*)self->ptr();
             map->clear();
             return 0;
@@ -85,9 +85,9 @@ namespace compiler {
                 DumpException except(env, ExecutionError::ArgumentCountMismatch, "find");
                 throw except;
             }
-            UserdataObject* self = (UserdataObject*)stackFrames.local(0).ud();
+            UserdataObject* self = (UserdataObject*)stackFrames.self().ud();
             StdMap* map = (StdMap*)self->ptr();
-            Value key = stackFrames.local(1);
+            Value key = stackFrames.local(0);
             key.deref();
             auto it = map->find(key);
             if(it == map->end()) {

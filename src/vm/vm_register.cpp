@@ -21,6 +21,7 @@ namespace compiler {
         }
         ++_frame.sp;
     }
+    // 压参数的时候一定要deref，但是判断不了。。。
     void StackFrames::push(Value const& value, bool deref ) {
         _values[_frame.sp] = value;
         if(deref) {
@@ -36,6 +37,10 @@ namespace compiler {
     }
     void StackFrames::popFrame() {
         if(_frameInfos.size()) {
+            auto prev_sp = _frameInfos.back().sp;
+            for(size_t i = prev_sp; i < _frame.sp; ++i) {
+                _values[i].nilIt();
+            }
             _frame = _frameInfos.back();
             _frameInfos.pop_back();
         }
@@ -55,6 +60,7 @@ namespace compiler {
         // 传参里不可能有值引用类型
         for(int i = 0; i < argc; ++i) {
             _values[_frame.sp-1-i].deref();
+            assert(_values[_frame.sp-1-i].type() != PrimeVType::ValueRef);
         }
         _frameInfos.push_back(_frame); // 返回后的栈情况需要再调整
         // 调整(函数执行完，回去的时候，sp的原位置)
@@ -78,6 +84,7 @@ namespace compiler {
         // 传参里不可能有值引用类型
         for(int i = 0; i < argc; ++i) {
             _values[_frame.sp-1-i].deref();
+            assert(_values[_frame.sp-1-i].type() != PrimeVType::ValueRef);
         }
         _frameInfos.push_back(_frame);
         _frameInfos.back().sp -= argc;

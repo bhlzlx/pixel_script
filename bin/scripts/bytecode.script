@@ -4,7 +4,7 @@ class Point {
     var x
     var y
 
-    func  _xx(b) {
+    func _xx(b) {
         x = x*b
     }
 
@@ -20,20 +20,19 @@ class Point {
 }
 
 func entry() {
-    var point = Point.new()
-    point.set(2,4)
-    var a = point.size()
-    std.io.print(a)
-    var b = 1
-    if true {
-        while a<18 {
-            b = b*2
-            a = a+1
-        }
-        std.io.print(b)
-        return b
-    } else {
-        return a + game.test.get_constant()
+    var vec = [1,2,3,4]
+    revert_vec(vec)
+    return vec[0]
+}
+
+func revert_vec(vec) {
+    var len = vec.size()
+    var i = 0
+    while i < len/2 {
+        var tmp = vec[i]
+        vec[i] = vec[len-i-1]
+        vec[len-i-1] = tmp
+        i = i+1
     }
 }
 

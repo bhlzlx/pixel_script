@@ -66,6 +66,9 @@ namespace compiler {
     }
 
     Value::Value(Value* ref) {
+        if(ref->type() == PrimeVType::ValueRef) {
+            assert(false);
+        }
         _type = PrimeVType::ValueRef;
         _ref = ref;
     }
@@ -133,6 +136,7 @@ namespace compiler {
             return *this;
         }
         if(_type == PrimeVType::ValueRef) { // 把other的值，赋值给自己在的ref
+            assert(other.type() != PrimeVType::ValueRef);
             *_ref = other;
         } else {
             decRef(); // decRef the old value

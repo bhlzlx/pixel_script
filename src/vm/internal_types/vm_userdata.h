@@ -77,4 +77,7 @@ namespace compiler {
         }
     };
 
+    // 调用userdata函数的一个工具方法，使用这个方法前，提前将参数压栈即可
+    void callUserdataMethod(Env* env, Value ud, Name methodName, int argc);
+
 }

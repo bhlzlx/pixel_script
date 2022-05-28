@@ -10,16 +10,19 @@ namespace compiler {
 
         UserdataLayout* vectorLayout = nullptr;
 
+
         int __push_back(Env* env) {
             auto& stackFrames = env->stackFrames();
             auto argCount = stackFrames.argCount();
-            if(argCount != 2) {
+            if(argCount != 1) {
                 DumpException except(env, ExecutionError::ArgumentCountMismatch, "push_back");
                 throw except;
             }
-            UserdataObject* self = (UserdataObject*)stackFrames.local(0).ud();
+            auto selfVal = stackFrames.self();
+            selfVal.deref();
+            UserdataObject* self = selfVal.ud();
             StdVector* vec = (StdVector*)self->ptr();
-            Value val = stackFrames.local(1);
+            Value val = stackFrames.local(0);
             val.deref();
             vec->push_back(val);
             return 0;
@@ -28,13 +31,15 @@ namespace compiler {
         int __at(Env* env) {
             auto& stackFrames = env->stackFrames();
             auto argCount = stackFrames.argCount();
-            if(argCount != 2) {
+            if(argCount != 1) {
                 DumpException except(env, ExecutionError::ArgumentCountMismatch, "at");
                 throw except;
             }
-            UserdataObject* self = (UserdataObject*)stackFrames.local(0).ud();
+            auto selfVal = stackFrames.self();
+            selfVal.deref();
+            UserdataObject* self = selfVal.ud();
             StdVector* vec = (StdVector*)self->ptr();
-            Value val = stackFrames.local(1);
+            Value val = stackFrames.local(0);
             val.deref();
             if(val.type() != PrimeVType::Int64) {
                 DumpException except(env, ExecutionError::ArgumentTypeMismatch, "at");
@@ -53,13 +58,15 @@ namespace compiler {
         int __erase(Env* env) {
             auto& stackFrames = env->stackFrames();
             auto argCount = stackFrames.argCount();
-            if(argCount != 2) {
+            if(argCount != 1) {
                 DumpException except(env, ExecutionError::ArgumentCountMismatch, "erase");
                 throw except;
             }
-            UserdataObject* self = (UserdataObject*)stackFrames.local(0).ud();
+            auto selfVal = stackFrames.self();
+            selfVal.deref();
+            UserdataObject* self = selfVal.ud();
             StdVector* vec = (StdVector*)self->ptr();
-            Value val = stackFrames.local(1);
+            Value val = stackFrames.local(0);
             val.deref();
             if(val.type() != PrimeVType::Int64) {
                 DumpException except(env, ExecutionError::ArgumentTypeMismatch, "erase");
@@ -79,11 +86,13 @@ namespace compiler {
         int __size(Env* env) {
             auto& stackFrames = env->stackFrames();
             auto argCount = stackFrames.argCount();
-            if(argCount != 1) {
+            if(argCount != 0) {
                 DumpException except(env, ExecutionError::ArgumentCountMismatch, "size");
                 throw except;
             }
-            UserdataObject* self = (UserdataObject*)stackFrames.local(0).ud();
+            auto selfVal = stackFrames.self();
+            selfVal.deref();
+            UserdataObject* self = selfVal.ud();
             StdVector* vec = (StdVector*)self->ptr();
             stackFrames.push((int64_t)vec->size());
             return 1;
@@ -106,16 +115,19 @@ namespace compiler {
             }
         }
 
-        UserdataObject* create(Env* env) {
+        int create(Env* env) {
             assert(vectorLayout && "vectorLayout is null");
             StdVector* vec = new StdVector();
             UserdataObject* obj = new UserdataObject(vec, vectorLayout);
-            return obj;
-        }
-
-        void __privateAdd(UserdataObject* vec, Value const& val) {
-            StdVector* obj = (StdVector*)vec->ptr();
-            obj->push_back(val);
+            auto& stackFrames = env->stackFrames();
+            auto argCount = stackFrames.argCount();
+            for(uint32_t i = 0; i<argCount; ++i ) {
+                Value val = stackFrames.local(i);
+                val.deref();
+                vec->push_back(val);
+            }
+            stackFrames.push(Value(obj));
+            return 1;
         }
 
     }

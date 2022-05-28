@@ -5,9 +5,7 @@ namespace compiler {
 
     namespace std_vec_impl {
 
-        UserdataObject* create(Env* env);
-
-        void __privateAdd(UserdataObject* vec, Value const& val);
+        int create(Env* env);
 
         void init(Env* env);
 

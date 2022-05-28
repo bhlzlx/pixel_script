@@ -4,6 +4,7 @@
 // #include "stdlib/std_string.h"
 #include "stdlib/std_vec.h"
 #include "stdlib/std_map.h"
+#include "internal_types/vm_userdata.h"
 #include "internal_types/vm_primitive_types.h"
 #include <sstream>
 
@@ -287,7 +288,12 @@ namespace compiler {
                 break;
             }
             case ScopeType::Register: {
-                rst = stackFrames().topLocalRef(loc);
+                Value& regVal = stackFrames().topLocalRef(loc);
+                if(regVal.type() == PrimeVType::ValueRef) {
+                    rst = regVal;
+                } else {
+                    rst = &regVal;
+                }
                 break;
             }
             case ScopeType::Constant: { 
@@ -318,12 +324,12 @@ namespace compiler {
         if(leftRef->type() == PrimeVType::Int64) {
             IntegerValue* ival = (IntegerValue*)leftRef;
             rst = ival->Op(this, op, right);
-        } else if(left.type() == PrimeVType::Float64) {
-            // FloatValue const* fval = (FloatValue const*)&left;
-            // return fval->Op(this, op, right);
-        } else if(left.type() == PrimeVType::String) {
-            // StringValue* sval = (StringValue*)ap;
-            // return sval->Op(this, op, *bp);
+        } else if(leftRef->type() == PrimeVType::Float64) {
+            FloatValue* fval = (FloatValue*)&left;
+            fval->Op(this, op, right);
+        } else if(leftRef->type() == PrimeVType::String) {
+            StringValue* sval = (StringValue*)&left;
+            sval->Op(this, op, right);
         }
         else {
             assert(false && "unsupported type");
@@ -448,7 +454,7 @@ namespace compiler {
                     obj = stackFrames().topLocal(1);
                     obj.deref();
                     if(
-                        obj.type() != PrimeVType::Object ||
+                        obj.type() != PrimeVType::Object &&
                         obj.type() != PrimeVType::Userdata
                     ) {
                         assert(false);
@@ -460,7 +466,23 @@ namespace compiler {
                         // throw RuntimeError("indexed operator can only be applied to string");
                     }
                     stackFrames().popN(2);
-                    stackFrames().push(obj[field.intValue()]);
+                    switch(obj.type()) {
+                        case PrimeVType::Object: {
+                            auto val = obj[field.intValue()];
+                            stackFrames().push(val);
+                            break;
+                        }
+                        case PrimeVType::Userdata: {
+                            UserdataObject* ud = obj.ud();
+                            stackFrames().push(field); // 压入参数
+                            callUserdataMethod(this, obj, lib_keywords::___index, 1); // 调用 __index，结果会压栈
+                            break;
+                        }
+                        default: {
+                            assert(false);
+                            break;
+                        }
+                    }
                     break;
                 }
                 case Opcode::GetField: {

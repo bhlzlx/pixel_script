@@ -22,6 +22,7 @@ namespace compiler {
         KeyNotFound,
         IndexANoneObject,
         InvalidClassObject,
+        MethodNotFound,
     };
     
     class ExecuteException : public std::exception {

@@ -43,11 +43,13 @@ namespace compiler {
         int __append(Env* env) {
             StackFrames& stack = env->stackFrames();
             size_t paramsCount = stack.argCount();
-            if(paramsCount < 2) {
+            if(paramsCount < 1) {
                 return 0;
             }
-            Value first = stack.local(0);
-            Value second = stack.local(1);
+            Value first = stack.self();
+            Value second = stack.local(0);
+            first.deref();
+            second.deref();
             if(second.type() != PrimeVType::String) {
                 throw DumpException(env, ExecutionError::InvalidArgument, "append: second argument must be string");
                 return 0;
@@ -68,7 +70,7 @@ namespace compiler {
             if(paramsCount < 1) {
                 return 0;
             }
-            Value first = stack.local(0);
+            Value first = stack.self();
             size_t name = (size_t)first.ud()->ptr();
             Name* a = (Name*)&name;
             std::string str = a->text();

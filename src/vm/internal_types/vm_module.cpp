@@ -1,5 +1,6 @@
 #include "vm_module.h"
 #include "vm_object.h"
+#include <vm/stdlib/std_vec.h>
 #include <vm/vm_env.h>
 
 
@@ -460,15 +461,35 @@ namespace compiler {
             }
             case SType::MultiExpr: {
                 auto block = node->asMultiExpr();
-                for(auto& expr : block->expressions()) {
-                    compileNode(expr, bytecode);
-                    Instruction pop = {};
-                    pop.opcode = (uint32_t)Opcode::Pop;
-                    pop.pop = 1;
-                    if(needPopInstr(expr)) {
-                        bytecode->pushInstr(pop);// pop the result of the last expression
+                switch(node->valueType()) {
+                    case VType::Vector: {
+                        for(auto& expr : block->expressions()) {
+                            compileNode(expr, bytecode);
+                        }
+                        Instruction pushFunc;
+                        pushFunc.opcode = (uint32_t)Opcode::Push;
+                        pushFunc.src = bytecode->getConstant(Value(std_vec_impl::create));
+                        pushFunc.srcType = (uint32_t)ScopeType::Constant;
+                        Instruction call;
+                        call.opcode = (uint32_t)Opcode::Call;
+                        call.src = block->expressions().size();
+                        bytecode->pushInstr(pushFunc); // self， 随便给一个实际不会用的
+                        bytecode->pushInstr(pushFunc); // func
+                        bytecode->pushInstr(call);
+                        break;
                     }
-                }
+                    default:
+                        for(auto& expr : block->expressions()) {
+                            compileNode(expr, bytecode);
+                            Instruction pop = {};
+                            pop.opcode = (uint32_t)Opcode::Pop;
+                            pop.pop = 1;
+                            if(needPopInstr(expr)) {
+                                bytecode->pushInstr(pop);// pop the result of the last expression
+                            }
+                        }
+                        break;
+                    }
                 break;
             }
             case SType::BinaryOp: {

@@ -11,20 +11,18 @@ namespace compiler {
         Value Op(Env* env, Opcode op, Value const& other);
     };
 
-    // class FloatValue: public Value {
-    // public:
-    //     FloatValue(double f64) {
-    //         setFloat64(f64);
-    //     }
-    //     void Op( Env* env, Opcode op, Value const& other) const;
-    // };
+    class FloatValue: public Value {
+        FloatValue() = delete;
+        FloatValue(FloatValue const&) = delete;
+    public:
+        Value Op( Env* env, Opcode op, Value const& other);
+    };
 
-    // class StringValue: public Value {
-    // public:
-    //     StringValue() {
-    //     }
-    //     void Op(Env* env, Opcode op, Value const& other) const;
-    //     // void callMethod(Name name, Env* env);
-    // };
+    class StringValue: public Value {
+        StringValue() = delete;
+        StringValue(StringValue const&) = delete;
+    public:
+        Value Op(Env* env, Opcode op, Value const& other);
+    };
 
 }
