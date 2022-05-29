@@ -149,8 +149,6 @@ namespace compiler {
 
         Value operator[](uint32_t loc) const;
 
-        Value indexAccess(Env* env) const;
-
         Value operator[](Name name) const;
 
         bool operator < (Value const& other) const;

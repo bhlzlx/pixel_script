@@ -5,10 +5,7 @@ namespace compiler {
 
     namespace std_map_impl {
 
-        UserdataObject* create(Env* env);
-
-        void __privateAdd(UserdataObject* vec, Value const& key, Value const& val);
-
+        int create(Env* env);
         void init(Env* env);
 
     }

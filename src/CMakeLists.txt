@@ -1,6 +1,6 @@
-add_library( stone STATIC)
+add_library(game_script STATIC)
 
-target_sources(stone
+target_sources(game_script
 PRIVATE
     token.cpp
     token_parser.cpp
@@ -8,7 +8,6 @@ PRIVATE
     ast_node.cpp
     vm/vm_env.cpp
     vm/vm_register.cpp
-    vm/vm_eval.cpp
     vm/internal_types/vm_object.cpp
     vm/internal_types/vm_types.cpp
     vm/internal_types/vm_symbol.cpp
@@ -22,7 +21,7 @@ PRIVATE
     vm/utils/vm_package_util.cpp
 )
 
-target_include_directories(stone
+target_include_directories(game_script
 PUBLIC
     .
 )

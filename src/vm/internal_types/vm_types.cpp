@@ -31,23 +31,6 @@ namespace compiler {
         return Value();
     }
 
-    Value Value::indexAccess(Env* env) const {
-        // 参数由调用者提前压栈
-        if(this->_type == PrimeVType::Userdata) {
-            UserdataObject* obj = ud();
-            auto ret = obj->callMemberMethod(env, lib_keywords::___index);
-            if(!ret) {
-                return Value();
-            }
-            Value rst = env->stackFrames().topLocalRef(0);
-            env->stackFrames().pop();
-            return rst;
-        } else {
-            // throw exception
-            DumpException except(env, ExecutionError::IndexANoneObject, "index access");
-            throw except;
-        }
-    }
 
     Value::Value(SymbolLayout* symbolLayout) {
         _type = PrimeVType::Object;

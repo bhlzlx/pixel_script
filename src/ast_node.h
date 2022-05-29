@@ -744,7 +744,9 @@ namespace compiler {
                 : Node(SType::MapItem, VType::None)
                 , _key(key)
                 , _value(value)
-            {}
+            {
+                value->setParent(this);
+            }
             Name key() const {
                 return _key;
             }

@@ -7,5 +7,5 @@ PRIVATE
 
 target_link_libraries(genbytecode
 PRIVATE
-    stone
+    game_script
 )

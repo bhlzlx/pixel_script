@@ -1,6 +1,7 @@
 #include "vm_module.h"
 #include "vm_object.h"
 #include <vm/stdlib/std_vec.h>
+#include <vm/stdlib/std_map.h>
 #include <vm/vm_env.h>
 
 
@@ -459,12 +460,23 @@ namespace compiler {
                 compileNode(func->body(), bytecode);
                 break;
             }
+            case SType::MapItem: {
+                auto item = node->asMapItem();
+                Name key = item->key();
+                Instruction pushName = {};
+                pushName.opcode = (uint32_t)Opcode::Push;
+                pushName.src = bytecode->getConstant(Value(key));
+                pushName.srcType = (uint32_t)ScopeType::Constant;
+                bytecode->pushInstr(pushName); // push key
+                compileNode(item->value(), bytecode); // push value
+                break;
+            }
             case SType::MultiExpr: {
                 auto block = node->asMultiExpr();
                 switch(node->valueType()) {
                     case VType::Vector: {
                         for(auto& expr : block->expressions()) {
-                            compileNode(expr, bytecode);
+                            compileNode(expr, bytecode); // map items
                         }
                         Instruction pushFunc;
                         pushFunc.opcode = (uint32_t)Opcode::Push;
@@ -478,7 +490,23 @@ namespace compiler {
                         bytecode->pushInstr(call);
                         break;
                     }
-                    default:
+                    case VType::Map: {
+                        for(auto& item : block->expressions()) {
+                            compileNode(item, bytecode);
+                        }
+                        Instruction pushFunc;
+                        pushFunc.opcode = (uint32_t)Opcode::Push;
+                        pushFunc.src = bytecode->getConstant(Value(std_map_impl::create));
+                        pushFunc.srcType = (uint32_t)ScopeType::Constant;
+                        Instruction call;
+                        call.opcode = (uint32_t)Opcode::Call;
+                        call.src = block->expressions().size() * 2;
+                        bytecode->pushInstr(pushFunc); // self， 随便给一个实际不会用的
+                        bytecode->pushInstr(pushFunc); // func
+                        bytecode->pushInstr(call);
+                        break;
+                    }
+                    case VType::Block: {
                         for(auto& expr : block->expressions()) {
                             compileNode(expr, bytecode);
                             Instruction pop = {};
@@ -488,6 +516,10 @@ namespace compiler {
                                 bytecode->pushInstr(pop);// pop the result of the last expression
                             }
                         }
+                        break;
+                    }
+                    default:
+                        assert(false);
                         break;
                     }
                 break;
@@ -534,6 +566,10 @@ namespace compiler {
                         }
                         case IdentifierType::Global: {
                             instr.srcType = (uint8_t)ScopeType::Global;
+                            break;
+                        }
+                        case IdentifierType::Self: {
+                            instr.srcType = (uint8_t)ScopeType::Self;
                             break;
                         }
                         default: {

@@ -112,6 +112,10 @@ namespace compiler {
             --n;
         }
     }
+    Value StackFrames::argAt(uint32_t index) {
+        assert(index<_frame.ap - _frame.fp);
+        return _values[_frame.fp + index];
+    }
     Value StackFrames::local(uint32_t index) {
         assert(index <= _frame.lp - _frame.fp);
         return Value(&_values[_frame.fp + index]); // return a reference
@@ -143,8 +147,12 @@ namespace compiler {
     Value StackFrames::package() {
         return _frame.package;
     }
-    Value StackFrames::self() {
+    Value StackFrames::selfRef() { // Value Ref
         return &_frame.self;
+    }
+    Value StackFrames::self() {
+        assert(_frame.self.type() != PrimeVType::ValueRef);
+        return _frame.self;
     }
     Value const* StackFrames::constants() const {
         return _frame.constants;

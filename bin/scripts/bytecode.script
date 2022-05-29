@@ -3,26 +3,33 @@ package game.test
 class Point {
     var x
     var y
-
-    func _xx(b) {
-        x = x*b
-    }
-
-    func set(xx, yy) {
+    func set(xx ,yy) {
         x = xx
         y = yy
-        _xx(2)
+        return size()
     }
-
     func size() {
-        return x*y
+        return self.x*self.y
     }
 }
 
 func entry() {
+    helloworld()
     var vec = [1,2,3,4]
+    var map =  {
+        name : "kusugwa",
+        age : 32,
+        height: 175
+    }
+    var point = Point.new()
+    var ret = point.set(3, 4)
     revert_vec(vec)
-    return vec[0]
+    std.io.print(vec[0], "---", map.name)
+    return ret
+}
+
+func helloworld() {
+    std.io.print("hello,world!")
 }
 
 func revert_vec(vec) {
@@ -34,8 +41,4 @@ func revert_vec(vec) {
         vec[len-i-1] = tmp
         i = i+1
     }
-}
-
-func get_constant() {
-    return 64
 }

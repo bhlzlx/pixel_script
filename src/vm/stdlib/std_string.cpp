@@ -46,7 +46,7 @@ namespace compiler {
             if(paramsCount < 1) {
                 return 0;
             }
-            Value first = stack.self();
+            Value first = stack.selfRef();
             Value second = stack.local(0);
             first.deref();
             second.deref();
@@ -70,7 +70,7 @@ namespace compiler {
             if(paramsCount < 1) {
                 return 0;
             }
-            Value first = stack.self();
+            Value first = stack.selfRef();
             size_t name = (size_t)first.ud()->ptr();
             Name* a = (Name*)&name;
             std::string str = a->text();

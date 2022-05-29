@@ -18,7 +18,7 @@ namespace compiler {
         int __insert(Env* env) {
             auto& stackFrames = env->stackFrames();
             auto argCount = stackFrames.argCount();
-            if(argCount != 1) {
+            if(argCount != 2) {
                 DumpException except(env, ExecutionError::ArgumentCountMismatch, "insert");
                 throw except;
             }
@@ -44,10 +44,9 @@ namespace compiler {
             Value key = stackFrames.local(0);
             key.deref();
             auto it = map->find(key);
-            if(it == map->end()) {
-                return 0;
+            if(it != map->end()) {
+                map->erase(it);
             }
-            map->erase(it);
             return 0;
         }
 
@@ -81,7 +80,7 @@ namespace compiler {
         int __find(Env* env) {
             auto& stackFrames = env->stackFrames();
             auto argCount = stackFrames.argCount();
-            if(argCount != 2) {
+            if(argCount != 1) {
                 DumpException except(env, ExecutionError::ArgumentCountMismatch, "find");
                 throw except;
             }
@@ -106,12 +105,23 @@ namespace compiler {
             { __size, "size" },
             { __clear, "clear" },
             { __find, "find" },
+            { __find, "__field" },
         };
 
-        UserdataObject* create(Env* env) {
+        int create(Env* env) {
+            assert(mapLayout && "vectorLayout is null");
             StdMap* map = new StdMap();
             UserdataObject* obj = new UserdataObject(map, mapLayout);
-            return obj;
+            auto& stackFrames = env->stackFrames();
+            auto argCount = stackFrames.argCount();
+            assert((argCount & 1) == 0);
+            for(uint32_t i = 0; i<argCount; i+=2 ) {
+                Value key = stackFrames.argAt(i); // derefed values
+                Value val = stackFrames.argAt(i+1); // derefed values
+                map->emplace(key, val);
+            }
+            stackFrames.push(Value(obj));
+            return 1;
         }
 
         void init(Env* env) {
@@ -123,10 +133,6 @@ namespace compiler {
             }
         }
 
-        void __privateAdd(UserdataObject* vec, Value const& key, Value const& val) {
-            StdMap* map = (StdMap*)vec->ptr();
-            map->insert(std::make_pair(key, val));
-        }
     }
 
 }

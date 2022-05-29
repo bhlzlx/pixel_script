@@ -46,12 +46,15 @@ namespace compiler {
         size_t argCount() const;
         void reserveValues(size_t count);
         void popN(size_t n);
+        // 
+        Value argAt(uint32_t index);
         Value local(uint32_t index);
         // 用于运算，有写回的必要
         Value& topLocalRef(uint32_t index);
         Value topLocal(uint32_t index);
         Value retVal() const;
         Value package();
+        Value selfRef();
         Value self();
         Value const* constants() const;
         Instruction const* instr();

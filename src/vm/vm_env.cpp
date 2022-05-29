@@ -43,60 +43,6 @@ namespace compiler {
         return pack;
     }
 
-    void Env::traverseAST(Node const* ast, TraverseCallBack& callBack) {
-        switch(ast->structType()) {
-            case SType::Function: {
-                auto func = static_cast<Function const*>(ast);
-                callBack(func->body());
-                traverseAST(func->body(), callBack);
-                break;
-            }
-            case SType::MultiExpr: {
-                auto block = static_cast<MultiExpr const*>(ast);
-                for(auto& expr : block->expressions()) {
-                    callBack(expr);
-                    traverseAST(expr, callBack);
-                }
-                break;
-            }
-            case SType::If: {
-                auto ifNode = static_cast<IfStmt const*>(ast);
-                callBack(ifNode->condition());
-                traverseAST(ifNode->condition(), callBack);
-                callBack(ifNode->thenBranch());
-                traverseAST(ifNode->thenBranch(), callBack);
-                callBack(ifNode->elseBranch());
-                traverseAST(ifNode->elseBranch(), callBack);
-                break;
-            }
-            case SType::BinaryOp: {
-                auto binOp = static_cast<BinaryOpExpr const*>(ast);
-                callBack(binOp->left());
-                traverseAST(binOp->left(), callBack);
-                callBack(binOp->right());
-                traverseAST(binOp->right(), callBack);
-                break;
-            }
-            case SType::Pair: {
-                auto pair = static_cast<PairExpr const*>(ast);
-                callBack(pair->first());
-                traverseAST(pair->first(), callBack);
-                if(pair->second()) {
-                    callBack(pair->second());
-                    traverseAST(pair->second(), callBack);
-                }
-                break;
-            }
-            case SType::Leaf: { // current is leaf, no need to traverse
-                break;
-            }
-            default: {
-                assert(false);
-                break;
-            }
-        }
-    }
-
     bool Env::compileCodeChunk(char const* mod, Node* ast, DebugInfoMap* debugInfoMap)  {
         if(ast->structType() == SType::MultiExpr) {
             MultiExpr* exprs = (MultiExpr*)ast;
@@ -277,7 +223,7 @@ namespace compiler {
                 break;
             }
             case ScopeType::Member: {
-                auto self = stackFrames().self();
+                auto self = stackFrames().selfRef();
                 self.deref();
                 rst = self[loc];
                 break;
@@ -301,7 +247,7 @@ namespace compiler {
                 break;
             }
             case ScopeType::Self: {
-                rst = stackFrames().self();
+                rst = stackFrames().selfRef();
                 break;
             }
             default: {
@@ -475,7 +421,7 @@ namespace compiler {
                         case PrimeVType::Userdata: {
                             UserdataObject* ud = obj.ud();
                             stackFrames().push(field); // 压入参数
-                            callUserdataMethod(this, obj, lib_keywords::___index, 1); // 调用 __index，结果会压栈
+                            UserdataCallFunction(this, obj, lib_keywords::___index, 1); // 调用 __index，结果会压栈
                             break;
                         }
                         default: {
@@ -490,7 +436,7 @@ namespace compiler {
                         obj = stackFrames().topLocal(instr.src);
                         obj.deref();
                     } else if(instr.srcType == (uint32_t)ScopeType::Self) {
-                        obj = stackFrames().self();
+                        obj = stackFrames().selfRef();
                         obj.deref();
                     } else {
                         assert(false);
@@ -519,7 +465,11 @@ namespace compiler {
                     if(instr.pop) {
                         stackFrames().popN(instr.pop);
                     }
-                    stackFrames().push(obj[field.stringValue()]);
+                    if(obj.type() == PrimeVType::Object) {
+                        stackFrames().push(obj[field.stringValue()]);
+                    } else {
+                        UserdataGetField(this, obj, field.stringValue());
+                    }
                     break;
                 }
                 default: {

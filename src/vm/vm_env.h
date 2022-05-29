@@ -48,9 +48,7 @@ namespace compiler {
             SymbolLayout*   classLayout;        // class symbol layout  
         };
         bool locateIdentifier(IdLocateEnv env, Identifier const* id);
-        void traverseAST(Node const* ast, TraverseCallBack& callBack);
         void updateEvaluingNode(Node const* ast);
-        // std::vector<Token> postprocessFunction(Function* ast, IdLocateEnv env);
     public:
 
         Env();
@@ -100,26 +98,5 @@ namespace compiler {
         void execute();
 
         Value _valueInScope( ScopeType scope, uint32_t loc, bool readonly = false);
-        // /**
-        //  * @brief 计算一个节点的值
-        // **/
-        // Value eval(Node const* ast);
-
-        // /**
-        //  * @brief 
-        //  *   二元表达式有点特殊，它是少数直接跟值打交道的，所以单独拿出来实现了
-        //  * @param op 
-        //  * @return Value 
-        //  */
-        // Value evalBinaryOp(Token op, Value a, Value b);
-
-        // /**
-        //  * @brief 
-        //  *   计算一个标识符的值，是某个已经存在的于变量表里的变量引用
-        //  * @param id 
-        //  * @return Value 
-        //  */
-        // Value evalIdentifier(Identifier const* id);
-
     };
 }

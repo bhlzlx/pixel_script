@@ -18,7 +18,7 @@ namespace compiler {
                 DumpException except(env, ExecutionError::ArgumentCountMismatch, "push_back");
                 throw except;
             }
-            auto selfVal = stackFrames.self();
+            auto selfVal = stackFrames.selfRef();
             selfVal.deref();
             UserdataObject* self = selfVal.ud();
             StdVector* vec = (StdVector*)self->ptr();
@@ -35,7 +35,7 @@ namespace compiler {
                 DumpException except(env, ExecutionError::ArgumentCountMismatch, "at");
                 throw except;
             }
-            auto selfVal = stackFrames.self();
+            auto selfVal = stackFrames.selfRef();
             selfVal.deref();
             UserdataObject* self = selfVal.ud();
             StdVector* vec = (StdVector*)self->ptr();
@@ -62,7 +62,7 @@ namespace compiler {
                 DumpException except(env, ExecutionError::ArgumentCountMismatch, "erase");
                 throw except;
             }
-            auto selfVal = stackFrames.self();
+            auto selfVal = stackFrames.selfRef();
             selfVal.deref();
             UserdataObject* self = selfVal.ud();
             StdVector* vec = (StdVector*)self->ptr();
@@ -90,7 +90,7 @@ namespace compiler {
                 DumpException except(env, ExecutionError::ArgumentCountMismatch, "size");
                 throw except;
             }
-            auto selfVal = stackFrames.self();
+            auto selfVal = stackFrames.selfRef();
             selfVal.deref();
             UserdataObject* self = selfVal.ud();
             StdVector* vec = (StdVector*)self->ptr();
