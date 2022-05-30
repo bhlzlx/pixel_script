@@ -33,7 +33,8 @@ int main(int argc, char** argv) {
     auto prog = builder.buildAST(&env, buffer, &debugInfo);
     // compiler::MultiExpr* multiExpr = dynamic_cast<compiler::MultiExpr*>(prog.node);
     char const* module = "bytecode";
-    auto rst = env.compileCodeChunk(module, prog.node, &debugInfo);
+    auto rst = env.preprocessModuleAST(module, prog.node, &debugInfo);
+    env.compileModule(module);
     env.initializeModule(module);
     auto val = env.callFuncWithPath("game.test.entry");
     return 0;

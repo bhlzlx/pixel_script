@@ -32,9 +32,9 @@ namespace compiler {
 
     using BridgeFunc = int(*)(Env* env);
 
-    struct BridgeFuncPair {
-        BridgeFunc func;
+    struct BridgeRegInfo {
         char const* name;
+        BridgeFunc func;
     };
 
     namespace ast {

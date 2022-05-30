@@ -163,8 +163,7 @@ namespace compiler {
         Value                   _package;
         Module*                 _module;
         SymbolLayout*           _symbolLayout;
-        Instruction const*      _entry;
-        Instruction const*      _end;
+        Instruction const*      _moduleInstr;
         uint32_t                _ip;
         uint32_t                _argc;
         uint32_t                _localSize;
@@ -175,15 +174,14 @@ namespace compiler {
             , _package(package)
             , _module(module)
             , _symbolLayout(nullptr)
-            , _entry(nullptr)
-            , _end(nullptr)
+            , _moduleInstr(nullptr)
             , _ip(0)
             , _localSize(0)
         {}
 
-        void setInstructionRange(Instruction const* entry, Instruction const* end) {
-            _entry = entry;
-            _end = end;
+        void setInstructionPtr(Instruction const* moduleInstr, uint32_t ip) {
+            _moduleInstr = moduleInstr;
+            _ip = ip;
         }
 
         void setArgc(uint32_t argc) {
@@ -209,12 +207,7 @@ namespace compiler {
         }
 
         Instruction const* instruction() const {
-            return _entry;
-        }
-
-        void setInstruction(Instruction const* instr) {
-            _entry = instr;
-            _ip = 0;
+            return _moduleInstr;
         }
 
         size_t ip() const {

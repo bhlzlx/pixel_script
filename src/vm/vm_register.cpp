@@ -73,7 +73,7 @@ namespace compiler {
         _frame.ip = func->ip();
         _frame.package = func->package();
         _frame.instr = func->instruction();
-        _frame.constants = func->module()->constants();
+        _frame.constants = func->module()->bytecode()->constants();
         _frame.func = func;
     }
 

@@ -4,7 +4,7 @@
 
 namespace compiler {
 
-    namespace io { 
+    namespace std_io_impl { 
 
         int print(Env* env) {
             auto& stack = env->stackFrames();
@@ -18,8 +18,8 @@ namespace compiler {
             return 0;
         }
 
-        BridgeFuncPair regItems[] = {
-            {print, "print"}
+        BridgeRegInfo regItems[] = {
+            {"print", print}
         };
 
         bool init(Env* env) {

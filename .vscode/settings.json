@@ -60,6 +60,7 @@
         "xiosbase": "cpp",
         "xlocinfo": "cpp",
         "xlocmes": "cpp",
-        "xloctime": "cpp"
+        "xloctime": "cpp",
+        "sstream": "cpp"
     }
 }

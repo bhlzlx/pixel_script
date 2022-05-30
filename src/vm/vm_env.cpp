@@ -1,9 +1,6 @@
 #include <cassert>
 #include "vm_env.h"
-#include "stdlib/std_io.h"
-// #include "stdlib/std_string.h"
-#include "stdlib/std_vec.h"
-#include "stdlib/std_map.h"
+#include "stdlib/stdlib.h"
 #include "internal_types/vm_userdata.h"
 #include "internal_types/vm_primitive_types.h"
 #include <sstream>
@@ -17,17 +14,11 @@ namespace compiler {
         _package = Value(layout);
         compiler::lang_keywords::init(this);
         compiler::lib_keywords::init(this);
-        compiler::std_map_impl::init(this);
-        compiler::std_vec_impl::init(this);
-        io::init(this);
+        compiler::stdlib::init(this);
     }
 
     Name Env::createName(char const* str) {
         return _namePool.getName(str);
-    }
-
-    void Env::updateEvaluingNode(Node const* ast) {
-        _funcEnvs.back().evaluingNode = ast;
     }
     
     Value Env::preparePackage( Node* ast ) {
@@ -43,7 +34,7 @@ namespace compiler {
         return pack;
     }
 
-    bool Env::compileCodeChunk(char const* mod, Node* ast, DebugInfoMap* debugInfoMap)  {
+    bool Env::preprocessModuleAST(char const* mod, Node* ast, DebugInfoMap* debugInfoMap)  {
         if(ast->structType() == SType::MultiExpr) {
             MultiExpr* exprs = (MultiExpr*)ast;
             if(!exprs->expressions().size()) {
@@ -79,13 +70,7 @@ namespace compiler {
                     auto rst = packObj->addSymbol(var->name().stringLiteral(), SymbolType::Variable, Value(), moduleName);
                     assert(rst.item);
                     if(var->valueExpr()) { // 创建一个特别的function，给var初始化，方便代码重用，处理
-                        MultiExpr* funcBody = new MultiExpr(VType::Block);
-                        funcBody->addExpr(var->valueExpr());
-                        Function* func = new Function(VType::Closure);
-                        func->setBody(funcBody);
-                        func->setHostPackage(package);
-                        func->setModule(moduleName);
-                        module->addInitliaze(rst.loc, func); // 添加变量到初始化列表
+                        module->addInitialize(rst.loc, var); // 添加变量到初始化列表
                     }
                 } else if(expr->structType() == SType::Class) { // 对 Class 节点处理
                     Class* clazz = (Class*)expr; 
@@ -125,37 +110,6 @@ namespace compiler {
             return false;
         }
     }
-
-    bool Env::locateIdentifier(IdLocateEnv env, Identifier const* id) {
-        auto name = id->token().stringLiteral();
-        auto symbolLoc = env.functionLayout->querySymbolLoc(name);
-        if(~symbolLoc != 0) { // local var
-            id->setValue( IdentifierType::FunctionLocal, symbolLoc);
-            return true;
-        } else {
-            symbolLoc = env.classLayout->querySymbolLoc(name);
-            if(~symbolLoc != 0) {
-                id->setValue(IdentifierType::ClassMember, symbolLoc);
-                return true;
-            } else { // current package var
-                symbolLoc = env.packageLayout->querySymbolLoc(name);
-                if(~symbolLoc != 0) {
-                    id->setValue( IdentifierType::CurrentPackage, symbolLoc);
-                    return true;
-                }
-                else { // global
-                    symbolLoc = _package.asObject()->symbolLayout()->querySymbolLoc(name);
-                    if(~symbolLoc != 0) {
-                        id->setValue( IdentifierType::Global, symbolLoc);
-                        return true;
-                    }
-                    return false;
-                }
-            }
-        }
-        return false;
-    }
-
 
     int Env::call(int argc) {
         auto fn = stackFrames().topLocal(0).asBytecodeFunc();
@@ -482,16 +436,22 @@ namespace compiler {
 
     }
 
+    void Env::compileModule(char const* module) {
+        auto modName = createName(module);
+        auto mod = getModule(modName);
+        mod->compileBytecode(this);
+    }
+
     void Env::initializeModule(char const* module) {
         auto modName = createName(module);
         auto mod = getModule(modName);
         mod->initialize(this);
     }
 
-    bool Env::postprocessModule(char const* module) {
+    bool Env::checkIdentifiers(char const* module) {
         auto modName = createName(module);
         auto mod = getModule(modName);
-        auto rst =  mod->postprocess(this);
+        auto rst =  mod->checkIdentifiers(this);
         if(rst.size()) {
             return false;
         }
@@ -519,16 +479,17 @@ namespace compiler {
     }
 
     std::string Env::backtrace(char const* errorType) const {
-        std::stringstream ss;
-        ss << "[backtrace] : " << errorType << std::endl;
-        for(auto it = _funcEnvs.rbegin(); it != _funcEnvs.rend(); ++it) {
-            auto module = getModule(it->func->module());
-            auto debugInfo = module->debugInfo().find(it->evaluingNode);
-            ss << "  ";
-            ss << "[" << it->func->module().text() << "] :"; 
-            ss << "" << it->func->name().stringLiteral().text() << "()";
-            ss << debugInfo->second.line << ":" << debugInfo->second.column << std::endl;
-        }
-        return ss.str();
+        return "";
+        // std::stringstream ss;
+        // ss << "[backtrace] : " << errorType << std::endl;
+        // for(auto it = _funcEnvs.rbegin(); it != _funcEnvs.rend(); ++it) {
+        //     auto module = getModule(it->func->module());
+        //     auto debugInfo = module->debugInfo().find(it->evaluingNode);
+        //     ss << "  ";
+        //     ss << "[" << it->func->module().text() << "] :"; 
+        //     ss << "" << it->func->name().stringLiteral().text() << "()";
+        //     ss << debugInfo->second.line << ":" << debugInfo->second.column << std::endl;
+        // }
+        // return ss.str();
     }
 }

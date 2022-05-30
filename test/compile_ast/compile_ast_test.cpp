@@ -35,8 +35,8 @@ int main(int argc, char** argv) {
     assert(prog);
     // compiler::MultiExpr* multiExpr = dynamic_cast<compiler::MultiExpr*>(prog.node);
     char const* module = "oop_test";
-    auto rst = env.compileCodeChunk(module, prog.node, &debugInfo);
-    env.initializeModule(module);
+    auto rst = env.preprocessModuleAST(module, prog.node, &debugInfo);
+    env.compileModule(module);
     auto val = env.callFuncWithPath("game.test.entry");
     return 0;
 }

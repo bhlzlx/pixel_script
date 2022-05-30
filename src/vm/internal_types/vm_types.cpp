@@ -313,7 +313,11 @@ namespace compiler {
 
     void BytecodeFunction::setSymbolLayout(SymbolLayout* symbolLayout) {
         _symbolLayout = symbolLayout;
-        _localSize = _symbolLayout->size() - _argc;
+        if(_symbolLayout) {
+            _localSize = _symbolLayout->size() - _argc;
+        } else {
+            _localSize = 0;
+        }
     }
 
 } // namespace compiler

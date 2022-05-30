@@ -24,31 +24,17 @@ namespace compiler {
     class Env {
         friend class Module;
     private:
-        struct FuncEnv {
-            Function*           func;   // function ast node
-            Value               package; // current package
-            Value               self;
-            Node const*         evaluingNode;
-            bool                retNow;
-        };
     private:
         NamePool                                _namePool;
         Value                                   _package;
         StackFrames                             _stackFrames;
-        std::vector<FuncEnv>                    _funcEnvs;
         std::vector<SymbolLayout*>              _symbolLayouts;
         std::map<Name, Module*, Name::FastLess> _modules;
     private:
         // utility functions
-        FuncEnv const* funcEnv() { return &_funcEnvs.back(); }
         Value preparePackage(Node* ast);
-        struct IdLocateEnv {
-            SymbolLayout*   functionLayout;     // local symbol layout
-            SymbolLayout*   packageLayout;      // current package symbol layout
-            SymbolLayout*   classLayout;        // class symbol layout  
-        };
-        bool locateIdentifier(IdLocateEnv env, Identifier const* id);
-        void updateEvaluingNode(Node const* ast);
+        void _executeBinaryOp(Opcode op);
+        Value _valueInScope( ScopeType scope, uint32_t loc, bool readonly = false);
     public:
 
         Env();
@@ -80,23 +66,30 @@ namespace compiler {
          * @return true 
          * @return false 
          */
-        bool compileCodeChunk(char const* module, Node* ast, DebugInfoMap* debugInfoMap = nullptr);
-        bool postprocessModule(char const* module);
+        bool preprocessModuleAST(char const* module, Node* ast, DebugInfoMap* debugInfoMap = nullptr);
+        bool checkIdentifiers(char const* module);
+        void compileModule(char const* module);
         void initializeModule(char const* module);
-        int callBytecodeFunc();
-
         /**
          * @brief only for test
          * 
          * @param func 
          * @return Value 
          */
-        int call(int argc);
-        Value callFuncWithPath(std::string const& func);
 
-        void _executeBinaryOp(Opcode op);
+        Value callFuncWithPath(std::string const& func);
+        
+        /**
+         * @brief 
+         *   bridge utility function
+         * 
+         * @param argc 
+         * @return int 
+         */
+        int call(int argc);
+
+        // vm execution functions
         void execute();
 
-        Value _valueInScope( ScopeType scope, uint32_t loc, bool readonly = false);
     };
 }

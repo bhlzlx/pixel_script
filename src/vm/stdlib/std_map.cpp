@@ -98,14 +98,29 @@ namespace compiler {
             return 1;
         }
 
+        int __destroy(Env* env) {
+            auto& stackFrames = env->stackFrames();
+            auto argCount = stackFrames.argCount();
+            if(argCount != 0) {
+                DumpException except(env, ExecutionError::ArgumentCountMismatch, "destroy");
+                throw except;
+            }
+            auto selfVal = stackFrames.self();
+            UserdataObject* self = selfVal.ud();
+            StdMap* m = (StdMap*)self->ptr();
+            delete m;
+            return 0;
+        }
+
         // generate reg items
-        BridgeFuncPair regItems[] = {
-            { __insert, "insert" },
-            { __erase, "erase" },
-            { __size, "size" },
-            { __clear, "clear" },
-            { __find, "find" },
-            { __find, "__field" },
+        BridgeRegInfo regItems[] = {
+            {"insert", __insert },
+            {"erase", __erase },
+            {"size", __size },
+            {"clear", __clear },
+            {"find", __find},
+            {"__field", __find},
+            {"__destroy", __destroy},
         };
 
         int create(Env* env) {

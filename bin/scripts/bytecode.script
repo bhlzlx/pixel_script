@@ -1,5 +1,8 @@
 package game.test
 
+var PLAYER_MAX = 300
+var GROUP_MAX = PLAYER_MAX * 4
+
 class Point {
     var x
     var y

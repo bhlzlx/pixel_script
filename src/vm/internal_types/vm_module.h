@@ -24,19 +24,12 @@ namespace compiler {
     class Module {
     private:
         Value                                   _package;       // 模块所在包
-        std::vector<std::pair<uint32_t, Node*>> _initliazeList; // 初始化列表
-        // std::vector<Node*>                      _functions;
-        // std::vector<Value>                      _classes;
-        DebugInfoMap                            _debugInfos;
-
         Node*                                   _ast;
-
+        std::vector<std::pair<uint32_t,ast::Node const*>>           
+                                                _initializeExprs;
         Bytecode                                _bytecode;
-
-        std::vector<std::vector<Instruction>>   _funcInstrs;
-        std::vector<Value>                      _constants;
-
-        std::map<Name, uint32_t>                _codeOffset; // function code offsets
+        BytecodeFunction*                       _initializeFunc;
+        DebugInfoMap                            _debugInfos;
 
         struct IdLocateEnv {
             SymbolLayout*   functionLayout;     // local symbol layout
@@ -44,12 +37,19 @@ namespace compiler {
             SymbolLayout*   packageLayout;      // current package symbol layout
             SymbolLayout*   globalLayout;       // global symbol layout
         };
+
+    private:
+        std::vector<Token> _checkVars(Env* env, Node const* ast, IdLocateEnv locateEnv);
+        std::vector<Token> _checkFunctions(Env* env, Node const* ast, IdLocateEnv locateEnv);
+        void _compileNode(ast::Node const* node, Bytecode* bytecode);
+        bool _locateIdentifier(IdLocateEnv env, Identifier const* id);
+
     public:
         using TraverseCallBack = std::function<void(Node const*)>;
         Module()
             : _package()
             , _ast(nullptr)
-            , _initliazeList()
+            , _initializeExprs()
         {}
         void setAst(Node* ast) {
             _ast = ast;
@@ -60,20 +60,18 @@ namespace compiler {
         DebugInfoMap const& debugInfo() const {
             return _debugInfos;
         }
-        Value const* constants() const {
-            return _constants.data();
-        }
         void setHostPackage(Value package);
-        void addInitliaze(uint32_t loc, Node* node);
-
+        void addInitialize(uint32_t loc, Node* node);
         void traverseAST(Node const* ast, TraverseCallBack& callBack) ;
 
-        std::vector<Token> postprocess(Env* env);
-        std::vector<Token> postprocessFunction(Env* env, Node* ast, IdLocateEnv locateEnv);
-        bool locateIdentifier(IdLocateEnv env, Identifier const* id);
+        std::vector<Token> checkIdentifiers(Env* env);
+
+        // 编译成字节码
+        void compileBytecode(Env* env);
+
         void initialize(Env* env);
 
-        void compileNode(ast::Node const* node, Bytecode* bytecode);
+        Bytecode const* bytecode() const { return &_bytecode; }
         
     };
 

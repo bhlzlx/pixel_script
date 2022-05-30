@@ -39,40 +39,48 @@ namespace compiler {
         }
     }
 
-    void Module::addInitliaze(uint32_t loc, Node* node) {
+    void Module::addInitialize(uint32_t loc, Node* node) {
         if(node) {
-            _initliazeList.push_back(std::make_pair(loc, node));
+            _initializeExprs.push_back(std::make_pair(loc, node));
         }
     }
 
-    void Module::initialize(Env* env) {
-        postprocess(env);
+    /**
+     * @brief 
+     *  把所有函数编译成字节码
+     * 把所有全局变量初始化逻辑编译成字节码
+     * 
+     * @param env 
+     */
+    void Module::compileBytecode(Env* env) {
+        checkIdentifiers(env);
         IdLocateEnv locateEnv = {
             nullptr, 
             nullptr,
             _package.asObject()->symbolLayout(),
             env->root().asObject()->symbolLayout()
         };
-        Bytecode bytecode;
+        Instruction returnInstr;
+        returnInstr.opcode = (uint32_t)Opcode::Return;
+        std::vector<BytecodeFunction*> compiledFunctions;
+        std::vector<uint32_t> compiledFunctionOffsets;
         MultiExpr* multiExpr = _ast->asMultiExpr();
         // 处理所有的全局函数与类成员函数
+        BytecodeFunction* bytecodeFunc = nullptr;
         for(auto const& expr :multiExpr->expressions()) {
             auto globalFunc = expr->asFunction();
             if(globalFunc) {
                 // 全局函数 
                 auto name = globalFunc->name().stringLiteral();
-                auto byteFunc = _package[name].asBytecodeFunc();
-                compileNode(globalFunc, &bytecode);
-                _funcInstrs.emplace_back();
-                bytecode.exportInstr(_funcInstrs.back());
-                if(_funcInstrs.back().back().opcode != (uint32_t)Opcode::Return) {
-                    Instruction instr;
-                    instr.opcode = (uint32_t)Opcode::Return;
-                    _funcInstrs.back().push_back(instr);
+                bytecodeFunc = _package[name].asBytecodeFunc();
+                compiledFunctionOffsets.push_back(_bytecode.size()); // save offsets
+                compiledFunctions.push_back(bytecodeFunc);
+                _compileNode(globalFunc, &_bytecode);
+                if(_bytecode.getInstr(_bytecode.size() - 1).opcode != (uint32_t)Opcode::Return) {
+                    _bytecode.pushInstr(returnInstr);
                 }
-                byteFunc->setArgc(globalFunc->params().size());
-                byteFunc->setSymbolLayout(globalFunc->symbolLayout());
-                byteFunc->setInstruction(_funcInstrs.back().data());
+                bytecodeFunc->setArgc(globalFunc->params().size());
+                bytecodeFunc->setSymbolLayout(globalFunc->symbolLayout());
             } else {
                 auto clazz = expr->asClass();
                 if(clazz) {
@@ -83,42 +91,52 @@ namespace compiler {
                             Name className = clazz->name();
                             auto classObject = _package[className];
                             auto memFuncValue = classObject[memFunc->name().stringLiteral()];
-                            auto bytecodeFunc = memFuncValue.asBytecodeFunc();
+                            bytecodeFunc = memFuncValue.asBytecodeFunc();
                             assert(bytecodeFunc);
-                            compileNode(memFunc, &bytecode);
-                            _funcInstrs.emplace_back();
-                            bytecode.exportInstr(_funcInstrs.back());
-                            if(_funcInstrs.back().back().opcode != (uint32_t)Opcode::Return) {
-                                Instruction instr;
-                                instr.opcode = (uint32_t)Opcode::Return;
-                                _funcInstrs.back().push_back(instr);
+                            compiledFunctionOffsets.push_back(_bytecode.size());
+                            compiledFunctions.push_back(bytecodeFunc);
+                            _compileNode(memFunc, &_bytecode);
+                            // _funcInstrs.emplace_back();
+                            if(_bytecode.getInstr(_bytecode.size() - 1).opcode == (uint32_t)Opcode::Return) {
+                                _bytecode.pushInstr(returnInstr);
                             }
                             bytecodeFunc->setArgc(memFunc->params().size());
                             bytecodeFunc->setSymbolLayout(memFunc->symbolLayout());
-                            bytecodeFunc->setInstruction(_funcInstrs.back().data());
                         }
                     }
                 }
             }
         }
-        bytecode.exportConstants(_constants);
-        // for (auto& pair : _initliazeList) {
-        //     auto loc = pair.first;
-        //     auto node = pair.second;
-        //     postprocessFunction(env, node, locateEnv);
-        //     Value valRef = _package[loc];
-        //     int retCount = env->callBytecodeFunc(Value(node));
-        //     assert(retCount == 1);
-        //     valRef = env->stackFrames().topLocal(0);
-        //     // valRef = env->stackValues().topLocal();
-        // }
+        for(size_t i = 0; i<compiledFunctions.size(); ++i) {
+            auto bytecodeFunc = compiledFunctions[i];
+            auto offset = compiledFunctionOffsets[i];
+            bytecodeFunc->setInstructionPtr(_bytecode.begin(), offset);
+        }
+        auto initializePos = _bytecode.size();
+        Instruction popInstr;
+        popInstr.opcode = (uint32_t)Opcode::Pop;
+        popInstr.pop = 1;
+        for (auto& pair : _initializeExprs) {
+            // auto loc = pair.first;
+            auto node = pair.second;
+            auto var = node->asVar();
+            if(var->valueExpr()) {
+                _compileNode(node, &_bytecode);
+                // _bytecode.pushInstr(popInstr);
+            }
+        }
+        _bytecode.pushInstr(returnInstr);
+        _initializeFunc = new BytecodeFunction(env->createName("__initialize"), _package, this);
+        _initializeFunc->setArgc(0);
+        _initializeFunc->setInstructionPtr(_bytecode.begin(), initializePos);
+        _initializeFunc->setSymbolLayout(nullptr);
     }
 
     void Module::setHostPackage(Value package) {
         _package = package;
     }
 
-    std::vector<Token> Module::postprocess(Env* env) {
+    std::vector<Token> Module::checkIdentifiers(Env* env) {
         IdLocateEnv locateEnv = {
             nullptr, // function local
             nullptr, // class
@@ -131,7 +149,7 @@ namespace compiler {
         for(auto const& expr :multiExpr->expressions()) {
             auto func = expr->asFunction();
             if(func) {
-                rst = postprocessFunction(env, func, locateEnv);
+                rst = _checkFunctions(env, func, locateEnv);
             } else {
                 auto clazz = expr->asClass();
                 if(clazz) {
@@ -140,17 +158,99 @@ namespace compiler {
                     for(auto const& stmt : body->expressions()) {
                         auto func = stmt->asFunction();
                         if(func) {
-                            auto errs = postprocessFunction(env, func, locateEnv);
+                            auto errs = _checkFunctions(env, func, locateEnv);
                             rst.insert(rst.end(), errs.begin(), errs.end());
                         }
                     }
                 }
             }
         }
+        // 处理初始化
+        locateEnv.classLayout = nullptr;
+        locateEnv.functionLayout = nullptr;
+
+        ast::Function* initializeFunc = new ast::Function(VType::None);
+        for(auto const& pair : _initializeExprs) {
+            auto loc = pair.first;
+            auto node = pair.second;
+            auto errs = _checkVars(env, node, locateEnv);
+            rst.insert(rst.end(), errs.begin(), errs.end());
+        }
+
         return rst;
     }
 
-    std::vector<Token> Module::postprocessFunction(Env* env, Node* ast, IdLocateEnv locateEnv) {
+    std::vector<Token> Module::_checkVars(Env* env, Node const* ast, IdLocateEnv locateEnv) {
+        assert(ast->valueType() == VType::Variable);
+
+        std::vector<Token> compilerErrors;
+
+        TraverseCallBack IdentifierTraverser = [&](compiler::Node const* node) {
+            auto valueType = node->valueType();
+            if(VType::Id == valueType) {
+                auto id = node->asId();
+                // IdLocateEnv locateEnv = {symLayout, func->hostPackage().asObject()->symbolLayout()};
+                auto parent = node->parent();
+                switch(parent->structType()) {
+                    case SType::Pair: { // define variable        
+                        switch(parent->valueType()) {
+                            case VType::DotAccess:
+                            case VType::FunctionCall:
+                            case VType::IndexAccess:
+                            case VType::Variable: {
+                                if(!_locateIdentifier(locateEnv, id)) {
+                                    assert(false);
+                                    compilerErrors.push_back(id->token());
+                                }
+                            }
+                            default: {
+                                // skip
+                                break;
+                            }
+                        }
+                        return;
+                    }
+                    case SType::BinaryOp: {
+                        auto binOp = parent->asBinaryExpr();
+                        if(binOp->op() == TokenType::Dot) {
+                            if(node == binOp->right()) {
+                                return;
+                            }
+                        }
+                        if(!_locateIdentifier(locateEnv, id)) {
+                            assert(false);
+                            compilerErrors.push_back(id->token());
+                        }
+                        return;
+                    }
+                    default: {
+                        if(!_locateIdentifier(locateEnv, id)) {
+                            assert(false);
+                            compilerErrors.push_back(id->token());
+                        }
+                    }
+                }
+            } else if(VType::FunctionCall == valueType) {
+                auto funcCall = node->asFunctionCall();
+                auto self = funcCall->self();
+                if(!self) { // 如果没有self，且id是类成员函数，则需要添加self对象
+                    auto funcExpr = funcCall->funcExpr();
+                    if(funcExpr->valueType() == VType::Id) {
+                        auto id = funcExpr->asId();
+                        if(!_locateIdentifier(locateEnv, id)) {
+                            assert(false);
+                            compilerErrors.push_back(id->token());
+                        }
+                    }
+                }
+            }
+        };
+        // traverse the ast
+        this->traverseAST(ast, IdentifierTraverser);
+        return compilerErrors;
+    }
+
+    std::vector<Token> Module::_checkFunctions(Env* env, Node const* ast, IdLocateEnv locateEnv) {
         assert(ast->structType() == SType::Function);
         SymbolLayout* symLayout = env->newSymbolLayout(SymbolLayoutType::Function);
         locateEnv.functionLayout = symLayout;
@@ -180,7 +280,7 @@ namespace compiler {
          *   现在我们又有了新的后处理需求，需要看函数调用引用的self对象，如果是成员函数，则需要给FunctionCall添加self节点
          */
 
-        TraverseCallBack processor = [&](compiler::Node const* node) {
+        TraverseCallBack IdentifierTraverser = [&](compiler::Node const* node) {
             auto valueType = node->valueType();
             if(VType::Id == valueType) {
                 auto id = node->asId();
@@ -192,17 +292,17 @@ namespace compiler {
                             auto regRst = symLayout->regSymbol(id->token().stringLiteral(), SymbolType::Variable, Value(), func->module());
                             id->setValue(IdentifierType::FunctionLocal, regRst.loc);
                         } else if(parent->valueType() == VType::DotAccess) {
-                            if(!locateIdentifier(locateEnv, id)) {
+                            if(!_locateIdentifier(locateEnv, id)) {
                                 assert(false);
                                 compilerErrors.push_back(id->token());
                             }
                         } else if(parent->valueType() == VType::FunctionCall) {
-                            if(!locateIdentifier(locateEnv, id)) {
+                            if(!_locateIdentifier(locateEnv, id)) {
                                 assert(false);
                                 compilerErrors.push_back(id->token());
                             }
                         } else if(parent->valueType() == VType::IndexAccess) {
-                            if(!locateIdentifier(locateEnv, id)) {
+                            if(!_locateIdentifier(locateEnv, id)) {
                                 assert(false);
                                 compilerErrors.push_back(id->token());
                             }
@@ -216,14 +316,14 @@ namespace compiler {
                                 return;
                             }
                         }
-                        if(!locateIdentifier(locateEnv, id)) {
+                        if(!_locateIdentifier(locateEnv, id)) {
                             assert(false);
                             compilerErrors.push_back(id->token());
                         }
                         return;
                     }
                     default: {
-                        if(!locateIdentifier(locateEnv, id)) {
+                        if(!_locateIdentifier(locateEnv, id)) {
                             assert(false);
                             compilerErrors.push_back(id->token());
                         }
@@ -236,7 +336,7 @@ namespace compiler {
                     auto funcExpr = funcCall->funcExpr();
                     if(funcExpr->valueType() == VType::Id) {
                         auto id = funcExpr->asId();
-                        if(!locateIdentifier(locateEnv, id)) {
+                        if(!_locateIdentifier(locateEnv, id)) {
                             assert(false);
                             compilerErrors.push_back(id->token());
                         }
@@ -249,22 +349,25 @@ namespace compiler {
             }
         };
         // traverse the ast
-        this->traverseAST(ast, processor);
+        this->traverseAST(ast, IdentifierTraverser);
         if(!compilerErrors.size()) {
-            Function* func = static_cast<Function*>(ast);
+            Function* func = const_cast<Function*>((Function const*)ast);
         }
         func->_valid = !compilerErrors.size();
         func->_compiled = true;
         return compilerErrors;
     }
 
-    bool Module::locateIdentifier(IdLocateEnv env, Identifier const* id) {
+    bool Module::_locateIdentifier(IdLocateEnv env, Identifier const* id) {
         if(id->token().stringLiteral() == lang_keywords::_self) {
             id->setValue(IdentifierType::Self, 0);
             return true;
         }
         auto name = id->token().stringLiteral();
-        auto symbolLoc = env.functionLayout->querySymbolLoc(name);
+        uint32_t symbolLoc = ~0;
+        if(env.functionLayout) {
+            symbolLoc = env.functionLayout->querySymbolLoc(name);
+        }
         if(~symbolLoc != 0) { // local symbol
             id->setValue( IdentifierType::FunctionLocal, symbolLoc);
             return true;
@@ -453,11 +556,11 @@ namespace compiler {
         }
     }
 
-    void Module::compileNode(ast::Node const* node, Bytecode* bytecode) {
+    void Module::_compileNode(ast::Node const* node, Bytecode* bytecode) {
         switch(node->structType()) {
             case SType::Function: {
                 auto func = node->asFunction();
-                compileNode(func->body(), bytecode);
+                _compileNode(func->body(), bytecode);
                 break;
             }
             case SType::MapItem: {
@@ -468,7 +571,7 @@ namespace compiler {
                 pushName.src = bytecode->getConstant(Value(key));
                 pushName.srcType = (uint32_t)ScopeType::Constant;
                 bytecode->pushInstr(pushName); // push key
-                compileNode(item->value(), bytecode); // push value
+                _compileNode(item->value(), bytecode); // push value
                 break;
             }
             case SType::MultiExpr: {
@@ -476,7 +579,7 @@ namespace compiler {
                 switch(node->valueType()) {
                     case VType::Vector: {
                         for(auto& expr : block->expressions()) {
-                            compileNode(expr, bytecode); // map items
+                            _compileNode(expr, bytecode); // map items
                         }
                         Instruction pushFunc;
                         pushFunc.opcode = (uint32_t)Opcode::Push;
@@ -492,7 +595,7 @@ namespace compiler {
                     }
                     case VType::Map: {
                         for(auto& item : block->expressions()) {
-                            compileNode(item, bytecode);
+                            _compileNode(item, bytecode);
                         }
                         Instruction pushFunc;
                         pushFunc.opcode = (uint32_t)Opcode::Push;
@@ -508,7 +611,7 @@ namespace compiler {
                     }
                     case VType::Block: {
                         for(auto& expr : block->expressions()) {
-                            compileNode(expr, bytecode);
+                            _compileNode(expr, bytecode);
                             Instruction pop = {};
                             pop.opcode = (uint32_t)Opcode::Pop;
                             pop.pop = 1;
@@ -526,8 +629,8 @@ namespace compiler {
             }
             case SType::BinaryOp: {
                 auto binOp = node->asBinaryExpr();
-                compileNode(binOp->left(), bytecode);
-                compileNode(binOp->right(), bytecode);
+                _compileNode(binOp->left(), bytecode);
+                _compileNode(binOp->right(), bytecode);
                 if(binOp->op() == TokenType::Assign) {
                     Instruction assign = {};
                     assign.opcode = (uint32_t)Opcode::Move;
@@ -603,7 +706,7 @@ namespace compiler {
             case SType::Return: {
                 auto ret = node->asReturn();
                 if(ret->expr()) {
-                    compileNode(ret->expr(), bytecode); // will push expr result to stack
+                    _compileNode(ret->expr(), bytecode); // will push expr result to stack
                 }
                 Instruction instr;
                 instr.opcode = (uint32_t)Opcode::Return; // jump to the last frame pc+1, 
@@ -616,9 +719,9 @@ namespace compiler {
                         auto var = node->asVar();
                         if(var->valueExpr()) {
                             // eval the var's ref to the top 
-                            compileNode(var->id(), bytecode);
+                            _compileNode(var->id(), bytecode);
                             // eval the value to the top
-                            compileNode(var->valueExpr(), bytecode);
+                            _compileNode(var->valueExpr(), bytecode);
                             Instruction instr;// move value to variable && pop the value
                             instr.opcode = (uint32_t)Opcode::Move; 
                             instr.src = 0;
@@ -638,13 +741,13 @@ namespace compiler {
                     case VType::WhileStmt: {
                         auto whileStmt = node->asWhile();
                         uint32_t jumpBackPos = bytecode->size();
-                        compileNode(whileStmt->condition(), bytecode);
+                        _compileNode(whileStmt->condition(), bytecode);
                         Instruction jz = {};
                         jz.jump.opcode = (uint32_t)Opcode::JumpZero;
                         jz.jump.pop = 1; // pop the condition result
                         bytecode->pushInstr(jz); // 跳转位置一会才能计算出来
                         size_t jzIdx = bytecode->size()-1;
-                        compileNode(whileStmt->body(), bytecode);
+                        _compileNode(whileStmt->body(), bytecode);
                         Instruction jmpToCond = {};
                         jmpToCond.jump.opcode = (uint32_t)Opcode::Jump;
                         jmpToCond.jump.pos = jumpBackPos;
@@ -654,8 +757,8 @@ namespace compiler {
                     }
                     case VType::DotAccess: {
                         auto dotAccess = node->asDotAccess();
-                        compileNode(dotAccess->obj(), bytecode);
-                        compileNode(dotAccess->field(), bytecode);
+                        _compileNode(dotAccess->obj(), bytecode);
+                        _compileNode(dotAccess->field(), bytecode);
                         Instruction instr;
                         instr.opcode = (uint32_t)Opcode::GetField;
                         instr.src = 1;
@@ -668,8 +771,8 @@ namespace compiler {
                     }
                     case VType::IndexAccess: {
                         auto indexAccess = node->asIndexAccess();
-                        compileNode(indexAccess->obj(), bytecode);
-                        compileNode(indexAccess->index(), bytecode);
+                        _compileNode(indexAccess->obj(), bytecode);
+                        _compileNode(indexAccess->index(), bytecode);
                         Instruction instr;
                         instr.opcode = (uint32_t)Opcode::GetIndexed;
                         bytecode->pushInstr(instr);
@@ -691,12 +794,12 @@ namespace compiler {
                         auto args = call->args();
                         if(args) {
                             for(auto& arg : args->expressions()) {
-                                compileNode(arg, bytecode);
+                                _compileNode(arg, bytecode);
                             }
                         }
                         // 设置self寄存器
                         if(call->self()) {
-                            compileNode(call->self(), bytecode); // push self on stack
+                            _compileNode(call->self(), bytecode); // push self on stack
                         } else {
                             // 直接拿当前的self传
                             Instruction instr = {};
@@ -710,7 +813,7 @@ namespace compiler {
                         if(call->self()) { 
                             // a.b.func(args)
                             assert(call->funcExpr()->asLeaf() && "must be a leaf!");
-                            compileNode(call->funcExpr(), bytecode); // 这里的funcExpr应该是一个field，字符串
+                            _compileNode(call->funcExpr(), bytecode); // 这里的funcExpr应该是一个field，字符串
                             Instruction getField = {};
                             getField.opcode = (uint32_t)Opcode::GetField;
                             getField.src = 1; // self的位置
@@ -721,7 +824,7 @@ namespace compiler {
                             bytecode->pushInstr(getField);
                         } else {
                             // a.b.d()(args) 调用一个方法返回的函数对象，一定没有this，而且这个值是动态获取的
-                            compileNode(call->funcExpr(), bytecode); 
+                            _compileNode(call->funcExpr(), bytecode); 
                         }
                         // 这样，栈上的状态是 args|method object，然后我们再去调用这个函数
                         Instruction callFunc;
@@ -735,7 +838,7 @@ namespace compiler {
                     }
                     case VType::NewOperator: {
                         auto newOp = node->asFunctionCall();
-                        compileNode(newOp->self(), bytecode);
+                        _compileNode(newOp->self(), bytecode);
                         Instruction newObj = {};
                         newObj.opcode = (uint32_t)Opcode::New;
                         newObj.src = 0;
@@ -754,16 +857,16 @@ namespace compiler {
             }
             case SType::If: {
                 auto ifStmt = node->asIf();
-                compileNode(ifStmt->condition(), bytecode);
+                _compileNode(ifStmt->condition(), bytecode);
                 Instruction jz = {};
                 jz.jump.opcode = (uint32_t)Opcode::JumpZero;
                 jz.jump.pop = 1; // pop the condition result
                 bytecode->pushInstr(jz);
                 auto jzIdx = bytecode->size()-1;
-                compileNode(ifStmt->thenBranch(), bytecode);
+                _compileNode(ifStmt->thenBranch(), bytecode);
                 bytecode->getInstr(jzIdx).jump.pos = bytecode->size();
                 if(ifStmt->elseBranch()) {
-                    compileNode(ifStmt->elseBranch(), bytecode);
+                    _compileNode(ifStmt->elseBranch(), bytecode);
                 }
             }
             case SType::StringList: {
@@ -773,6 +876,15 @@ namespace compiler {
                 assert(false);
             }
         }
+    }
+
+    void Module::initialize(Env* env) {
+        // 初始化所有全局变量
+        auto &stackFrames = env->stackFrames();
+        stackFrames.push(Value()); // self
+        stackFrames.precall(_initializeFunc, 0);
+        env->execute();
+        stackFrames.popFrame();
     }
 
 }

@@ -18,6 +18,7 @@ PRIVATE
     vm/stdlib/std_string.cpp
     vm/stdlib/std_vec.cpp
     vm/stdlib/std_map.cpp
+    vm/stdlib/stdlib.cpp
     vm/utils/vm_package_util.cpp
 )
 

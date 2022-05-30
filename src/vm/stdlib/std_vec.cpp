@@ -18,8 +18,7 @@ namespace compiler {
                 DumpException except(env, ExecutionError::ArgumentCountMismatch, "push_back");
                 throw except;
             }
-            auto selfVal = stackFrames.selfRef();
-            selfVal.deref();
+            auto selfVal = stackFrames.self();
             UserdataObject* self = selfVal.ud();
             StdVector* vec = (StdVector*)self->ptr();
             Value val = stackFrames.local(0);
@@ -35,8 +34,7 @@ namespace compiler {
                 DumpException except(env, ExecutionError::ArgumentCountMismatch, "at");
                 throw except;
             }
-            auto selfVal = stackFrames.selfRef();
-            selfVal.deref();
+            auto selfVal = stackFrames.self();
             UserdataObject* self = selfVal.ud();
             StdVector* vec = (StdVector*)self->ptr();
             Value val = stackFrames.local(0);
@@ -62,8 +60,7 @@ namespace compiler {
                 DumpException except(env, ExecutionError::ArgumentCountMismatch, "erase");
                 throw except;
             }
-            auto selfVal = stackFrames.selfRef();
-            selfVal.deref();
+            auto selfVal = stackFrames.self();
             UserdataObject* self = selfVal.ud();
             StdVector* vec = (StdVector*)self->ptr();
             Value val = stackFrames.local(0);
@@ -90,20 +87,34 @@ namespace compiler {
                 DumpException except(env, ExecutionError::ArgumentCountMismatch, "size");
                 throw except;
             }
-            auto selfVal = stackFrames.selfRef();
-            selfVal.deref();
+            auto selfVal = stackFrames.self();
             UserdataObject* self = selfVal.ud();
             StdVector* vec = (StdVector*)self->ptr();
             stackFrames.push((int64_t)vec->size());
             return 1;
         }
 
-        BridgeFuncPair regItems[] = {
-            { __push_back, "push_back" },
-            { __at, "at" },
-            { __at, "__index" },
-            { __erase, "erase" },
-            { __size, "size" },
+        int __destroy(Env* env) {
+            auto& stackFrames = env->stackFrames();
+            auto argCount = stackFrames.argCount();
+            if(argCount != 0) {
+                DumpException except(env, ExecutionError::ArgumentCountMismatch, "destroy");
+                throw except;
+            }
+            auto selfVal = stackFrames.self();
+            UserdataObject* self = selfVal.ud();
+            StdVector* vec = (StdVector*)self->ptr();
+            delete vec;
+            return 0;
+        }
+
+        BridgeRegInfo regItems[] = {
+            { "push_back", __push_back },
+            { "at", __at },
+            { "erase", __erase },
+            { "size", __size },
+            { "__index", __at},
+            { "__destroy", __destroy },
         };
 
         void init(Env* env) {   

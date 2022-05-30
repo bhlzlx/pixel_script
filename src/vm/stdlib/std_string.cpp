@@ -80,9 +80,9 @@ namespace compiler {
             return 1;
         }
 
-        BridgeFuncPair stringRegItems[] = {
-            {__append, "append"},
-            {__len, "length"}
+        BridgeRegInfo stringRegItems[] = {
+            {"append", __append},
+            {"length", __len}
         };
 
         void init(Env* env) {

@@ -107,14 +107,14 @@ namespace compiler {
         Instruction& getInstr(size_t index) {
             return _instr[index];
         }
+        Instruction const* begin() const {
+            return _instr.data();
+        }
+        Value const* constants() const {
+            return _constants.data();
+        }
         size_t size() const {
             return _instr.size();
-        }
-        void exportInstr(std::vector<Instruction>& instrs) {
-            instrs = std::move(_instr);
-        }
-        void exportConstants(std::vector<Value>& constans) {
-            constans = std::move(_constants);
         }
     };
 
