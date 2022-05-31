@@ -436,7 +436,7 @@ namespace compiler {
 
     }
 
-    void Env::compileModule(char const* module) {
+    void Env::compileModule(char const* module, DebugInfoMap const* debugInfo) {
         auto modName = createName(module);
         auto mod = getModule(modName);
         mod->compileBytecode(this);

@@ -70,7 +70,7 @@ namespace compiler {
         for(auto const& expr :multiExpr->expressions()) {
             auto globalFunc = expr->asFunction();
             if(globalFunc) {
-                // 全局函数 
+                // 为包内函数编译字节码
                 auto name = globalFunc->name().stringLiteral();
                 bytecodeFunc = _package[name].asBytecodeFunc();
                 compiledFunctionOffsets.push_back(_bytecode.size()); // save offsets
@@ -82,6 +82,7 @@ namespace compiler {
                 bytecodeFunc->setArgc(globalFunc->params().size());
                 bytecodeFunc->setSymbolLayout(globalFunc->symbolLayout());
             } else {
+                // 为类成员函数编译字节码
                 auto clazz = expr->asClass();
                 if(clazz) {
                     auto body = clazz->body();
@@ -107,25 +108,28 @@ namespace compiler {
                 }
             }
         }
+        // 为模块内所有的函数添加入口地址
         for(size_t i = 0; i<compiledFunctions.size(); ++i) {
             auto bytecodeFunc = compiledFunctions[i];
             auto offset = compiledFunctionOffsets[i];
             bytecodeFunc->setInstructionPtr(_bytecode.begin(), offset);
         }
+        /**
+         * @brief 为模块内的全局变量生成初始化字节码逻辑
+         * 
+         * @param _initializeExprs 
+         */
         auto initializePos = _bytecode.size();
-        Instruction popInstr;
-        popInstr.opcode = (uint32_t)Opcode::Pop;
-        popInstr.pop = 1;
         for (auto& pair : _initializeExprs) {
             // auto loc = pair.first;
             auto node = pair.second;
             auto var = node->asVar();
             if(var->valueExpr()) {
                 _compileNode(node, &_bytecode);
-                // _bytecode.pushInstr(popInstr);
             }
         }
-        _bytecode.pushInstr(returnInstr);
+        _bytecode.pushInstr(returnInstr); // 给逻辑追加一个return指令结束调用
+        // 为初始化逻辑生成一个BytecodeFunction对象
         _initializeFunc = new BytecodeFunction(env->createName("__initialize"), _package, this);
         _initializeFunc->setArgc(0);
         _initializeFunc->setInstructionPtr(_bytecode.begin(), initializePos);
@@ -246,7 +250,7 @@ namespace compiler {
             }
         };
         // traverse the ast
-        this->traverseAST(ast, IdentifierTraverser);
+        this->_traverseAST(ast, IdentifierTraverser);
         return compilerErrors;
     }
 
@@ -349,7 +353,7 @@ namespace compiler {
             }
         };
         // traverse the ast
-        this->traverseAST(ast, IdentifierTraverser);
+        this->_traverseAST(ast, IdentifierTraverser);
         if(!compilerErrors.size()) {
             Function* func = const_cast<Function*>((Function const*)ast);
         }
@@ -397,13 +401,13 @@ namespace compiler {
         return false;
     }
 
-    void Module::traverseAST(Node const* ast, TraverseCallBack& callBack) {
+    void Module::_traverseAST(Node const* ast, TraverseCallBack& callBack) {
         switch(ast->structType()) {
             case SType::Function: {
                 auto func = static_cast<Function const*>(ast);
                 if(func->body()) {
                     callBack(func->body());
-                    traverseAST(func->body(), callBack);
+                    _traverseAST(func->body(), callBack);
                 }
                 break;
             }
@@ -411,37 +415,37 @@ namespace compiler {
                 auto block = static_cast<MultiExpr const*>(ast);
                 for(auto& expr : block->expressions()) {
                     callBack(expr);
-                    traverseAST(expr, callBack);
+                    _traverseAST(expr, callBack);
                 }
                 break;
             }
             case SType::If: {
                 auto ifNode = static_cast<IfStmt const*>(ast);
                 callBack(ifNode->condition());
-                traverseAST(ifNode->condition(), callBack);
+                _traverseAST(ifNode->condition(), callBack);
                 callBack(ifNode->thenBranch());
-                traverseAST(ifNode->thenBranch(), callBack);
+                _traverseAST(ifNode->thenBranch(), callBack);
                 if(ifNode->elseBranch()) {
                     callBack(ifNode->elseBranch());
-                    traverseAST(ifNode->elseBranch(), callBack);
+                    _traverseAST(ifNode->elseBranch(), callBack);
                 }
                 break;
             }
             case SType::BinaryOp: {
                 auto binOp = static_cast<BinaryOpExpr const*>(ast);
                 callBack(binOp->left());
-                traverseAST(binOp->left(), callBack);
+                _traverseAST(binOp->left(), callBack);
                 callBack(binOp->right());
-                traverseAST(binOp->right(), callBack);
+                _traverseAST(binOp->right(), callBack);
                 break;
             }
             case SType::Pair: {
                 auto pair = static_cast<PairExpr const*>(ast);
                 callBack(pair->first());
-                traverseAST(pair->first(), callBack);
+                _traverseAST(pair->first(), callBack);
                 if(pair->second()) {
                     callBack(pair->second());
-                    traverseAST(pair->second(), callBack);
+                    _traverseAST(pair->second(), callBack);
                 }
                 break;
             }
@@ -452,21 +456,21 @@ namespace compiler {
                 auto ret = static_cast<ReturnStmt const*>(ast);
                 if(ret->expr()) {
                     callBack(ret->expr());
-                    traverseAST(ret->expr(), callBack);
+                    _traverseAST(ret->expr(), callBack);
                 }
                 break;
             }
             case SType::MapItem: {
                 auto item = static_cast<MapItem const*>(ast);
                 callBack(item->value());
-                traverseAST(item->value(), callBack);
+                _traverseAST(item->value(), callBack);
                 break;
             }
             case SType::Triple: {
                 auto triple = static_cast<TripleExpr const*>(ast);
                 if(triple->first()) {
                     callBack(triple->first());
-                    traverseAST(triple->first(), callBack);
+                    _traverseAST(triple->first(), callBack);
                 }
                 auto valueType = ast->valueType();
                 switch (valueType)
@@ -477,14 +481,14 @@ namespace compiler {
                     default: {
                         if(triple->second()) {
                             callBack(triple->second());
-                            traverseAST(triple->second(), callBack);
+                            _traverseAST(triple->second(), callBack);
                         }
                         break;
                     }
                 }
                 if(triple->third()) {
                     callBack(triple->third());
-                    traverseAST(triple->third(), callBack);
+                    _traverseAST(triple->third(), callBack);
                 }
                 break;
             }

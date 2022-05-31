@@ -12,7 +12,6 @@ namespace compiler {
 
     using namespace ast;
 
-    using TraverseCallBack = std::function<void(Node const*)>;
 
     class Module;
 
@@ -68,7 +67,7 @@ namespace compiler {
          */
         bool preprocessModuleAST(char const* module, Node* ast, DebugInfoMap* debugInfoMap = nullptr);
         bool checkIdentifiers(char const* module);
-        void compileModule(char const* module);
+        void compileModule(char const* module, DebugInfoMap const* debugInfo = nullptr);
         void initializeModule(char const* module);
         /**
          * @brief only for test

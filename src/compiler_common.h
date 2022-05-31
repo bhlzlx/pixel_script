@@ -3,6 +3,7 @@
 #include "token.h"
 #include <vector>
 #include <map>
+#include <functional>
 
 namespace compiler {
 
@@ -57,6 +58,8 @@ namespace compiler {
         class IndexAccess;
         class ScopeNode;
     }
+
+    using TraverseCallBack = std::function<void(ast::Node const*)>;
 
     using DebugInfoMap = std::map<ast::Node const*, ExprDebugInfo>;
 
