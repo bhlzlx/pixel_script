@@ -979,7 +979,7 @@ namespace compiler {
     }
 
 
-    void ASTBuilder::_addDebugInfo(ast::Node* node, AstDebugInfo const& info) {
+    void ASTBuilder::_addDebugInfo(ast::Node* node, CodeDebugInfo const& info) {
         node->setDbgId(_debugInfos.size());
         _debugInfos.push_back(info);
     }

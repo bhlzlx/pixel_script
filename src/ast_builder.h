@@ -59,7 +59,7 @@ namespace compiler {
         std::vector<Token>              _consumedTokens;
         std::vector<uint32_t>           _consumedPositions;
         std::deque<Token>               _cachedTokens;
-        std::vector<AstDebugInfo>      _debugInfos;
+        std::vector<CodeDebugInfo>      _debugInfos;
     private: // functions
         MatchResult matchPrimary();
         MatchResult matchFactor();
@@ -103,7 +103,7 @@ namespace compiler {
         void resumeConsumeState();
         void discardConsumeState();
 
-        void _addDebugInfo(ast::Node* node, AstDebugInfo const& info);
+        void _addDebugInfo(ast::Node* node, CodeDebugInfo const& info);
     public:
         ASTBuilder()
             : _tokenParser(nullptr)

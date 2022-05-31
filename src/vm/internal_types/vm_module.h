@@ -12,20 +12,17 @@ namespace compiler {
     class DebugInfoNode {
     public:
         struct Info {
-            uint32_t beg;
-            uint32_t end;
-            AstDebugInfo info;
+            uint32_t        beg;
+            uint32_t        end;
+            CodeDebugInfo   info;
         };
-        Info _info;
     private:
-        std::vector<Info*> _subInfos;
+        Info                            _info;
+        std::vector<DebugInfoNode*>     _subInfos;
     public:
-        DebugInfoNode* addSubInfo(AstDebugInfo info);
-        ~DebugInfoNode() {
-            for(auto info :_subInfos) {
-                delete info;
-            }
-        }
+        DebugInfoNode* addSubInfo(CodeDebugInfo info);
+        void setRange(uint32_t beg, uint32_t end);
+        ~DebugInfoNode();
     };
 
     /**
@@ -43,8 +40,7 @@ namespace compiler {
                                                 _initializeExprs;
         Bytecode                                _bytecode;
         BytecodeFunction*                       _initializeFunc;
-        DebugInfoMap                            _debugInfos;
-        std::vector<DebugInfo>                  _runtimeDebugInfo;
+        DebugInfoNode*                          _debugInfo;
 
         struct IdLocateEnv {
             SymbolLayout*   functionLayout;     // local symbol layout
@@ -65,9 +61,6 @@ namespace compiler {
         void setAst(Node* ast) {
             _ast = ast;
         }
-        void setDebugInfo(DebugInfoMap && debugInfos) {
-            _debugInfos = std::move(debugInfos);
-        }
     public:
         using TraverseCallBack = std::function<void(Node const*)>;
         Module()
@@ -75,9 +68,6 @@ namespace compiler {
             , _ast(nullptr)
             , _initializeExprs()
         {}
-        DebugInfoMap const& debugInfo() const {
-            return _debugInfos;
-        }
         std::vector<Token> checkIdentifiers(Env* env);
 
         // 编译成字节码

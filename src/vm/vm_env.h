@@ -65,9 +65,9 @@ namespace compiler {
          * @return true 
          * @return false 
          */
-        bool preprocessModuleAST(char const* module, Node* ast, DebugInfoMap* debugInfoMap = nullptr);
+        bool preprocessModuleAST(char const* module, Node* ast);
         bool checkIdentifiers(char const* module);
-        void compileModule(char const* module, DebugInfoMap const* debugInfo = nullptr);
+        void compileModule(char const* module);
         void initializeModule(char const* module);
         /**
          * @brief only for test

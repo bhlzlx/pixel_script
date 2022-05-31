@@ -51,7 +51,7 @@ namespace compiler {
             auto module = getModule(moduleName);
             module->setAst(ast);
             module->setHostPackage(package);
-            module->setDebugInfo(std::move(*debugInfoMap));
+            // module->setDebugInfo(std::move(*debugInfoMap));
             //
             ++iter;
             while(iter != exprs->expressions().end()) {

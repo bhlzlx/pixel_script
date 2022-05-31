@@ -23,7 +23,7 @@ namespace compiler {
     // debug 时候给调试器提供执行的位置信息
     // 另外，并不是所有的节点都有这个信息，只有那些算值的节点也有，即expr及更小的节点会有，
     // 像 statement 因为本向不参与执行，所以没有
-    struct AstDebugInfo {
+    struct CodeDebugInfo {
         Name    name;
         int     line;
         int     column;
@@ -60,7 +60,7 @@ namespace compiler {
 
     using TraverseCallBack = std::function<void(ast::Node const*)>;
 
-    using DebugInfoMap = std::map<ast::Node const*, AstDebugInfo>;
+    // using DebugInfoMap = std::map<ast::Node const*, CodeDebugInfo>;
 
     enum class IdentifierType : uint8_t {
         Null,

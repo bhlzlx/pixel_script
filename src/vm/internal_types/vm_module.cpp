@@ -7,6 +7,24 @@
 
 namespace compiler {
 
+    DebugInfoNode* DebugInfoNode::addSubInfo(CodeDebugInfo info) {
+        DebugInfoNode* node = new DebugInfoNode();
+        node->_info.info = info;
+        this->_subInfos.push_back(node);
+        return node;
+    }
+
+    void DebugInfoNode::setRange(uint32_t beg, uint32_t end) {
+        _info.beg = beg;
+        _info.end = end;
+    }
+
+    DebugInfoNode::~DebugInfoNode() {
+        for(auto info :_subInfos) {
+            delete info;
+        }
+    }
+
     Opcode tokenToBinaryOpcode(TokenType type) {
         // convert token to binary opcode
         switch(type) {
