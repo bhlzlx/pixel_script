@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "internal_types/vm_types.h"
 
 namespace compiler {

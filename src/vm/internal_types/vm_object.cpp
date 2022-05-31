@@ -1,4 +1,4 @@
-#include <cassert>
+﻿#include <cassert>
 #include "vm_object.h"
 #include <ast_node.h>
 

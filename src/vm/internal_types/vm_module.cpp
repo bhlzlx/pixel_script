@@ -1,4 +1,4 @@
-#include "vm_module.h"
+﻿#include "vm_module.h"
 #include "vm_object.h"
 #include <vm/stdlib/std_vec.h>
 #include <vm/stdlib/std_map.h>
@@ -561,6 +561,7 @@ namespace compiler {
     }
 
     void Module::_compileNode(ast::Node const* node, Bytecode* bytecode) {
+
         switch(node->structType()) {
             case SType::Function: {
                 auto func = node->asFunction();

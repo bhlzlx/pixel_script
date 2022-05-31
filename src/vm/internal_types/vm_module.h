@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <compiler_common.h>
 #include "vm_object.h"
 #include <vm/vm_bytecode.h>
@@ -9,10 +9,23 @@ namespace compiler {
 
     using namespace ast;
 
-    struct DebugInfo {
-        uint32_t beg;
-        uint32_t end;
-        ExprDebugInfo info;
+    class DebugInfoNode {
+    public:
+        struct Info {
+            uint32_t beg;
+            uint32_t end;
+            AstDebugInfo info;
+        };
+        Info _info;
+    private:
+        std::vector<Info*> _subInfos;
+    public:
+        DebugInfoNode* addSubInfo(AstDebugInfo info);
+        ~DebugInfoNode() {
+            for(auto info :_subInfos) {
+                delete info;
+            }
+        }
     };
 
     /**
@@ -31,6 +44,7 @@ namespace compiler {
         Bytecode                                _bytecode;
         BytecodeFunction*                       _initializeFunc;
         DebugInfoMap                            _debugInfos;
+        std::vector<DebugInfo>                  _runtimeDebugInfo;
 
         struct IdLocateEnv {
             SymbolLayout*   functionLayout;     // local symbol layout

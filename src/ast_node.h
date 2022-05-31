@@ -57,11 +57,13 @@ namespace compiler {
             SType           _stype;
             VType           _vtype;
             Node*           _parent;
+            int32_t         _dbgId;
         public:
             Node(SType stype, VType vtype, Node* parent = nullptr)
                 : _stype(stype)
                 , _vtype(vtype)
                 , _parent(parent)
+                , _dbgId(-1)
             {}
             void setParent(Node* parent) {
                 _parent = parent;
@@ -75,6 +77,7 @@ namespace compiler {
             Node* parent() const {
                 return _parent;
             }
+            void setDbgId(int32_t id) { _dbgId = id; }
             virtual ~Node() {}
 
             StringList* asStringList() const {

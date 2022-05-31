@@ -29,11 +29,10 @@ int main(int argc, char** argv) {
     file.read(buffer, size);
     compiler::Env env;
     compiler::ASTBuilder builder;
-    compiler::DebugInfoMap debugInfo;
-    auto prog = builder.buildAST(&env, buffer, &debugInfo);
-    // compiler::MultiExpr* multiExpr = dynamic_cast<compiler::MultiExpr*>(prog.node);
+    // compiler::DebugInfoMap debugInfo;
+    auto moduleNode = builder.buildAST(&env, buffer);
     char const* module = "bytecode";
-    auto rst = env.preprocessModuleAST(module, prog.node, &debugInfo);
+    auto rst = env.preprocessModuleAST(module, moduleNode.node);
     env.compileModule(module);
     env.initializeModule(module);
     auto val = env.callFuncWithPath("game.test.entry");

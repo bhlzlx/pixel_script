@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <ast_node.h>
 #include "vm_types.h"
 

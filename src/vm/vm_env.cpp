@@ -1,4 +1,4 @@
-#include <cassert>
+﻿#include <cassert>
 #include "vm_env.h"
 #include "stdlib/stdlib.h"
 #include "internal_types/vm_userdata.h"

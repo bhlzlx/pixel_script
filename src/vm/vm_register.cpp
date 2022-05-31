@@ -1,4 +1,4 @@
-#include "vm_register.h"
+﻿#include "vm_register.h"
 #include "vm_bytecode.h"
 #include "internal_types/vm_module.h"
 

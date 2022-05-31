@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "name_pool.h"
 #include "token.h"
 #include <vector>
@@ -23,13 +23,12 @@ namespace compiler {
     // debug 时候给调试器提供执行的位置信息
     // 另外，并不是所有的节点都有这个信息，只有那些算值的节点也有，即expr及更小的节点会有，
     // 像 statement 因为本向不参与执行，所以没有
-    struct ExprDebugInfo {
+    struct AstDebugInfo {
         Name    name;
         int     line;
         int     column;
         // 为什么没有文件信息？函数里可以取到！
     };
-
 
     using BridgeFunc = int(*)(Env* env);
 
@@ -61,7 +60,7 @@ namespace compiler {
 
     using TraverseCallBack = std::function<void(ast::Node const*)>;
 
-    using DebugInfoMap = std::map<ast::Node const*, ExprDebugInfo>;
+    using DebugInfoMap = std::map<ast::Node const*, AstDebugInfo>;
 
     enum class IdentifierType : uint8_t {
         Null,

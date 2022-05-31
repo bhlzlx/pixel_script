@@ -979,15 +979,12 @@ namespace compiler {
     }
 
 
-    void ASTBuilder::_addDebugInfo(ast::Node const* node, ExprDebugInfo const& info) {
-        if(_debugInfoMap) {
-            auto& ref = *_debugInfoMap;
-            ref[node] = info;
-        }
+    void ASTBuilder::_addDebugInfo(ast::Node* node, AstDebugInfo const& info) {
+        node->setDbgId(_debugInfos.size());
+        _debugInfos.push_back(info);
     }
 
-    MatchResult ASTBuilder::buildAST(Env* env, char const* code, DebugInfoMap* debugInfoMap) {
-        _debugInfoMap = debugInfoMap;
+    MatchResult ASTBuilder::buildAST(Env* env, char const* code) {
         _tokenParser = new TokenParser(env);
         _tokenParser->init(code);
         auto rst = matchCodeChunk();

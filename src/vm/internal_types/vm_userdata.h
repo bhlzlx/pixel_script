@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <compiler_common.h>
 #include <name_pool.h>
