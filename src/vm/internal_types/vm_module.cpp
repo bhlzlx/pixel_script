@@ -19,10 +19,25 @@ namespace compiler {
         _info.end = end;
     }
 
+    void DebugInfoNode::setBegin(uint32_t beg) {
+        _info.beg = beg;
+    }
+
+    void DebugInfoNode::setEnd(uint32_t end) {
+        _info.end = end;
+    }
+
     DebugInfoNode::~DebugInfoNode() {
         for(auto info :_subInfos) {
             delete info;
         }
+    }
+
+    DebugInfo::Handle DebugInfo::newDbgInfo(CodeDebugInfo info) {
+        DebugInfoNode* node = _root->addSubInfo(info);
+        _nodes.push_back(node);
+        node->setBegin(_bytecode->size());
+        return {this};
     }
 
     Opcode tokenToBinaryOpcode(TokenType type) {
@@ -579,7 +594,9 @@ namespace compiler {
     }
 
     void Module::_compileNode(ast::Node const* node, Bytecode* bytecode) {
-
+        if(node->dbgId()) {
+            _debugInfo.newDbgInfo()
+        }
         switch(node->structType()) {
             case SType::Function: {
                 auto func = node->asFunction();
