@@ -1,5 +1,6 @@
 ﻿#include <cassert>
 #include "vm_env.h"
+#include "ast_builder.h"
 #include "stdlib/stdlib.h"
 #include "internal_types/vm_userdata.h"
 #include "internal_types/vm_primitive_types.h"
@@ -34,16 +35,16 @@ namespace compiler {
         return pack;
     }
 
-    bool Env::preprocessModuleAST(char const* mod, Node* ast, DebugInfoMap* debugInfoMap)  {
+    bool Env::preprocessModuleAST(char const* mod, Node* ast)  {
         if(ast->structType() == SType::MultiExpr) {
             MultiExpr* exprs = (MultiExpr*)ast;
             if(!exprs->expressions().size()) {
-                return false;
+                throw PreprocessException(PreprocessExceptionType::EmptyContent);
             }
             auto iter = exprs->expressions().begin();
             Node* expr = *iter;
             if(expr->valueType() != VType::Package) {
-                return false;
+                throw PreprocessException(PreprocessExceptionType::PackageNotFound);
             }
             auto package = preparePackage(expr);
             auto packObj = package.asObject();
@@ -62,7 +63,7 @@ namespace compiler {
                     auto rst = packObj->addSymbol(func->name().stringLiteral(), SymbolType::Function, Value(bcFunc), moduleName);
                     if(!rst.item) {
                         assert(false);
-                        return false;
+                        throw PreprocessException(PreprocessExceptionType::DumplicateSymbol, func->name());
                     }
                 } else if(expr->valueType() == VType::Variable ) {
                     Variable* var = (Variable*)expr;
@@ -83,7 +84,7 @@ namespace compiler {
                             BytecodeFunction* bcFunc = new BytecodeFunction(func->name().stringLiteral(), package, module);
                             auto rst = clazzObj->addSymbol(func->name().stringLiteral(), SymbolType::Function, Value(bcFunc), moduleName);
                             if(!rst.item) {
-                                assert(false);
+                                throw PreprocessException(PreprocessExceptionType::DumplicateSymbol, func->name());
                                 return false;
                             }
                         } else if(expr->valueType() == VType::Variable) {
@@ -92,7 +93,7 @@ namespace compiler {
                             auto rst = clazzObj->addSymbol(var->name().stringLiteral(), SymbolType::Variable, Value(), moduleName);
                             if(!rst.item) {
                                 assert(false && "add symbol failed!");
-                                return false;
+                                throw PreprocessException(PreprocessExceptionType::DumplicateSymbol, var->name());
                             }
                         }
                     }
@@ -101,14 +102,15 @@ namespace compiler {
                     packObj->addSymbol(clazz->name(), SymbolType::Class, clazzValue, moduleName);
                 }else {
                     assert(false && "only function & variable can be defined in package");
-                    return false;
+                    throw PreprocessException(PreprocessExceptionType::UnsupportedAST);
                 }
                 ++iter;
             }
             return true;
         } else {
-            return false;
+            throw PreprocessException(PreprocessExceptionType::UnsupportedAST);
         }
+        return true;
     }
 
     int Env::call(int argc) {
@@ -225,11 +227,11 @@ namespace compiler {
             IntegerValue* ival = (IntegerValue*)leftRef;
             rst = ival->Op(this, op, right);
         } else if(leftRef->type() == PrimeVType::Float64) {
-            FloatValue* fval = (FloatValue*)&left;
-            fval->Op(this, op, right);
+            FloatValue* fval = (FloatValue*)leftRef;
+            rst = fval->Op(this, op, right);
         } else if(leftRef->type() == PrimeVType::String) {
-            StringValue* sval = (StringValue*)&left;
-            sval->Op(this, op, right);
+            StringValue* sval = (StringValue*)leftRef;
+            rst = sval->Op(this, op, right);
         }
         else {
             assert(false && "unsupported type");
@@ -436,10 +438,27 @@ namespace compiler {
 
     }
 
-    void Env::compileModule(char const* module, DebugInfoMap const* debugInfo) {
+    bool Env::precompileModule(char const* moduleName, char const* code) {
+        ASTBuilder builder;
+        MatchResult rst = builder.buildAST(this, code); // 我们需要拿到debuginfo和生成的ast节点
+        ASTBuildingException astException(rst);
+        if(!rst) {
+            return false;
+        }
+        preprocessModuleAST(moduleName, rst.node);
+        auto module = getModule(createName(moduleName));
+        module->setCodeDbgInfo(std::move(builder.dbgInfo()));
+        return true;
+    }
+
+    bool Env::compileModule(char const* module) {
         auto modName = createName(module);
         auto mod = getModule(modName);
+        if(!mod) {
+            return false;
+        }
         mod->compileBytecode(this);
+        return true;
     }
 
     void Env::initializeModule(char const* module) {
@@ -463,7 +482,7 @@ namespace compiler {
         if (it != _modules.end()) {
             return it->second;
         } else {
-            Module* mod = new Module();
+            Module* mod = new Module(name);
             auto rst = _modules.insert(std::make_pair(name, mod));
             return rst.first->second;
         }
@@ -478,18 +497,7 @@ namespace compiler {
         }
     }
 
-    std::string Env::backtrace(char const* errorType) const {
-        return "";
-        // std::stringstream ss;
-        // ss << "[backtrace] : " << errorType << std::endl;
-        // for(auto it = _funcEnvs.rbegin(); it != _funcEnvs.rend(); ++it) {
-        //     auto module = getModule(it->func->module());
-        //     auto debugInfo = module->debugInfo().find(it->evaluingNode);
-        //     ss << "  ";
-        //     ss << "[" << it->func->module().text() << "] :"; 
-        //     ss << "" << it->func->name().stringLiteral().text() << "()";
-        //     ss << debugInfo->second.line << ":" << debugInfo->second.column << std::endl;
-        // }
-        // return ss.str();
+    std::string Env::backtrace(char const* baseError) const {
+        return _stackFrames.backtrace(baseError);
     }
 }

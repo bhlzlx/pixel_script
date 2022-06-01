@@ -34,6 +34,8 @@ namespace compiler {
         Value preparePackage(Node* ast);
         void _executeBinaryOp(Opcode op);
         Value _valueInScope( ScopeType scope, uint32_t loc, bool readonly = false);
+        // preprocess ast
+        bool preprocessModuleAST(char const* module, Node* ast);
     public:
 
         Env();
@@ -46,6 +48,9 @@ namespace compiler {
         StackFrames& stackFrames() {
             return _stackFrames;
         }
+        StackFrames const& stackFrames() const{
+            return _stackFrames;
+        }
 
         SymbolLayout* newSymbolLayout(SymbolLayoutType type) {
             auto symLayout = new SymbolLayout(type);
@@ -55,7 +60,7 @@ namespace compiler {
 
         Name createName(char const* str);
 
-        std::string backtrace(char const* errorType) const ;
+        std::string backtrace(char const* baseError) const ;
 
         Module* getModule(Name const& name);
         Module const* getModule(Name const& name) const;
@@ -65,9 +70,24 @@ namespace compiler {
          * @return true 
          * @return false 
          */
-        bool preprocessModuleAST(char const* module, Node* ast);
+
+        /**
+         * @brief 
+         *     代码预编译，生成基本符号，语法树，但是不解析语义正确性
+         * @param moduleName 
+         * @param code 
+         * @return std::vector<Token> 代码预编译错误位置信息
+         */
+        bool precompileModule(char const* moduleName, char const* code);
+        /**
+         * @brief 
+         *     解析，将语法树编译成字节码
+         * @param module 
+         * @return true 
+         * @return false 
+         */
+        bool compileModule(char const* module);
         bool checkIdentifiers(char const* module);
-        void compileModule(char const* module);
         void initializeModule(char const* module);
         /**
          * @brief only for test
@@ -89,6 +109,7 @@ namespace compiler {
 
         // vm execution functions
         void execute();
+
 
     };
 }

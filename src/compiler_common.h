@@ -20,6 +20,7 @@ namespace compiler {
     class Instruction;
     class Module;
 
+
     // debug 时候给调试器提供执行的位置信息
     // 另外，并不是所有的节点都有这个信息，只有那些算值的节点也有，即expr及更小的节点会有，
     // 像 statement 因为本向不参与执行，所以没有
@@ -57,6 +58,42 @@ namespace compiler {
         class IndexAccess;
         class ScopeNode;
     }
+
+    enum class ASTParseError {
+        None,
+        ExprExpected,
+        LeftParenExpected,
+        RightParenExpected,
+        RightBracketExpected,
+        NeedRightFactor,
+        PrimaryMismatch,
+        ExprMismatch,
+        BlockMismatch,
+        IdentifierExpected,
+        ColonExpected,
+        ParamsListMismatch,
+        FunctionMismatch,
+        MissFunctionName,
+        ClosureMismatch,
+        AssignExpected,
+        MissVariableName,
+        VarMismatch,
+        PackageMismatch,
+        CodeChunkMismatch,
+        DotExpected,
+        ClassExtendsMismatch,
+        ClassMismatch,
+        DotAccessMismatch,
+    };
+    struct MatchResult {
+        ast::Node*      node;
+        ASTParseError   error;
+        int             line;
+        int             column;
+        operator bool () const {
+            return node != nullptr;
+        }
+    };
 
     using TraverseCallBack = std::function<void(ast::Node const*)>;
 

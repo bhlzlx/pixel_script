@@ -14,42 +14,6 @@ namespace compiler {
     class Env;
     class TokenParser;
 
-    enum class ASTParseError {
-        None,
-        ExprExpected,
-        LeftParenExpected,
-        RightParenExpected,
-        RightBracketExpected,
-        NeedRightFactor,
-        PrimaryMismatch,
-        ExprMismatch,
-        BlockMismatch,
-        IdentifierExpected,
-        ColonExpected,
-        ParamsListMismatch,
-        FunctionMismatch,
-        MissFunctionName,
-        ClosureMismatch,
-        AssignExpected,
-        MissVariableName,
-        VarMismatch,
-        PackageMismatch,
-        CodeChunkMismatch,
-        DotExpected,
-        ClassExtendsMismatch,
-        ClassMismatch,
-        DotAccessMismatch,
-    };
-    struct MatchResult {
-        ast::Node*      node;
-        ASTParseError   error;
-        int             line;
-        int             column;
-        operator bool () const {
-            return node != nullptr;
-        }
-    };
-
 
     class ConsumeStateHelper;
     class ASTBuilder {
@@ -114,6 +78,8 @@ namespace compiler {
         }
 
         MatchResult buildAST(Env* env, char const* code);
+
+        std::vector<CodeDebugInfo>& dbgInfo() { return _debugInfos; }
 
     };
 

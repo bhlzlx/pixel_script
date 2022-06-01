@@ -1,6 +1,7 @@
 ﻿#include "vm_register.h"
 #include "vm_bytecode.h"
 #include "internal_types/vm_module.h"
+#include <sstream>
 
 namespace compiler {
 
@@ -167,4 +168,27 @@ namespace compiler {
         ++_frame.ip;
     }
 
+    std::string StackFrames::backtrace(char const* baseError) const {
+        std::stringstream ss;
+        ss << "[backtrace] : " << baseError << std::endl;
+
+        auto backtraceFrame = [&ss](FrameInfo const& frame) {
+            ss << "  ";
+            if(frame.instr) { // bytecode
+                auto module = frame.func->module()->name().text();
+                auto loc = frame.func->module()->getIpDbgLoc(frame.ip);
+                auto funcName = frame.func->name().text();
+                ss << "[" << module << "] :"; 
+                ss << "" << funcName << "()";
+                ss << loc.first << ":" << loc.second << std::endl;
+            } else {
+                ss << "[bridge func]" << std::endl;
+            }
+        };
+        backtraceFrame(_frame);
+        for(auto iter = _frameInfos.rbegin(); iter != _frameInfos.rend(); ++iter) {
+            backtraceFrame(*iter);
+        }
+        return ss.str();
+    }
 }

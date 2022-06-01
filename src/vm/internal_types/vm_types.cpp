@@ -306,7 +306,8 @@ namespace compiler {
 
     // Exceptions 
     DumpException::DumpException(Env const* env, ExecutionError error, char const* brifErr)
-        : _error(error)
+        : ScriptException(ScriptExceptionType::Execution)
+        , _error(error)
         , _message(env->backtrace(brifErr)) 
     {
     }

@@ -3,6 +3,7 @@
 #include <vm/stdlib/std_vec.h>
 #include <vm/stdlib/std_map.h>
 #include <vm/vm_env.h>
+#include <algorithm>
 
 
 namespace compiler {
@@ -27,17 +28,52 @@ namespace compiler {
         _info.end = end;
     }
 
+    void DebugInfoNode::setInfo(CodeDebugInfo inf) {
+        _info.info = inf;
+    }
+
     DebugInfoNode::~DebugInfoNode() {
         for(auto info :_subInfos) {
             delete info;
         }
     }
 
+    bool DebugInfoNode::find(uint32_t ip, std::pair<int,int>& out) {
+        if(ip>=_info.beg && ip <=_info.end) {
+            for(auto sub: _subInfos) {
+                if(sub->find(ip, out)) {
+                    return true;
+                }
+            }
+            out.first = _info.info.line;
+            out.second = _info.info.column;
+            return true;
+        }
+        return false;
+    }
+
     DebugInfo::Handle DebugInfo::newDbgInfo(CodeDebugInfo info) {
-        DebugInfoNode* node = _root->addSubInfo(info);
-        _nodes.push_back(node);
+        DebugInfoNode* node = nullptr;
+        if(_buildStack.size()) {
+            node = _nodes.back()->addSubInfo(info);
+        } else {
+            node = new DebugInfoNode();
+            node->setInfo(info);
+            _nodes.push_back(node);
+        }
         node->setBegin(_bytecode->size());
-        return {this};
+        _buildStack.push_back(node);
+        return Handle(this);
+    }
+
+    std::pair<int,int> DebugInfo::locateIp(uint32_t ip) {
+        std::pair<int,int> rst = {-1, -1};
+        for(auto node: _nodes) {
+            if(node->find(ip, rst)) {
+                break;
+            }
+        }
+        return rst;
     }
 
     Opcode tokenToBinaryOpcode(TokenType type) {
@@ -86,7 +122,10 @@ namespace compiler {
      * @param env 
      */
     void Module::compileBytecode(Env* env) {
-        checkIdentifiers(env);
+        auto errors = checkIdentifiers(env);
+        if(errors.size()) {
+            throw CompilingException(std::move(errors));
+        }
         IdLocateEnv locateEnv = {
             nullptr, 
             nullptr,
@@ -171,6 +210,10 @@ namespace compiler {
 
     void Module::setHostPackage(Value package) {
         _package = package;
+    }
+
+    void Module::setCodeDbgInfo(std::vector<CodeDebugInfo>&& dbgInfo) {
+        _astDebugInfos = std::move(dbgInfo);
     }
 
     std::vector<Token> Module::checkIdentifiers(Env* env) {
@@ -594,8 +637,9 @@ namespace compiler {
     }
 
     void Module::_compileNode(ast::Node const* node, Bytecode* bytecode) {
-        if(node->dbgId()) {
-            _debugInfo.newDbgInfo()
+        DebugInfo::Handle debugHandle(nullptr);
+        if(-1 != node->dbgId()) {
+            debugHandle = _debugInfo.newDbgInfo(_astDebugInfos[node->dbgId()]);
         }
         switch(node->structType()) {
             case SType::Function: {
@@ -916,6 +960,7 @@ namespace compiler {
                 assert(false);
             }
         }
+        debugHandle.release();
     }
 
     void Module::initialize(Env* env) {
@@ -925,6 +970,10 @@ namespace compiler {
         stackFrames.precall(_initializeFunc, 0);
         env->execute();
         stackFrames.popFrame();
+    }
+
+    std::pair<int, int> Module::getIpDbgLoc(uint32_t ip) {
+        return _debugInfo.locateIp(ip);
     }
 
 }

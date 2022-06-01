@@ -17,6 +17,7 @@ class Point {
 }
 
 func entry() {
+    backtrace()
     helloworld()
     var vec = [1,2,3,4]
     var map =  {
@@ -32,7 +33,10 @@ func entry() {
 }
 
 func helloworld() {
-    std.io.print("hello,world!")
+    var hello = "hello,"
+    var world = "world!"
+    var rst = hello + world
+    std.io.print(rst)
 }
 
 func revert_vec(vec) {
@@ -44,4 +48,10 @@ func revert_vec(vec) {
         vec[len-i-1] = tmp
         i = i+1
     }
+}
+
+func backtrace() {
+    var str = "test"
+    var i = 0
+    return str + i
 }

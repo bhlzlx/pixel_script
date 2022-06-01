@@ -60,6 +60,8 @@ namespace compiler {
         Instruction const* instr();
         void jump(size_t pos);
         void peekIP();
+
+        std::string backtrace(char const* baseError) const;
     };
 
 

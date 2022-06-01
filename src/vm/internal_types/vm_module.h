@@ -24,26 +24,38 @@ namespace compiler {
         void setRange(uint32_t beg, uint32_t end);
         void setBegin(uint32_t beg);
         void setEnd(uint32_t end);
+        void setInfo(CodeDebugInfo inf);
+        bool find(uint32_t ip, std::pair<int,int>& out);
         ~DebugInfoNode();
     };
 
     class DebugInfo {
     private:
-        Bytecode*       _bytecode;
-        DebugInfoNode*  _root;
+        Bytecode*                       _bytecode;
         std::vector<DebugInfoNode*>     _nodes;
+        std::vector<DebugInfoNode*>     _buildStack;
     public:
-        struct Handle {
-            DebugInfo    *info;
-            ~Handle() {
-                info->_nodes.back()->setEnd(info->_bytecode->size());
-                info->_nodes.pop_back();
+        class Handle {
+        private:
+            DebugInfo    * _info;
+        public:
+            Handle(DebugInfo* info)
+                : _info(info) {
+            }
+            void release() {
+                if(_info) {
+                    _info->_buildStack.back()->setEnd(_info->_bytecode->size());
+                    _info->_buildStack.pop_back();
+                }
             }
         };
         DebugInfo(Bytecode* bytecode)
             : _bytecode(bytecode)
+            , _nodes()
+            , _buildStack()
         {}
         Handle newDbgInfo(CodeDebugInfo info);
+        std::pair<int,int> locateIp(uint32_t ip);
         ~DebugInfo();
     };
 
@@ -63,8 +75,9 @@ namespace compiler {
         Bytecode                                _bytecode;
         BytecodeFunction*                       _initializeFunc;
         //
-        std::vector<CodeDebugInfo>              _debugInfos;
+        std::vector<CodeDebugInfo>              _astDebugInfos;
         DebugInfo                               _debugInfo;
+        Name                                    _name;
 
         struct IdLocateEnv {
             SymbolLayout*   functionLayout;     // local symbol layout
@@ -82,15 +95,16 @@ namespace compiler {
 
         void setHostPackage(Value package);
         void addInitialize(uint32_t loc, Node* node);
-        void setAst(Node* ast) {
-            _ast = ast;
-        }
+        void setAst(Node* ast) { _ast = ast; }
+        void setCodeDbgInfo(std::vector<CodeDebugInfo>&& dbgInfo);
     public:
         using TraverseCallBack = std::function<void(Node const*)>;
-        Module()
+        Module(Name name)
             : _package()
             , _ast(nullptr)
             , _initializeExprs()
+            , _debugInfo(&_bytecode)
+            , _name(name)
         {}
         std::vector<Token> checkIdentifiers(Env* env);
 
@@ -100,6 +114,12 @@ namespace compiler {
         void initialize(Env* env);
 
         Bytecode const* bytecode() const { return &_bytecode; }
+
+        std::pair<int, int> getIpDbgLoc(uint32_t ip);
+
+        Name name() const {
+            return _name;
+        }
         
     };
 

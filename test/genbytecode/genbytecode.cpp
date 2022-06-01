@@ -28,13 +28,10 @@ int main(int argc, char** argv) {
     buffer[size] = '\0';
     file.read(buffer, size);
     compiler::Env env;
-    compiler::ASTBuilder builder;
-    // compiler::DebugInfoMap debugInfo;
-    auto moduleNode = builder.buildAST(&env, buffer);
-    char const* module = "bytecode";
-    auto rst = env.preprocessModuleAST(module, moduleNode.node);
-    env.compileModule(module);
-    env.initializeModule(module);
+    char const* moduleName = "bytecode";
+    env.precompileModule(moduleName, buffer);
+    env.compileModule(moduleName);
+    env.initializeModule(moduleName);
     auto val = env.callFuncWithPath("game.test.entry");
     return 0;
 }
