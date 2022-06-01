@@ -65,6 +65,9 @@ namespace compiler {
                 , _parent(parent)
                 , _dbgId(-1)
             {}
+            int32_t dbgId() const {
+                return _dbgId;
+            }
             void setParent(Node* parent) {
                 _parent = parent;
             }

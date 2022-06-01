@@ -22,7 +22,29 @@ namespace compiler {
     public:
         DebugInfoNode* addSubInfo(CodeDebugInfo info);
         void setRange(uint32_t beg, uint32_t end);
+        void setBegin(uint32_t beg);
+        void setEnd(uint32_t end);
         ~DebugInfoNode();
+    };
+
+    class DebugInfo {
+    private:
+        Bytecode*       _bytecode;
+        DebugInfoNode*  _root;
+        std::vector<DebugInfoNode*>     _nodes;
+    public:
+        struct Handle {
+            DebugInfo    *info;
+            ~Handle() {
+                info->_nodes.back()->setEnd(info->_bytecode->size());
+                info->_nodes.pop_back();
+            }
+        };
+        DebugInfo(Bytecode* bytecode)
+            : _bytecode(bytecode)
+        {}
+        Handle newDbgInfo(CodeDebugInfo info);
+        ~DebugInfo();
     };
 
     /**
@@ -40,7 +62,9 @@ namespace compiler {
                                                 _initializeExprs;
         Bytecode                                _bytecode;
         BytecodeFunction*                       _initializeFunc;
-        DebugInfoNode*                          _debugInfo;
+        //
+        std::vector<CodeDebugInfo>              _debugInfos;
+        DebugInfo                               _debugInfo;
 
         struct IdLocateEnv {
             SymbolLayout*   functionLayout;     // local symbol layout
