@@ -68,16 +68,15 @@ namespace compiler {
     class Module {
         friend class Env;
     private:
-        Value                                   _package;       // 模块所在包
-        Node*                                   _ast;
-        std::vector<std::pair<uint32_t,ast::Node const*>>           
-                                                _initializeExprs;
-        Bytecode                                _bytecode;
-        BytecodeFunction*                       _initializeFunc;
-        //
-        std::vector<CodeDebugInfo>              _astDebugInfos;
-        DebugInfo                               _debugInfo;
-        Name                                    _name;
+        Value                                               _package;       // 模块所在包
+        Bytecode                                            _bytecode;
+        BytecodeFunction*                                   _initializeFunc;
+        Name                                                _name;
+        DebugInfo                                           _debugInfo;
+        // ast infos，数据成员是可以删除的，不过这里暂时不作优化了，暂时先做清空处理
+        Node*                                               _ast;
+        std::vector<std::pair<uint32_t,ast::Node const*>>   _initializeExprs;
+        std::vector<CodeDebugInfo>                          _astDebugInfos;
 
         struct IdLocateEnv {
             SymbolLayout*   functionLayout;     // local symbol layout

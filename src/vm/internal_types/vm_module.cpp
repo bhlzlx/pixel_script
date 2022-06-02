@@ -206,6 +206,10 @@ namespace compiler {
         _initializeFunc->setArgc(0);
         _initializeFunc->setInstructionPtr(_bytecode.begin(), initializePos);
         _initializeFunc->setSymbolLayout(nullptr);
+        // clean up ast tree
+        _initializeExprs.clear();
+        delete _ast; _ast = nullptr;
+        _astDebugInfos.clear();
     }
 
     void Module::setHostPackage(Value package) {
