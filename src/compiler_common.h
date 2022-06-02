@@ -17,7 +17,7 @@ namespace compiler {
     class UserdataObject;
     class Env;
     class BytecodeFunction;
-    class Instruction;
+    struct Instruction;
     class Module;
 
 

@@ -329,7 +329,6 @@ namespace compiler {
                         case PrimeVType::BridgeFunc: {
                             BridgeFunc bridgeFunc = func.asBridgeFunc();
                             stackFrames().precall(bridgeFunc, argCount);
-                            int rst = bridgeFunc(this);
                             auto bridgeRet = stackFrames().retVal();
                             stackFrames().popFrame();
                             stackFrames().push(bridgeRet);
@@ -375,7 +374,6 @@ namespace compiler {
                             break;
                         }
                         case PrimeVType::Userdata: {
-                            UserdataObject* ud = obj.ud();
                             stackFrames().push(field); // 压入参数
                             UserdataCallFunction(this, obj, lib_keywords::___index, 1); // 调用 __index，结果会压栈
                             break;

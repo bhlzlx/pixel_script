@@ -57,7 +57,7 @@ namespace compiler {
                     stackFrames.pop();
                     return valueToString(env, rst);
                 } else {
-                    Object* obj = value.asObject();
+                    // Object* obj = value.asObject();
                     char buf[32] = {};
                     sprintf(buf, "{ object: %p }", value.asObject());
                     return buf;
@@ -75,7 +75,7 @@ namespace compiler {
                     stackFrames.pop();
                     return valueToString(env, rst);
                 } else {
-                    UserdataObject* ud = value.ud();
+                    // UserdataObject* ud = value.ud();
                     char buf[32] = {};
                     sprintf(buf, "{ userdata: %p }", value.ud());
                     return buf;

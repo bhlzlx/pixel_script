@@ -69,21 +69,21 @@ namespace compiler {
     public:
         Token( TokenType type = TokenType::None, ksgw::Name name = ksgw::Name(nullptr))
             : _type(type)
-            , _string(name)
             , _line(0)
             , _column(0)
+            , _string(name)
         {}
         Token(int64_t val)
             : _type(TokenType::Integer)
-            , _integer(val)
             , _line(0)
             , _column(0)
+            , _integer(val)
         {}
         Token(double val)
             : _type(TokenType::Float)
-            , _number(val)
             , _line(0)
             , _column(0)
+            , _number(val)
         {}
         void setType(TokenType type) {
             _type = type;

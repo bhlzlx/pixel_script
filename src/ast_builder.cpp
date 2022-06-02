@@ -118,7 +118,6 @@ namespace compiler {
 
     MatchResult ASTBuilder::matchIndexAccess() {
         ConsumeStateHelper(this, true);
-        MatchResult rst = {};
         auto token = nextToken();
         if(token->type() == TokenType::LeftBracket) {
             consumeCurrentToken();
@@ -481,7 +480,6 @@ namespace compiler {
             std::vector<Token> tokens;
             tokens.push_back(*token);
             consumeCurrentToken();
-            auto param = new Leaf(VType::Id, *token);
             while(true) {
                 token = nextToken();
                 if(token->type() == TokenType::Comma) {
@@ -540,7 +538,6 @@ namespace compiler {
     MatchResult ASTBuilder::matchFunctionDef() {
         consumeSemicolonEol();
         ConsumeStateHelper helper(this, true);
-        Function* func = nullptr;
         auto token = nextToken();
         Token startToken = *token;
         if(token->stringLiteral() != lang_keywords::_func) { // "func"
@@ -582,7 +579,6 @@ namespace compiler {
      */
     MatchResult ASTBuilder::matchArgs() {
         ConsumeStateHelper helper(this, true);
-        MatchResult rst = {};
         auto beginToken = *nextToken();
         auto expr = matchExpression();
         if(!expr) {

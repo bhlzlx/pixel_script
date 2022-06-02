@@ -100,10 +100,10 @@ namespace compiler {
         using TraverseCallBack = std::function<void(Node const*)>;
         Module(Name name)
             : _package()
+            , _name(name)
+            , _debugInfo(&_bytecode)
             , _ast(nullptr)
             , _initializeExprs()
-            , _debugInfo(&_bytecode)
-            , _name(name)
         {}
         std::vector<Token> checkIdentifiers(Env* env);
 

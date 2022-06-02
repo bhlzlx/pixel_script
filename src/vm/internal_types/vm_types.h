@@ -50,6 +50,7 @@ namespace compiler {
         std::string const& dumpMessage() const {
             return _message;
         }
+        ExecutionError error() const { return _error; }
     };
 
     class ASTBuildingException : ScriptException {

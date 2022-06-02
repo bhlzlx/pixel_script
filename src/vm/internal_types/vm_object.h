@@ -43,8 +43,6 @@ namespace compiler {
             return _members.size();
         }
 
-        std::string toString() const;
-
         SymbolLayout* symbolLayout() const {
             return _symbolLayout;
         }

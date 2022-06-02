@@ -62,9 +62,9 @@ namespace compiler {
     }
 
     Value::Value(Node const* node)
-        : _node(node) 
-        , _type(PrimeVType::FunctionNode)
+        : _type(PrimeVType::FunctionNode)
         , _stype(SymbolLayoutType::Function)
+        , _node(node) 
     {
         assert(node->structType() == SType::Function);
     }

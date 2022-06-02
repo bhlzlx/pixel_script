@@ -10,7 +10,7 @@ namespace compiler {
         , _values(2048)
     {
         FrameInfo fi = {
-            0, 0, 0, 0, 0, Value(), Value(), nullptr, nullptr, nullptr
+            0, 0, 0, 0, 0, Value(), Value(), nullptr, nullptr, { nullptr }
         };
         _frameInfos.push_back(fi);
         _frame = fi;

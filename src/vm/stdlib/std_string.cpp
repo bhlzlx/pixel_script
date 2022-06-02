@@ -9,37 +9,6 @@ namespace compiler {
 
         UserdataLayout* stringLayout = nullptr;
 
-        std::string toString(Value const& value) {
-            switch(value.type()) {
-                case PrimeVType::Nil:
-                    return "{nil}";
-                case PrimeVType::Boolean:
-                    return value.booleanValue() ? "true" : "false";
-                case PrimeVType::Int64:
-                    return std::to_string(value.intValue());
-                case PrimeVType::Float64:
-                    return std::to_string(value.floatValue());
-                case PrimeVType::String: {
-                    Name* name = (Name*)value.ud()->ptr();
-                    std::string str = name->text();
-                    return str;
-                }
-                case PrimeVType::Object: {
-                    Object* obj = value.asObject();
-                    return "{object}";
-                }
-                case PrimeVType::Userdata: {
-                    UserdataObject* ud = value.ud();
-                    // ud->callMemberMethod();
-                    return "{userdata}";
-                }
-                default: {
-                    break;
-                }
-            }
-            return "";
-        }
-
         int __append(Env* env) {
             StackFrames& stack = env->stackFrames();
             size_t paramsCount = stack.argCount();

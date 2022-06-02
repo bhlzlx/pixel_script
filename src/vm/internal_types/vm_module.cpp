@@ -126,12 +126,12 @@ namespace compiler {
         if(errors.size()) {
             throw CompilingException(std::move(errors));
         }
-        IdLocateEnv locateEnv = {
-            nullptr, 
-            nullptr,
-            _package.asObject()->symbolLayout(),
-            env->root().asObject()->symbolLayout()
-        };
+        // IdLocateEnv locateEnv = {
+        //     nullptr, 
+        //     nullptr,
+        //     _package.asObject()->symbolLayout(),
+        //     env->root().asObject()->symbolLayout()
+        // };
         Instruction returnInstr;
         returnInstr.opcode = (uint32_t)Opcode::Return;
         std::vector<BytecodeFunction*> compiledFunctions;
@@ -253,9 +253,9 @@ namespace compiler {
         locateEnv.classLayout = nullptr;
         locateEnv.functionLayout = nullptr;
 
-        ast::Function* initializeFunc = new ast::Function(VType::None);
+        // ast::Function* initializeFunc = new ast::Function(VType::None);
         for(auto const& pair : _initializeExprs) {
-            auto loc = pair.first;
+            // auto loc = pair.first;
             auto node = pair.second;
             auto errs = _checkVars(env, node, locateEnv);
             rst.insert(rst.end(), errs.begin(), errs.end());
@@ -435,7 +435,7 @@ namespace compiler {
         // traverse the ast
         this->_traverseAST(ast, IdentifierTraverser);
         if(!compilerErrors.size()) {
-            Function* func = const_cast<Function*>((Function const*)ast);
+            // Function* func = const_cast<Function*>((Function const*)ast);
         }
         func->_valid = !compilerErrors.size();
         func->_compiled = true;

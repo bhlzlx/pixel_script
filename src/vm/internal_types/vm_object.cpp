@@ -53,12 +53,4 @@ namespace compiler {
         return rst;
     }
 
-    // std::string Object::toString() const {
-    //     auto rst = _symbolLayout->querySymbol(lib_keywords::___tostring);
-    //     if(rst.item) {
-
-    //     }
-    // }
-
-
 }
