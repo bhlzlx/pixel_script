@@ -52,6 +52,8 @@ namespace compiler {
             StringEscape,
             // Brackets, // { } [ ] ()
             Op, // + - * / += *= /= ++ --
+            LineComment, // comment state,
+            BlockComment, // block comment
             // Semicolon, // ;
         };
     private:
@@ -118,6 +120,8 @@ namespace compiler {
         bool dealInteger(char ch);
         bool dealOp(char ch);
         bool dealEOF(char ch);
+        bool dealLineComment(char ch);
+        bool dealBlockComment(char ch);
     };
 
 }

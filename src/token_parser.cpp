@@ -110,34 +110,65 @@ namespace compiler {
             }
             return false;
         } else {
-            switch(_token.type()) {
-                case TokenType::Assign: {
-                    switch(ch) {
-                        case '=': _token = Token(TokenType::Equal, lang_keywords::_none); break;
-                        case '>': _token = Token(TokenType::Equal, lang_keywords::_none); break;
-                        default: {
-                            fallback();
-                        }
+            if(ch == '=') {
+                switch(_token.type()) {
+                    case TokenType::Greater: { // >=
+                        _token = Token(TokenType::GreaterEqual, lang_keywords::_none); break;
                     }
-                    break;
-                }
-                case TokenType::Less: {
-                    switch(ch) {
-                        case '=': _token = Token(TokenType::LessEqual, lang_keywords::_none); break;
-                        default: {
-                            fallback();
-                        }
+                    case TokenType::Less: { // <=
+                        _token = Token(TokenType::LessEqual, lang_keywords::_none); break;
                     }
-                    break;
+                    case TokenType::Assign: { // == 
+                        _token = Token(TokenType::Equal, lang_keywords::_none); break;
+                    }
+                    default: {
+                        break;
+                    }
                 }
-                default: {
-                    fallback();
+            } else if(ch == '/') {
+                if(_token.type() == TokenType::Slash ) { // comment
+                    _token.setType(TokenType::None);
+                    _state = State::LineComment;
+                    return false;
+                }
+            } else if(ch == '*') {
+                if(_token.type() == TokenType::Slash ) { // comment
+                    _token.setType(TokenType::None);
+                    _state = State::BlockComment;
+                    return false;
                 }
             }
+            fallback();
             updateTokenLocation();
             return true;
         }
         return true;
+    }
+
+
+    bool TokenParser::dealLineComment(char ch) {
+        if(ch == '\n') {
+            _token = Token(TokenType::Eol, lang_keywords::_none);
+            _state = State::None;
+            return true;
+        }
+        return false;
+    }
+
+    bool TokenParser::dealBlockComment(char ch) {
+        if(ch == '/') {
+            if(_token.type() == TokenType::Star) {
+                _token = Token(TokenType::None, lang_keywords::_none);
+                _state = State::None;
+                return false;
+            }
+            _token = Token(TokenType::None, lang_keywords::_none);
+        } else if(ch == '*') {
+            _token = Token(TokenType::Star, lang_keywords::_none);
+        } else {
+            _token = Token(TokenType::None, lang_keywords::_none);
+        }
+        return false;
     }
 
     bool TokenParser::dealNone(char ch) {
@@ -273,7 +304,7 @@ namespace compiler {
 
     bool TokenParser::dealOp(char ch) {
         auto rst = matchOperator(ch);
-        assert(rst == true);
+        assert(rst == true || ch == '/' || ch == '*');
         return rst;
     }
 
@@ -328,6 +359,14 @@ namespace compiler {
                 case State::String: 
                 case State::StringEscape: {
                     rst = dealString(ch); break;
+                }
+                case State::LineComment: {
+                    rst = dealLineComment(ch);
+                    break;
+                }
+                case State::BlockComment: {
+                    rst = dealBlockComment(ch);
+                    break;
                 }
             }
             ++_pos;
