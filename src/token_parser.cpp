@@ -208,7 +208,6 @@ namespace compiler {
             _token = Token(TokenType::Eol, lang_keywords::_none);
             _tokenColumn = _column;
             updateTokenLocation();
-            ++_line;
             _column = 1;
             rst = true;
         }
@@ -368,6 +367,9 @@ namespace compiler {
                     rst = dealBlockComment(ch);
                     break;
                 }
+            }
+            if( '\n' == ch) {
+                ++_line;
             }
             ++_pos;
             ++_column;

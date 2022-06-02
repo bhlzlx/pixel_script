@@ -329,7 +329,9 @@ namespace compiler {
                         case PrimeVType::BridgeFunc: {
                             BridgeFunc bridgeFunc = func.asBridgeFunc();
                             stackFrames().precall(bridgeFunc, argCount);
+                            int rst = bridgeFunc(this);
                             auto bridgeRet = stackFrames().retVal();
+                            _CRT_UNUSED(rst);
                             stackFrames().popFrame();
                             stackFrames().push(bridgeRet);
                             break;
@@ -408,7 +410,7 @@ namespace compiler {
                         obj.type() != PrimeVType::Object &&
                         obj.type() != PrimeVType::Userdata
                     ) {
-                        assert(false);
+                        throw DumpException(this, ExecutionError::IndexANoneObject, "attempt to get field of none object/userdata");
                         // throw RuntimeError("indexed operator can only be applied to object");
                     }
                     // Value field = stackFrames().topLocal(0);

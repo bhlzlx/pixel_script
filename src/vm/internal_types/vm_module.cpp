@@ -180,12 +180,6 @@ namespace compiler {
                 }
             }
         }
-        // 为模块内所有的函数添加入口地址
-        for(size_t i = 0; i<compiledFunctions.size(); ++i) {
-            auto bytecodeFunc = compiledFunctions[i];
-            auto offset = compiledFunctionOffsets[i];
-            bytecodeFunc->setInstructionPtr(_bytecode.begin(), offset);
-        }
         /**
          * @brief 为模块内的全局变量生成初始化字节码逻辑
          * 
@@ -201,6 +195,12 @@ namespace compiler {
             }
         }
         _bytecode.pushInstr(returnInstr); // 给逻辑追加一个return指令结束调用
+        // 为模块内所有的函数添加入口地址
+        for(size_t i = 0; i<compiledFunctions.size(); ++i) {
+            auto bytecodeFunc = compiledFunctions[i];
+            auto offset = compiledFunctionOffsets[i];
+            bytecodeFunc->setInstructionPtr(_bytecode.begin(), offset);
+        }
         // 为初始化逻辑生成一个BytecodeFunction对象
         _initializeFunc = new BytecodeFunction(env->createName("__initialize"), _package, this);
         _initializeFunc->setArgc(0);
