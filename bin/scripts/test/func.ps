@@ -1,9 +1,12 @@
-package game.test
+package test.fn
 
 var fib_n = 4+2
 
 func helloworld() {
-    fib(fib_n)
+    var hello = "hello,"
+    var world = "world!"
+    var rst = hello + world
+    std.io.print(rst)
 }
 
 func fib(n) {
@@ -16,5 +19,5 @@ func fib(n) {
         last = backup
         counter = counter + 1
     }
-    rst
+    return rst
 }

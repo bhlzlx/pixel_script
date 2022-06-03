@@ -1,4 +1,4 @@
-package game.test
+package test.bytecode
 
 // comments ........
 
@@ -23,26 +23,21 @@ class Point {
 }
 
 func entry() {
-    backtrace()
-    helloworld()
-    var vec = [1,2,3,4]
+    // backtrace()
+    test.fn.helloworld()
+    var vec = [
+        1,2,3,4
+    ]
     var map =  {
-        name : "kusugwa",
+        name : "kusugawa",
         age : 32,
         height: 175
     }
     var point = Point.new()
     var ret = point.set(3, 4)
     revert_vec(vec)
-    std.io.print(vec[0], "---", map.name)
+    std.io.print(vec[0], "---", map.name, "\n")
     return ret
-}
-
-func helloworld() {
-    var hello = "hello,"
-    var world = "world!"
-    var rst = hello + world
-    std.io.print(rst)
 }
 
 func revert_vec(vec) {

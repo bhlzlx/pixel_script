@@ -421,7 +421,7 @@ namespace compiler {
                     if(funcExpr->valueType() == VType::Id) {
                         auto id = funcExpr->asId();
                         if(!_locateIdentifier(locateEnv, id)) {
-                            assert(false);
+                            // assert(false);
                             compilerErrors.push_back(id->token());
                         }
                         // if(id->type() == IdentifierType::ClassMember) {

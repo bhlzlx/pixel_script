@@ -29,8 +29,8 @@ namespace compiler {
             Object* parent = pack.asObject();
             auto layout = newSymbolLayout(SymbolLayoutType::Package);
             Value subpack(layout);
-            parent->addSymbol(name.stringLiteral(), SymbolType::Package, subpack, Name());
-            pack = subpack;
+            auto rst = parent->addSymbol(name.stringLiteral(), SymbolType::Package, subpack, Name());
+            pack = rst.item->value;
         }
         return pack;
     }
