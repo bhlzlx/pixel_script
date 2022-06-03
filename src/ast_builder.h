@@ -20,10 +20,9 @@ namespace compiler {
         friend class ConsumeStateHelper;
     private:
         TokenParser*                    _tokenParser;
-        std::vector<Token>              _consumedTokens;
-        std::vector<uint32_t>           _consumedPositions;
-        std::deque<Token>               _cachedTokens;
         std::vector<CodeDebugInfo>      _debugInfos;
+        // 
+        Token const*                    _cachedToken;
     private: // functions
         MatchResult matchPrimary();
         MatchResult matchFactor();
@@ -71,9 +70,7 @@ namespace compiler {
     public:
         ASTBuilder()
             : _tokenParser(nullptr)
-            , _consumedTokens()
-            , _consumedPositions()
-            , _cachedTokens()
+            , _cachedToken()
         {
         }
 

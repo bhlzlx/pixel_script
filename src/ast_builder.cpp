@@ -11,26 +11,6 @@ using namespace compiler::ast;
 
 namespace compiler {
 
-    class ConsumeStateHelper {
-    private:
-        ASTBuilder*     _builder;
-        bool            _resumable;
-    public:
-        ConsumeStateHelper(ASTBuilder* builder, bool resumable)
-            : _builder(builder)
-            , _resumable(resumable)
-        {
-            _builder->pushConsumeState();
-        }
-        ~ConsumeStateHelper() {
-            if(_resumable) {
-                _builder->discardConsumeState();   
-            } else {
-                _builder->popConsumeState();
-            }
-        }
-    };
-
     /**
      * @brief 
      * bnf : ("{"expr"}"|NUMBER|IDENTIFIER|STRING) {postfix}
@@ -45,7 +25,6 @@ namespace compiler {
      * @return MatchResult 
      */
     MatchResult ASTBuilder::matchPrimary() {
-        ConsumeStateHelper(this, true);
         MatchResult rst = {};
         consumeSemicolonEol();
         auto token = nextToken();
@@ -117,7 +96,6 @@ namespace compiler {
     }
 
     MatchResult ASTBuilder::matchIndexAccess() {
-        ConsumeStateHelper(this, true);
         auto token = nextToken();
         if(token->type() == TokenType::LeftBracket) {
             consumeCurrentToken();
@@ -139,7 +117,6 @@ namespace compiler {
     }
 
     MatchResult ASTBuilder::matchFactor() {
-        ConsumeStateHelper helper(this, true);
         MatchResult rst = {};
         auto token = nextToken();
         auto startToken = *token;
@@ -243,7 +220,6 @@ namespace compiler {
     }
 
     MatchResult ASTBuilder::matchExpression() {
-        ConsumeStateHelper helper(this, true);
         MatchResult rst = {};
         auto startToken = *nextToken();
         std::stack<Node*> factorStack;
@@ -320,7 +296,6 @@ namespace compiler {
     }
 
     MatchResult ASTBuilder::matchBlock() {
-        ConsumeStateHelper helper(this, true);
         MatchResult rst = {};
         auto token = nextToken();
         if(token->type() == TokenType::LeftBrace) {
@@ -354,7 +329,6 @@ namespace compiler {
     }
 
     MatchResult ASTBuilder::matchStatement() { 
-        ConsumeStateHelper helper(this, false);
         MatchResult rst = {};
         auto token = nextToken();
         if(token->stringLiteral() == lang_keywords::_return) {
@@ -426,7 +400,6 @@ namespace compiler {
     }
 
     MatchResult ASTBuilder::matchCodeChunk() {
-        ConsumeStateHelper helper(this, false);
         auto chunk = new MultiExpr(VType::Module);
         auto pack = matchPackage();
         if(pack) {
@@ -470,7 +443,6 @@ namespace compiler {
      * @return MatchResult StringList
      */
     MatchResult ASTBuilder::matchParams() {
-        ConsumeStateHelper helper(this, true);
         MatchResult rst = {};
         auto token = nextToken();
         Token startToken = *token;
@@ -508,7 +480,6 @@ namespace compiler {
      *  if no params, return nullptr
      */
     MatchResult ASTBuilder::matchParamList() {
-        ConsumeStateHelper helper(this, true);
         auto currToken = nextToken();
         auto startToken = *currToken;
         if(currToken->type() == TokenType::LeftParen) {
@@ -537,7 +508,6 @@ namespace compiler {
      */
     MatchResult ASTBuilder::matchFunctionDef() {
         consumeSemicolonEol();
-        ConsumeStateHelper helper(this, true);
         auto token = nextToken();
         Token startToken = *token;
         if(token->stringLiteral() != lang_keywords::_func) { // "func"
@@ -578,7 +548,6 @@ namespace compiler {
      * @return MatchResult multiple expressions
      */
     MatchResult ASTBuilder::matchArgs() {
-        ConsumeStateHelper helper(this, true);
         auto beginToken = *nextToken();
         auto expr = matchExpression();
         if(!expr) {
@@ -612,7 +581,6 @@ namespace compiler {
      * @return MatchResult multi expressions
      */
     MatchResult ASTBuilder::matchArgList() {
-        ConsumeStateHelper helper(this, true);
         auto token = nextToken();
         MatchResult rst = {};
         Token startToken = *token;
@@ -634,7 +602,6 @@ namespace compiler {
     }
 
     MatchResult ASTBuilder::matchDotAccess() {
-        ConsumeStateHelper helper(this, true);
         auto token = nextToken();
         Token startToken = *token;
         if(token->type() != TokenType::Dot) {
@@ -653,7 +620,6 @@ namespace compiler {
     }
 
     MatchResult ASTBuilder::matchClosure() {
-        ConsumeStateHelper helper(this, true);
         auto token = nextToken();
         MatchResult rst = MatchResult { nullptr, ASTParseError::ClosureMismatch, token->line(), token->column() };
         Token startToken = *token;
@@ -679,7 +645,6 @@ namespace compiler {
 
     MatchResult ASTBuilder::matchDefVariable() {
         consumeSemicolonEol();
-        ConsumeStateHelper helper(this, true);
         auto token = nextToken();
         if(token->type() == TokenType::Keyword) {
             if(token->stringLiteral() == lang_keywords::_var) {
@@ -714,7 +679,6 @@ namespace compiler {
     }
 
     MatchResult ASTBuilder::matchPackage() {
-        ConsumeStateHelper helper(this, true);
         consumeSemicolonEol();
         auto token = nextToken();
         if(token->type() == TokenType::Keyword) {
@@ -754,7 +718,6 @@ namespace compiler {
     }
 
     MatchResult ASTBuilder::matchClassDef() {
-        ConsumeStateHelper helper(this, true);
         consumeSemicolonEol();
         auto token = nextToken();
         if(token->type() == TokenType::Keyword) {
@@ -793,7 +756,6 @@ namespace compiler {
     }
 
     MatchResult ASTBuilder::matchClassBody() {
-        ConsumeStateHelper helper(this, true);
         auto token = nextToken();
         if(token->type() != TokenType::LeftBrace) {
             return { nullptr, ASTParseError::LeftParenExpected, token->line(), token->column() };
@@ -823,7 +785,6 @@ namespace compiler {
     }
 
     MatchResult ASTBuilder::matchArray() {
-        ConsumeStateHelper helper(this, true);
         consumeSemicolonEol();
         auto token = nextToken();
         if(token->type() != TokenType::LeftBracket) {
@@ -860,7 +821,6 @@ namespace compiler {
     }
 
     MatchResult ASTBuilder::matchMapItem() {
-        ConsumeStateHelper helper(this, true);
         auto token = nextToken();
         if(token->type() != TokenType::Identifier) {
             return { nullptr, ASTParseError::IdentifierExpected, token->line(), token->column() };
@@ -881,7 +841,6 @@ namespace compiler {
     }
 
     MatchResult ASTBuilder::matchMap() {
-        ConsumeStateHelper helper(this, true);
         consumeSemicolonEol();
         auto token = nextToken();
         if(token->type() != TokenType::LeftBrace) {
@@ -919,17 +878,11 @@ namespace compiler {
     }
 
     Token const* ASTBuilder::nextToken() {
-        if(!_cachedTokens.size()) {
-            _cachedTokens.push_back(*_tokenParser->nextToken());
+        if(!_cachedToken) {
+            _cachedToken = _tokenParser->nextToken();
         }
-        return &_cachedTokens.front();
+        return _cachedToken;
     }
-
-    // void ASTBuilder::popTokenCache() {
-    //     assert(_cachePositions.size());
-    //     _consumedTokens.resize(_cachePositions.back());
-    //     _cachePositions.pop_back();
-    // }
 
     Token const*  ASTBuilder::consumeAndGetNext() {
         consumeCurrentToken();
@@ -937,8 +890,7 @@ namespace compiler {
     }
 
     void ASTBuilder::consumeCurrentToken() {
-        _consumedTokens.push_back(_cachedTokens.front());
-        _cachedTokens.pop_front();
+        _cachedToken = nullptr;
     }
 
     void ASTBuilder::consumeSemicolonEol() {
@@ -947,33 +899,6 @@ namespace compiler {
             consumeAndGetNext();
         }
     }
-
-    // 保存当前的token消费状态，以便匹配失败回溯
-    void ASTBuilder::pushConsumeState() {
-        _consumedPositions.push_back(_consumedTokens.size());
-    }
-
-    // 有些可回溯的BNF生成式，在匹配这些生成式的时候，如果失败，可以回溯，再尝试其它的匹配方式
-    void ASTBuilder::resumeConsumeState() {
-        auto consumePos = _consumedPositions.back();
-        for( size_t i = consumePos; i< _consumedTokens.size(); ++i) {
-            _cachedTokens.push_front(_consumedTokens[i]);
-        }
-        _consumedTokens.resize(consumePos);
-        _consumedPositions.pop_back();
-    }
-
-    // BNF生成式匹配成功了，但其父生成式如果是可回溯的，则需要调用此方法
-    void ASTBuilder::discardConsumeState() {
-        _consumedPositions.pop_back();
-    }
-
-    // BNF生成式匹配成功了，但其父生成式如果是不可回溯的，则需要调用此方法
-    void ASTBuilder::popConsumeState() {
-        _consumedTokens.resize(_consumedPositions.back());
-        _consumedPositions.pop_back();
-    }
-
 
     void ASTBuilder::_addDebugInfo(ast::Node* node, CodeDebugInfo const& info) {
         node->setDbgId(_debugInfos.size());
