@@ -1,11 +1,5 @@
 #include <cstdio>
-#include <ast_builder.h>
-#include <map>
-
-#include <ast_node.h>
 #include <vm/vm_env.h>
-
-#include <fstream>
 
 class Buffer {
 private:
@@ -77,7 +71,7 @@ int main(int argc, char** argv) {
 
     for(auto& item: items) {
         env.compileModule(item.moduleName); // 编译字节码，生成debug信息
-        env.initializeModule(items->moduleName); // 初始化模块
+        env.initializeModule(item.moduleName); // 初始化模块
     }
     auto val = env.callFuncWithPath("test.bytecode.entry");
     return 0;
